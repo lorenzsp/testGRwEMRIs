@@ -98,7 +98,6 @@ class PyKerrGenericFluxInspiral(TrajectoryBase):
         p = np.asarray(p_e_Y[:,0]).copy()
         e = np.asarray(p_e_Y[:,1]).copy()
         Y = np.asarray(p_e_Y[:,2]).copy()
-        # (t, p, e, Y, En, Lz, Q, Phi_phi, Phi_r, Phi_theta)
         return (t, p, e, Y, Phi_phi, Phi_theta, Phi_r)
 
 
@@ -151,9 +150,13 @@ class ScalarChargePn5AAKWaveform(Pn5AAKWaveform, Pn5AAK, GPUModuleBase):
 
 wave_gen = ScalarChargePn5AAKWaveform()
 
+dt=10.
+mich=False
 start = time.time()
-h_migr = wave_gen(M, mu, a, p0, e0, Y0, 1, np.pi/4, np.pi/4, np.pi/4, np.pi/4,  Phi_phi0=Phi_phi0, Phi_theta0=Phi_theta0, Phi_r0=Phi_r0, T=T,mich=False)
+h_migr = wave_gen(M, mu, a, p0, e0, Y0, 1, np.pi/4, np.pi/4, np.pi/4, np.pi/4,  Phi_phi0=Phi_phi0, Phi_theta0=Phi_theta0, Phi_r0=Phi_r0, T=T, dt=dt, mich=mich)
 print('time', time.time()-start)
 
-plt.plot(h_migr)
+hplus = np.real(h_migr)
+time = np.arange(0,len(hplus)*dt,dt)
+plt.plot(time, hplus)
 plt.show()
