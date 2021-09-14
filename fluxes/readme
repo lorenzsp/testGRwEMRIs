@@ -1,0 +1,17 @@
+.dat files contain the tensor (spinning_flux_GR_chi09.dat) and the 
+scalar (spinning_flux_charge_chi09.dat) fluxes.
+
+The three columns in both files correspond to:
+radius, spin parameter and flux value
+
+The orbital radius is normalized to the primary mass, i.e. 
+the values shown in the tables correspond to r/M.
+
+Tensor and scalar fluxes are nomalized to q^2, with q=m/M.
+
+The spin parameter has been sampled in a symmetric interval 
+around chi = 0.9, chi = [0.89,0.91], while the radius has been 
+sampled wih 100 values between r = 2.4 and r = 8.
+
+Tensor (scalar) fluxes are summed over the multipole components 
+from l = 2 (l=1) to l=10. 
