@@ -19,22 +19,20 @@ from few.utils.utility import (get_overlap,
 M = 1e6
 mu = 1e1
 a = 0.9
-p0 = 15.0
+p0 = 6.0
 e0 = 0.0
 iota0 = 0.0
 Y0 = np.cos(iota0)
-Phi_phi0 = 1.0
-Phi_theta0 = 2.0
-Phi_r0 = 3.0
+Phi_phi0 = 0.0
+Phi_theta0 = 0.0
+Phi_r0 = 0.0
 
-dt = 11.0
-T = 2.0
+dt = 10.0
+T = 1.0
 
 
-args=np.array([
-    0.0,
-    0.0,
-    0.0
+args1=np.array([
+    0.05,
 ])
 
 traj = EMRIInspiral(func="KerrCircFlux")
@@ -42,47 +40,49 @@ traj = EMRIInspiral(func="KerrCircFlux")
 # run trajectory
 import time
 start = time.time()
-t, p, e, Y, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p0, e0, Y0,  Phi_phi0, Phi_theta0, Phi_r0,  T=T, dt=dt)
+t, p, e, Y, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p0, e0, Y0,  Phi_phi0, Phi_theta0, Phi_r0, *args1,  T=T, dt=dt)
 print('time', time.time()-start)
 
 
 args=np.array([
-    1e-20, # Amplitude
-    0.0, # n
-    0.0 # m
+    0.0,
 ])
 
 start = time.time()
-t2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2 = traj(M, mu, a, p0, e0, Y0, Phi_phi0, Phi_theta0, Phi_r0, *args, T=T, dt=dt)
+t2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2 = traj(M, mu, a, p0, e0, Y0, Phi_phi0, Phi_theta0, Phi_r0, *args, T=T, dt=dt, upsample=True, new_t=t)
 print('time', time.time()-start)
 
 ########################################################
-fig, axes = plt.subplots(2, 4)
-plt.subplots_adjust(wspace=0.5)
-fig.set_size_inches(14, 8)
+fig, axes = plt.subplots(1, 2)
+#fig.set_size_inches(14, 8)
 axes = axes.ravel()
 
-ylabels = [r'$e$', r'$p$', r'$e$', r'$Y$', r'$\Phi_\phi$', r'$\Phi_r$', r'$\Phi_\theta$']
-xlabels = [r'$p$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$']
-ys = [e, p, e, Y, Phi_phi, Phi_r, Phi_theta]
-xs = [p, t, t, t, t, t, t]
+ylabels = [r'$p$', r'$\Phi_\phi$', r'$\Phi_r$', r'$\Phi_\theta$']
+xlabels = [ r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$']
+ys = [ p, Phi_phi, Phi_r, Phi_theta]
+xs = [ t, t, t, t]
 
-ys2 = [e2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2]
-xs2 = [p2, t2, t2, t2, t2, t2, t2]
+ys2 = [ p2, Phi_phi2]
+xs2 = [ t2, t2,]
 
 for i, (ax, x, y, x2, y2, xlab, ylab) in enumerate(zip(axes, xs, ys, xs2, ys2, xlabels, ylabels)):
-    ax.plot(x, y, label='Acc+Flux')#
-    ax.plot(x2, y2, '--', label='Flux')
-    ax.set_xlabel(xlab, fontsize=16)
+    if i!=0:
+        ax.plot(x/(3600*24*30), 2*(y-y2), label='Flux+Scalar d='+str(args1[0]) )#
+    else:
+        ax.plot(x, y, '-', label='Flux+Scalar d='+str(args1[0]) )#
+        ax.plot(x2, y2, '--', label='Flux')
+    ax.set_xlabel(xlab +' [months]', fontsize=16)
     ax.set_ylabel(ylab, fontsize=16)
     ax.legend()
+    ax.grid()
 
-
-axes[-1].set_visible(False)
+#axes[-1].set_visible(False)
 plt.show()
+
+
 ########################################################
 
-
+"""
 from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
 
 class NewPn5AAKWaveform(AAKWaveformBase, Pn5AAK, ParallelModuleBase):
@@ -124,9 +124,7 @@ injection_params = np.array(
         Phi_phi0,
         Phi_theta0,
         Phi_r0,
-        args[0],
-        args[1],
-        args[2],
+        1e-2
     ]
 )
 
@@ -136,14 +134,13 @@ inspiral_kwargs["func"] = "KerrCircFlux"
 wave_generator = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs)
 wave1 = wave_generator(*injection_params, mich=False, dt=dt, T=T).real
 
-injection_params[-3]=0.0
 injection_params[-1]=0.0
-injection_params[-2]=0.0
 
 inspiral_kwargs={}
 inspiral_kwargs["func"] = "KerrCircFlux"
 wave_generator2 = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs)
 wave2 = wave_generator2(*injection_params, mich=False, dt=dt, T=T).real
+
 
 #plt.figure()
 #plt.loglog( (np.fft.fft(wave1)) )
@@ -199,3 +196,5 @@ def Overlap_LISA(sig1,sig2,delta_t):
     return numerator/denominator
 
 print(Overlap_LISA(wave1, wave2, dt))
+
+"""
