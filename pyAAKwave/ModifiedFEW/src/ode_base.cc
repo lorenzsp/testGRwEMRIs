@@ -264,7 +264,7 @@ void SchwarzEccFlux::deriv_func(double* pdot, double* edot, double* xdot,
 void load_and_interpolate_flux_data_Kerr(struct interp_params *interps, const std::string& few_dir){
 
 	// Load and interpolate the flux data
-    std::string fp = "few/files/FluxesEdotResc_u_a.dat";
+    std::string fp = "few/files/FluxesEdot_scalar_tensor.dat";
     fp = few_dir + fp;
 	ifstream Flux_file(fp);
 
@@ -275,17 +275,18 @@ void load_and_interpolate_flux_data_Kerr(struct interp_params *interps, const st
 
 	// Load the flux data into arrays
 	string Flux_string;
-	vector<double> ys, as, Edots;
-	double y, a, Edot;
+	vector<double> ys, as, Edots, Scalars;
+	double y, a, Edot, ScalarEdot;
 	while(getline(Flux_file, Flux_string)){
 
 		stringstream Flux_ss(Flux_string);
 
-		Flux_ss >> Edot >> y >> a;
+		Flux_ss >> ScalarEdot >> Edot >> y >> a;
 
 		ys.push_back(y);
 		as.push_back(a);
 		Edots.push_back(Edot);
+        Scalars.push_back(ScalarEdot);
 
 	}
 
@@ -299,8 +300,11 @@ void load_and_interpolate_flux_data_Kerr(struct interp_params *interps, const st
     // notice that if you resort ys and a you have to change also Edots
 
 	Interpolant *Edot_interp = new Interpolant(ys, as, Edots);
+    Interpolant *Scalar_interp = new Interpolant(ys, as, Scalars);
+
 
 	interps->Edot = Edot_interp;
+    interps->ScalarInt = Scalar_interp;
 
 }
 
@@ -328,7 +332,7 @@ double KerrCircFlux::EdotPN(double r, double a)
     return res;
 }
 
-#define KerrCircFlux_num_add_args 3
+#define KerrCircFlux_num_add_args 1
 #define KerrCircFlux_equatorial
 #define KerrCircFlux_circular
 #define KerrCircFlux_file1 FluxesEdotResc_u_a.dat
@@ -348,31 +352,19 @@ void KerrCircFlux::deriv_func(double* pdot, double* edot, double* xdot,
 
     double u = log(p - p_sep + 3.9);
 
-    //cout << p << '\t' << a << '\t' << interps->Edot->eval(u, a) << '\t' << EdotPN(p, a) << endl;
-    // Accretion effects
-    double F = pow(1-Sqrt(p_sep/p),1./4.);
-    // Accretion corrections 
-    // Amplitude, n, m
-    double LdotAcc = additional_args[0] * pow(p/10., additional_args[1]) * pow(F,additional_args[2]);
+    double dE_dp = (-3*pow(a,2) + 8*a*Sqrt(p) + (-6 + p)*p)/(2.*(2*a*p + (-3 + p)*pow(p,1.5))*Sqrt(2*a*pow(p,1.5) + (-3 + p)*pow(p,2)));
 
-
+    //cout << additional_args[0] << endl;
     // evaluate ODEs, starting with PN contribution, then interpolating over remaining flux contribution
-	double Edot = -epsilon*(interps->Edot->eval(u, a)); //
+	double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*interps->ScalarInt->eval(u, a) ); //
 
-    double Ldot = Edot/Omega_phi + LdotAcc;
-    double dL_dp = (-3*Power(a,3) + Power(a,2)*(8 - 3*p)*Sqrt(p) + (-6 + p)*Power(p,2.5) + 3*a*p*(-2 + 3*p))/(2.*Power(2*a + (-3 + p)*Sqrt(p),1.5)*Power(p,1.75));
-
-	*pdot = Ldot/dL_dp;
+	*pdot = Edot/dE_dp;
 
     *edot = 0.0;
 
     *xdot = 0.0;
 }
 
-double Ldot_fullAcc(double p, double* additional_args){
-    double result = 0.0;
-    return result;
-}
 
 
 // destructor

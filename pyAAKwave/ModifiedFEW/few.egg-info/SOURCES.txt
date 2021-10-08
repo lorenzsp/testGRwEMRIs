@@ -400,8 +400,7 @@ few/amplitude/__pycache__/__init__.cpython-37.pyc
 few/amplitude/__pycache__/interp2dcubicspline.cpython-37.pyc
 few/amplitude/__pycache__/romannet.cpython-37.pyc
 few/files/FluxesEdotResc_u_a.dat
-few/files/FluxesEdotResc_u_a_2.dat
-few/files/FluxesEdotResc_u_a_3.dat
+few/files/FluxesEdot_tensor.dat
 few/summation/__init__.py
 few/summation/aakwave.py
 few/summation/directmodesum.py

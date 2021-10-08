@@ -14,6 +14,7 @@ struct interp_params{
 	double epsilon;
 	Interpolant *Edot;
 	Interpolant *Ldot;
+    Interpolant *ScalarInt;
 };
 
 class SchwarzEccFlux{
