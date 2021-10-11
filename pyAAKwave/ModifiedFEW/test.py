@@ -13,13 +13,13 @@ from few.utils.utility import (get_overlap,
                                xI_to_Y,
                                Y_to_xI)
 
-
+from few.summation.interpolatedmodesum import CubicSplineInterpolant
 
 # set initial parameters
 M = 1e6
 mu = 1e1
 a = 0.9
-p0 = 6.0
+p0 = 8.0
 e0 = 0.0
 iota0 = 0.0
 Y0 = np.cos(iota0)
@@ -52,6 +52,12 @@ start = time.time()
 t2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2 = traj(M, mu, a, p0, e0, Y0, Phi_phi0, Phi_theta0, Phi_r0, *args, T=T, dt=dt, upsample=True, new_t=t)
 print('time', time.time()-start)
 
+tfinal = np.min([t[-1], t2[-1]])
+
+spl2 = CubicSplineInterpolant(t2, Phi_phi2)
+spl1 = CubicSplineInterpolant(t, Phi_phi)
+
+t_new = np.linspace(0,tfinal)
 ########################################################
 fig, axes = plt.subplots(1, 2)
 #fig.set_size_inches(14, 8)
@@ -67,7 +73,7 @@ xs2 = [ t2, t2,]
 
 for i, (ax, x, y, x2, y2, xlab, ylab) in enumerate(zip(axes, xs, ys, xs2, ys2, xlabels, ylabels)):
     if i!=0:
-        ax.plot(x/(3600*24*30), 2*(y-y2), label='Flux+Scalar d='+str(args1[0]) )#
+        ax.semilogy(t_new/(3600*24*30), 2*(spl1(t_new)-spl2(t_new)), label='Flux+Scalar d='+str(args1[0]) )#
     else:
         ax.plot(x, y, '-', label='Flux+Scalar d='+str(args1[0]) )#
         ax.plot(x2, y2, '--', label='Flux')
@@ -77,12 +83,11 @@ for i, (ax, x, y, x2, y2, xlab, ylab) in enumerate(zip(axes, xs, ys, xs2, ys2, x
     ax.grid()
 
 #axes[-1].set_visible(False)
-plt.show()
+#plt.show()
 
 
 ########################################################
 
-"""
 from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
 
 class NewPn5AAKWaveform(AAKWaveformBase, Pn5AAK, ParallelModuleBase):
@@ -197,4 +202,3 @@ def Overlap_LISA(sig1,sig2,delta_t):
 
 print(Overlap_LISA(wave1, wave2, dt))
 
-"""

@@ -354,9 +354,10 @@ void KerrCircFlux::deriv_func(double* pdot, double* edot, double* xdot,
 
     double dE_dp = (-3*pow(a,2) + 8*a*Sqrt(p) + (-6 + p)*p)/(2.*(2*a*p + (-3 + p)*pow(p,1.5))*Sqrt(2*a*pow(p,1.5) + (-3 + p)*pow(p,2)));
 
-    //cout << additional_args[0] << endl;
+    //double p_test=2.5;
+    //cout << interps->Edot->eval(log(p_test - p_sep + 3.9), 0.9) << interps->ScalarInt->eval(log(p_test - p_sep + 3.9), 0.9) << endl;
     // evaluate ODEs, starting with PN contribution, then interpolating over remaining flux contribution
-	double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*interps->ScalarInt->eval(u, a) ); //
+	double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a) ); //
 
 	*pdot = Edot/dE_dp;
 
