@@ -307,7 +307,7 @@ class GenerateEMRIWaveform:
 
         # get waveform
         h = (
-            self.waveform_generator(*args, **{**initial_phases, **kwargs})
+            self.waveform_generator(*args, **kwargs)
             / dist_dimensionless
         )
 
@@ -1004,6 +1004,7 @@ class AAKWaveformBase(Pn5AAK, ParallelModuleBase, ABC):
         sum_kwargs={},
         use_gpu=False,
         num_threads=None,
+        return_list=False,
     ):
 
         ParallelModuleBase.__init__(self, use_gpu=use_gpu, num_threads=num_threads)
@@ -1019,6 +1020,8 @@ class AAKWaveformBase(Pn5AAK, ParallelModuleBase, ABC):
 
         # summation generator
         self.create_waveform = sum_module(**sum_kwargs)
+
+        self.return_list = return_list
 
     def attributes_AAKWaveform(self):
         """
@@ -1159,6 +1162,10 @@ class AAKWaveformBase(Pn5AAK, ParallelModuleBase, ABC):
         if self.num_modes_kept < 4:
             self.num_modes_kept = self.nmodes = 4
 
+        if np.any(e)==0.0:
+            e += 1e-10
+        if np.any(Y)==1.0:
+            Y -= 1e-10
         waveform = self.create_waveform(
             t,
             M,
@@ -1180,6 +1187,14 @@ class AAKWaveformBase(Pn5AAK, ParallelModuleBase, ABC):
             dt=dt,
             T=T,
         )
+
+        if self.return_list is False:
+            return waveform
+
+        else:
+            hp = waveform.real
+            hx = -waveform.imag
+            return [hp, hx]
 
         return waveform
 
