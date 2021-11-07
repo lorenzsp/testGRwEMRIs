@@ -1,4 +1,5 @@
 Once you install few and create the environment you need to move the flux files in the environment folder
 Here it is an example of how I did it
-mkdir /u/lsperi/conda-envs/ls_few_env/lib/python3.7/site-packages/few-1.4.0-py3.7-linux-x86_64.egg/few/files
-cp /u/lsperi/testGRwEMRIs/pyAAKwave/ModifiedFEW/few/files/FluxesEdot_scalar_tensor.dat  /u/lsperi/conda-envs/ls_few_env/lib/python3.7/site-packages/few-1.4.0-py3.7-linux-x86_64.egg/few/files/
+mkdir /u/lsperi/conda-envs/scalar_few_env/lib/python3.7/site-packages/few-1.4.0-py3.7-linux-x86_64.egg/few/files
+cp /u/lsperi/testGRwEMRIs/pyAAKwave/ModifiedFEW/few/files/FluxesEdot_scalar_tensor.dat  /u/lsperi/conda-envs/scalar_few_env/lib/python3.7/site-packages/few-1.4.0-py3.7-linux-x86_64.egg/few/files/
+cp /u/lsperi/testGRwEMRIs/pyAAKwave/ModifiedFEW/few/files/FluxesEdotResc_u_a.dat  /u/lsperi/conda-envs/scalar_few_env/lib/python3.7/site-packages/few-1.4.0-py3.7-linux-x86_64.egg/few/files/

@@ -19,7 +19,7 @@ from few.summation.interpolatedmodesum import CubicSplineInterpolant
 M = 1e6
 mu = 1e1
 a = 0.9
-p0 = 8.0
+p0 = 7.0
 e0 = 0.0
 iota0 = 0.0
 Y0 = np.cos(iota0)
@@ -27,7 +27,7 @@ Phi_phi0 = 0.0
 Phi_theta0 = 0.0
 Phi_r0 = 0.0
 
-dt = 10.0
+dt = 12.0
 T = 1.0
 
 
