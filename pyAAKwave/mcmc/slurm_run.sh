@@ -28,7 +28,7 @@
 
 module load gcc cuda
 module load anaconda
-conda activate ls_few_env
+conda activate scalar_few_env
 
 # # dev run
 # # srun --time=00:05:00 --nodes=1 --tasks-per-node=1 --cpus-per-task=1 --partition=gpudev --gres=gpu:v100:2 ./emri_example.py

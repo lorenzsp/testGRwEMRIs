@@ -5,5 +5,8 @@ pyParameterMap
 pySpinWeightedSpherHarm
 pyUtility
 pycpuAAK
+pygpuAAK
+pyinterp
 pyinterp_cpu
+pymatmul
 pymatmul_cpu

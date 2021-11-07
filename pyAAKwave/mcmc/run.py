@@ -1,4 +1,4 @@
-#!/u/lsperi/conda-envs/ls_few_env/bin/python
+#!/u/lsperi/conda-envs/scalar_few_env/bin/python
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -84,7 +84,7 @@ wave_gen = ScalarAAKWaveform(
 # define injection parameters
 M = 1e6
 mu = 10.0
-p0 = 12.
+p0 = 7.0
 e0 = 0.0
 Y0 = 1.0
 
@@ -338,7 +338,7 @@ sampler = PTEmceeSampler(
     fp="scalar_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, scalar_charge, T
     ),
-    resume=False, # very important
+    resume=True, # very important
     plot_kwargs=dict(corner_kwargs=corner_kwargs),
 #    sampler_kwargs=sampler_kwargs
 )
