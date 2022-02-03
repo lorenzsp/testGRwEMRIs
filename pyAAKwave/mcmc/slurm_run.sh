@@ -1,7 +1,7 @@
 #!/bin/bash -l
 # Standard output and error:
-#SBATCH -o mig.out.%j
-#SBATCH -e mig.err.%j
+#SBATCH -o scalar.out.%j
+#SBATCH -e scalar.err.%j
 # Initial working directory:
 #SBATCH -D ./
 #
