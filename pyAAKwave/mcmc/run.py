@@ -1,4 +1,4 @@
-dev = 6
+dev = 5
 import os
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
@@ -98,7 +98,7 @@ e0 = 0.0
 Y0 = 1.0
 
 # scala charge
-scalar_charge = 0.0#0.05
+scalar_charge = 0.04
 
 Phi_phi0 = 3.0
 Phi_theta0 = np.pi/3
@@ -286,6 +286,7 @@ labels = [
     ]
 ###############################################################
 
+inv_gamma = np.load('cov_null_test.npy')
 
 # sampler starting points around true point
 factor = 1e-9
@@ -296,10 +297,7 @@ start_points = np.zeros((nwalkers * ntemps, ndim))
 print('---------------------------')
 print('Priors')
 for i in range(ndim):
-    if i==5:
-       start_points[:, i] = factor*np.random.normal(size=nwalkers * ntemps)
-    else:
-        start_points[:, i] = injection_params[test_inds][i]*(1. + factor*np.random.normal(size=nwalkers * ntemps))#np.random.multivariate_normal(injection_params[test_inds], inv_gamma/1000,size=nwalkers * ntemps)[:,i] #priors_in[i].rvs(size=nwalkers * ntemps) ##
+    start_points[:, i] = np.random.multivariate_normal(injection_params[test_inds], inv_gamma/1e7,size=nwalkers * ntemps)[:,i] 
     print('variable ',i)
     print(start_points[:, i])
 print('---------------------------')
@@ -346,7 +344,7 @@ sampler = PTEmceeSampler(
     plot_iterations=100,
     plot_source="emri",
 #    periodic=periodic,
-    fp="null_test_scalar_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
+    fp="scalar_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, scalar_charge, T
     ),
     resume=False, # very important
