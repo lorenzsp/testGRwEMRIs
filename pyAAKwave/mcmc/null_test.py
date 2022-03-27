@@ -1,4 +1,4 @@
-dev = 6
+dev = 4
 import os
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
@@ -93,9 +93,38 @@ wave_gen = ScalarAAKWaveform(
 # define injection parameters
 M = 1e6
 mu = 10.0
-p0 = 7.2
+p0 = 14.0
 e0 = 0.0
 Y0 = 1.0
+a = 0.9
+
+T = 4.0  # years
+dt = 15.0
+
+######################################################################
+# set initial parameters
+setmu=True
+if setmu:
+    traj_args = [M, a, p0, e0, Y0]
+    traj_kwargs = {}
+    index_of_mu = 1
+
+    t_out = T
+    # run trajectory
+    mu_new = get_mu_at_t(
+        traj,
+        t_out,
+        traj_args,
+        index_of_mu=index_of_mu,
+        traj_kwargs=traj_kwargs,
+        xtol=2e-8,
+        rtol=8.881784197001252e-10,
+        bounds=None,
+    )
+
+    print('mu = {} will create a waveform that is {} years long, given the other input parameters.'.format(mu_new, t_out))
+    mu = mu_new
+######################################################################
 
 # scala charge
 scalar_charge = 0.0#0.05
@@ -104,7 +133,6 @@ Phi_phi0 = 3.0
 Phi_theta0 = np.pi/3
 Phi_r0 = np.pi/4
 # define other parameters necessary for calculation
-a = 0.9
 qS = 0.5420879369091457
 phiS = 5.3576560705195275
 qK = 1.7348119514252445
@@ -132,9 +160,7 @@ injection_params = np.array(
     ]
 )
 
-# define other quantities
-T = 1.  # years
-dt = 10.0
+
 
 #################################################
 
@@ -286,7 +312,7 @@ labels = [
     ]
 ###############################################################
 
-
+inv_gamma = np.load('cov_null_test.npy')
 # sampler starting points around true point
 factor = 1e-9
 
@@ -296,10 +322,10 @@ start_points = np.zeros((nwalkers * ntemps, ndim))
 print('---------------------------')
 print('Priors')
 for i in range(ndim):
-    if i==5:
-       start_points[:, i] = factor*np.random.normal(size=nwalkers * ntemps)
-    else:
-        start_points[:, i] = injection_params[test_inds][i]*(1. + factor*np.random.normal(size=nwalkers * ntemps))#np.random.multivariate_normal(injection_params[test_inds], inv_gamma/1000,size=nwalkers * ntemps)[:,i] #priors_in[i].rvs(size=nwalkers * ntemps) ##
+    # if i==5:
+    #    start_points[:, i] = np.abs(np.random.multivariate_normal(injection_params[test_inds], inv_gamma,size=nwalkers * ntemps)[:,i]) #factor*np.random.normal(size=nwalkers * ntemps)
+    # else:
+    start_points[:, i] = np.random.multivariate_normal(injection_params[test_inds], inv_gamma/1e7,size=nwalkers * ntemps)[:,i] 
     print('variable ',i)
     print(start_points[:, i])
 print('---------------------------')
@@ -322,7 +348,7 @@ start_ll = np.asarray(
 
 print('ll',start_ll)
 
-
+# breakpoint()
 ###############################################################
 corner_kwargs=dict(labels=labels)
 
@@ -338,8 +364,8 @@ sampler = PTEmceeSampler(
     test_inds=test_inds,
     fill_values=fill_values,
     ntemps=ntemps,
-    autocorr_multiplier=100, # automatic stopper, be careful with this since the parallel tempering 
-    autocorr_iter_count=100, # how often it checks the autocorrelation
+    autocorr_multiplier=1000, # automatic stopper, be careful with this since the parallel tempering 
+    autocorr_iter_count=10000, # how often it checks the autocorrelation
     ntemps_target_extra=ntemps_target_extra,
     Tmax=Tmax,
     injection=injection_test_points,
@@ -349,7 +375,7 @@ sampler = PTEmceeSampler(
     fp="null_test_scalar_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, scalar_charge, T
     ),
-    resume=False, # very important
+    resume=True, # very important
     plot_kwargs=dict(corner_kwargs=corner_kwargs),
 #    sampler_kwargs=sampler_kwargs
 )
