@@ -19,7 +19,7 @@ from few.summation.interpolatedmodesum import CubicSplineInterpolant
 M = 1e6
 mu = 1e1
 a = 0.9
-p0 = 7.0
+p0 = 7.2
 e0 = 0.0
 iota0 = 0.0
 Y0 = np.cos(iota0)
@@ -27,7 +27,7 @@ Phi_phi0 = 0.0
 Phi_theta0 = 0.0
 Phi_r0 = 0.0
 
-dt = 12.0
+dt = 10.0
 T = 1.0
 
 
@@ -82,6 +82,7 @@ for i, (ax, x, y, x2, y2, xlab, ylab) in enumerate(zip(axes, xs, ys, xs2, ys2, x
     ax.legend()
     ax.grid()
 
+plt.savefig('traj')
 #axes[-1].set_visible(False)
 #plt.show()
 
