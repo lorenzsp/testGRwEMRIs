@@ -628,7 +628,7 @@ def get_p_at_t(
     if bounds is None:
         if kerr_separatrix:
             p_sep = get_separatrix(
-                traj_args[index_of_a], traj_args[index_of_e], traj_args[index_of_Y]
+                traj_args[index_of_a], traj_args[index_of_e], traj_args[index_of_x]
             )  # should be fairly close.
         else:
             p_sep = 6 + 2 * traj_args[index_of_e]
@@ -637,7 +637,7 @@ def get_p_at_t(
     elif bounds[0] is None:
         if kerr_separatrix:
             p_sep = get_separatrix(
-                traj_args[index_of_a], traj_args[index_of_e], traj_args[index_of_Y]
+                traj_args[index_of_a], traj_args[index_of_e], traj_args[index_of_x]
             )  # should be fairly close.
         else:
             p_sep = 6 + 2 * traj_args[index_of_e]
