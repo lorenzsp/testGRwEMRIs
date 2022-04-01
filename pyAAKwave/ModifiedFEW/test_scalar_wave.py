@@ -58,7 +58,7 @@ class ModuleTest(unittest.TestCase):
         spl1 = CubicSplineInterpolant(t, Phi_phi)
         print( )
 
-        self.assertAlmostEqual(spl2(tfinal)-spl1(tfinal), -451890.89951528877)
+        self.assertAlmostEqual(np.abs(spl2(tfinal)-spl1(tfinal)+451890.89951528877)/451890.89951528877, 0.0,places=4)
 
 def PowerSpectralDensity(f):
 
@@ -181,6 +181,6 @@ class WaveformTest(unittest.TestCase):
         wave_generator2 = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs)
         wave2 = wave_generator2(*injection_params, mich=False, dt=dt, T=T).real
 
-        self.assertAlmostEqual(Overlap_LISA(wave1, wave2, dt),0.2935622794001746)
+        self.assertAlmostEqual(Overlap_LISA(wave1, wave2, dt),0.2935622794001746,places=3)
 
 
