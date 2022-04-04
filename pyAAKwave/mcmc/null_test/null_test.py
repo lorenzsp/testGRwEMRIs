@@ -1,4 +1,4 @@
-dev = 7
+dev = 5
 import os
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
@@ -109,7 +109,7 @@ if setmu:
     traj_kwargs = {}
     index_of_mu = 3
 
-    t_out = T
+    t_out = T*0.999
     # run trajectory
     p_new = get_p_at_t(
         traj,
@@ -371,7 +371,7 @@ sampler = PTEmceeSampler(
     plot_iterations=100,
     plot_source="emri",
 #    periodic=periodic,
-    fp="null_test_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
+    fp="null_test_fullInsp_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, scalar_charge, T
     ),
     resume=False, # very important
