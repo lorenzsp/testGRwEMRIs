@@ -1,4 +1,4 @@
-dev = 7
+dev = 4
 import os
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
@@ -92,48 +92,47 @@ wave_gen = ScalarAAKWaveform(
 
 # define injection parameters
 M = 1e6
-mu = 10.0
-p0 = 7.2
+mu = 30.0
+p0 = 13.580007268376363
 e0 = 0.0
 Y0 = 1.0
+a = 0.9
 
 # define other quantities
-T = 1.00  # years
-dt = 10.0
+T = 4.00  # years
+dt = 15.0
 ######################################################################
 # set initial parameters
 setmu=True
 if setmu:
-    traj_args = [M, a, p0, e0, Y0]
+    traj_args = [M, mu, a, e0, Y0]
     traj_kwargs = {}
-    index_of_mu = 1
+    index_of_mu = 3
 
-    t_out = T
+    t_out = T#*0.999
     # run trajectory
-    mu_new = get_mu_at_t(
+    p_new = get_p_at_t(
         traj,
         t_out,
         traj_args,
-        index_of_mu=index_of_mu,
         traj_kwargs=traj_kwargs,
         xtol=2e-8,
         rtol=8.881784197001252e-10,
         bounds=None,
     )
 
-    print('mu = {} will create a waveform that is {} years long, given the other input parameters.'.format(mu_new, t_out))
-    mu = mu_new
+    print('p0 = {} will create a waveform that is {} years long, given the other input parameters.'.format(p_new, t_out))
+    p0 = p_new
 ######################################################################
 
 
 # scala charge
-scalar_charge = 0.006
+scalar_charge = 0.0
 
 Phi_phi0 = 3.0
 Phi_theta0 = np.pi/3
 Phi_r0 = np.pi/4
 # define other parameters necessary for calculation
-a = 0.9
 qS = 0.5420879369091457
 phiS = 5.3576560705195275
 qK = 1.7348119514252445
@@ -245,7 +244,7 @@ like = Likelihood(
 
 # inject with charge
 inj_p = injection_params.copy()
-inj_p[-1] = 0.03
+inj_p[-1] = 7.0e-03#0.00579817212453683
 # inject
 like.inject_signal(
     params=inj_p,
@@ -262,7 +261,7 @@ check_params = injection_params.copy()
 check_params = np.tile(check_params, (6, 1))
 
 ####################################################################
-perc = 1e-2
+perc = 1e-4
 
 # define priors, it really can only do uniform cube at the moment
 priors_in = {0: uniform_dist(injection_params[test_inds[0]]*(1-perc), injection_params[test_inds[0]]*(1+perc)), 
@@ -297,7 +296,7 @@ priors = PriorContainer(priors_in)
 # can add extra temperatures of 1 to have multiple temps accessing the target distribution
 ntemps_target_extra = 0
 # define max temperature (generally should be inf if you want to sample prior)
-Tmax = 5
+Tmax = 4
 
 # not all walkers can fit in memory. subset says how many to do at one time
 subset = 4 # it was 4 before
@@ -318,7 +317,10 @@ labels = [
 
 inv_gamma = np.load('cov_null_test.npy')[:5, :5]
 # sampler starting points around true point
-factor = 1e-9
+factor = 1e-10
+
+# bias params = inj - (BF_null_at_d - true_null)
+bias_params = injection_params[test_inds]- np.asarray([-2.11711232e-05,  7.02328116e-06, -3.34674744e-06,  1.96235470e-04, -8.09194173e-02])
 
 # random starts
 np.random.seed(3000)
@@ -326,12 +328,7 @@ start_points = np.zeros((nwalkers * ntemps, ndim))
 print('---------------------------')
 print('Priors')
 for i in range(ndim):
-    if i==5:
-       start_points[:, i] = factor*np.random.normal(size=nwalkers * ntemps)
-    else:
-        # priors_in[i].rvs(size=nwalkers * ntemps)
-        # injection_params[test_inds][i]*(1. + factor*np.random.normal(size=nwalkers * ntemps))#
-        start_points[:, i] = np.random.multivariate_normal(injection_params[test_inds], inv_gamma,size=nwalkers * ntemps)[:,i] 
+    start_points[:, i] = np.random.multivariate_normal(bias_params, inv_gamma*factor,size=nwalkers * ntemps)[:,i] 
     print('variable ',i)
     print(start_points[:, i])
 print('---------------------------')
@@ -353,7 +350,7 @@ start_ll = np.asarray(
 )
 
 print('ll',start_ll)
-
+# breakpoint()
 ###############################################################
 corner_kwargs=dict(labels=labels)
 
@@ -380,7 +377,7 @@ sampler = PTEmceeSampler(
     fp="bias_GR_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, inj_p[-1], T
     ),
-    resume=False, # very important
+    resume=True, # very important
     plot_kwargs=dict(corner_kwargs=corner_kwargs),
 #    sampler_kwargs=sampler_kwargs
 )
