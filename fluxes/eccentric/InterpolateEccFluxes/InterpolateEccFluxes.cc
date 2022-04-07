@@ -28,7 +28,7 @@ void load_and_interpolate_flux_data(struct interp_params *interps){
 
     if (Flux_file.fail())
     {
-        throw std::runtime_error("The file FluxNewMinusPNScaled_fixed_y_order.dat did not open sucessfully. Make sure it is located in the proper directory (Path/to/Installation/few/files/).");
+        throw std::runtime_error("The file SSF_ecc_flux_scaled.dat did not open successfully.");
     }
 
 	// Load the flux data into arrays
