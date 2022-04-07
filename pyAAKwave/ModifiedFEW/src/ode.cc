@@ -264,13 +264,13 @@ void SchwarzEccFlux::deriv_func(double* pdot, double* edot, double* xdot,
 void load_and_interpolate_flux_data_Kerr(struct interp_params *interps, const std::string& few_dir){
 
 	// Load and interpolate the flux data
-    std::string fp = "few/files/FluxesEdot_scalar_tensor.dat";
+    std::string fp = "few/files/FluxesEdot_scalar_tensor_1PNnormalized.dat";
     fp = few_dir + fp;
 	ifstream Flux_file(fp);
 
     if (Flux_file.fail())
     {
-        throw std::runtime_error("The file FluxesEdotResc_u_a.dat did not open sucessfully. Make sure it is located in the proper directory (Path/to/Installation/few/files/).");
+        throw std::runtime_error("The file FluxesEdot_scalar_tensor_1PNnormalized.dat did not open sucessfully. Make sure it is located in the proper directory (Path/to/Installation/few/files/).");
     }
 
 	// Load the flux data into arrays
@@ -309,6 +309,56 @@ void load_and_interpolate_flux_data_Kerr(struct interp_params *interps, const st
 }
 
 
+
+//
+// Initialize flux data for inspiral calculations
+void load_and_interpolate_flux_OLDdata_Kerr(struct interp_params *interps, const std::string& few_dir){
+
+	// Load and interpolate the flux data
+    std::string fp = "few/files/FluxesEdot_scalar_tensor.dat";
+    fp = few_dir + fp;
+	ifstream Flux_file(fp);
+
+    if (Flux_file.fail())
+    {
+        throw std::runtime_error("The file FluxesEdot_scalar_tensor.dat did not open sucessfully. Make sure it is located in the proper directory (Path/to/Installation/few/files/).");
+    }
+
+	// Load the flux data into arrays
+	string Flux_string;
+	vector<double> ys, as, Edots, Scalars;
+	double y, a, Edot, ScalarEdot;
+	while(getline(Flux_file, Flux_string)){
+
+		stringstream Flux_ss(Flux_string);
+
+		Flux_ss >> ScalarEdot >> Edot >> y >> a;
+
+		ys.push_back(y);
+		as.push_back(a);
+		Edots.push_back(Edot);
+        Scalars.push_back(ScalarEdot);
+
+	}
+
+	// Remove duplicate elements (only works if ys are perfectly repeating with no round off errors)
+	sort( ys.begin(), ys.end() );
+	ys.erase( unique( ys.begin(), ys.end() ), ys.end() );
+
+	sort( as.begin(), as.end() );
+	as.erase( unique( as.begin(), as.end() ), as.end() );
+
+    // notice that if you resort ys and a you have to change also Edots
+
+	Interpolant *Edot_interp = new Interpolant(ys, as, Edots);
+    Interpolant *Scalar_interp = new Interpolant(ys, as, Scalars);
+
+
+	interps->Edot = Edot_interp;
+    interps->ScalarInt = Scalar_interp;
+
+}
+
 // Class to carry gsl interpolants for the inspiral data
 // also executes inspiral calculations
 KerrCircFlux::KerrCircFlux(std::string few_dir)
@@ -326,16 +376,14 @@ KerrCircFlux::KerrCircFlux(std::string few_dir)
 double KerrCircFlux::EdotPN(double r, double a)
 {
     double y = pow(1./(sqrt(r*r*r) + a), 2./3.) ;
-    double res = 6.4*pow(y,5) - 23.752380952380953*pow(y,6) + 1.6*(50.26548245743669 - 11.*a)*pow(y,6.5) + (-31.54215167548501 + 13.2*pow(a,2))*pow(y,7) + 0.009523809523809525*(-25732.785425553997 - 2646.*a - 504.*pow(a,3))*pow(y,7.5) + 
-        (-649.6614141423464 + 260.32427983539094*a + 163.36281798666926*pow(a,2) - 32.13333333333333*pow(a,3))*pow(y,8.5) + pow(y,8)*(740.6829867239124 - 217.8170906488923*a + 7.758730158730159*pow(a,2) - 52.17523809523809*log(y));//
-        //pow(y,9)*(-748.828100625135 - 515.5802343491364*a + 69.31499118165785*pow(a,2) + 5.2*pow(a,4) + 3.2*sqrt(1. - 1.*pow(a,2)) + 41.6*pow(a,2)*sqrt(1. - 1.*pow(a,2)) + 19.2*pow(a,4)*sqrt(1. - 1.*pow(a,2)) + 12.8*(a + 3.*pow(a,3)) + 168.77786848072563*log(y));
+    double res = 6.4*pow(y,5);
     return res;
 }
 
 #define KerrCircFlux_num_add_args 1
 #define KerrCircFlux_equatorial
 #define KerrCircFlux_circular
-#define KerrCircFlux_file1 FluxesEdotResc_u_a.dat
+#define KerrCircFlux_file1 FluxesEdot_scalar_tensor_1PNnormalized.dat
 __deriv__
 void KerrCircFlux::deriv_func(double* pdot, double* edot, double* xdot,
                       double Omega_phi, double Omega_theta, double Omega_r,
@@ -357,7 +405,9 @@ void KerrCircFlux::deriv_func(double* pdot, double* edot, double* xdot,
     //double p_test=2.5;
     //cout << interps->Edot->eval(log(p_test - p_sep + 3.9), 0.9) << interps->ScalarInt->eval(log(p_test - p_sep + 3.9), 0.9) << endl;
     // evaluate ODEs, starting with PN contribution, then interpolating over remaining flux contribution
-	double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a) ); //
+	double y = pow(1./(sqrt(p*p*p) + a), 2./3.) ;
+    // double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a));//*pow(y, 4)/3 ); //
+    double Edot = -epsilon*(interps->Edot->eval(u, a)*pow(y, 6) + EdotPN(p, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a)*pow(y, 4)/3 ); //
 
 	*pdot = Edot/dE_dp;
 
