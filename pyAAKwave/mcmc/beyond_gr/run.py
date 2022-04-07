@@ -1,9 +1,15 @@
-dev = 5
+# run your python script as:
+# nohup python run.py > output_file.out &
+
 import os
+# this will write in the output_file the Process ID, this could be useful if you want to kill your job
+print("PID", os.getpid() )
+# set the GPU devive here
+dev = 1
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
 os.system("echo $CUDA_VISIBLE_DEVICES")
-
+# set the number of threads
 os.system("export OMP_NUM_THREADS=1")
 os.environ["OMP_NUM_THREADS"] = "1"
 
@@ -91,20 +97,50 @@ wave_gen = ScalarAAKWaveform(
             )
 
 # define injection parameters
-M = 1e6
-mu = 10.0
-p0 = 7.2
+M = np.exp(13.81553942)
+mu = np.exp(3.40118709)
+p0 = 13.57973724
 e0 = 0.0
 Y0 = 1.0
+a = 0.90000442
+
+# define other quantities
+T = 4.00  # years
+dt = 10.0
+######################################################################
+# set initial parameters
+setmu=False
+if setmu:
+    traj_args = [M, mu, a, e0, Y0]
+    traj_kwargs = {}
+    index_of_mu = 3
+
+    t_out = T*0.999
+    # run trajectory
+    p_new = get_p_at_t(
+        traj,
+        t_out,
+        traj_args,
+        traj_kwargs=traj_kwargs,
+        xtol=2e-8,
+        rtol=8.881784197001252e-10,
+        bounds=None,
+    )
+
+    print('p0 = {} will create a waveform that is {} years long, given the other input parameters.'.format(p_new, t_out))
+    p0 = p_new
+######################################################################
+
+
 
 # scala charge
-scalar_charge = 0.04
+scalar_charge = 0.0#16
 
-Phi_phi0 = 3.0
+Phi_phi0 = 2.99013198
 Phi_theta0 = np.pi/3
 Phi_r0 = np.pi/4
 # define other parameters necessary for calculation
-a = 0.9
+
 qS = 0.5420879369091457
 phiS = 5.3576560705195275
 qK = 1.7348119514252445
@@ -133,7 +169,7 @@ injection_params = np.array(
 )
 
 # define other quantities
-T = 1.  # years
+T = 4.  # years
 dt = 10.0
 
 #################################################
@@ -198,7 +234,7 @@ ndim_full = 15  # full dimensionality of inputs to waveform model
 
 # which of the injection parameters you actually want to sample over
 #                    M, mu, a, p0, dist, phi_phi0
-test_inds = np.array([0, 1, 2, 3,          11,         14])#, 6, 7, 8, 9, 11, 10, 12, 13])
+test_inds = np.array([0, 1, 2, 3,          11,         ])#14, 6, 7, 8, 9, 11, 10, 12, 13])
 
 # ndim for sampler
 ndim = len(test_inds)
@@ -240,7 +276,7 @@ priors_in = {0: uniform_dist(injection_params[test_inds[0]]*(1-perc), injection_
              2: uniform_dist(injection_params[test_inds[2]]*(1-perc), injection_params[test_inds[2]]*(1+perc)),
              3: uniform_dist(injection_params[test_inds[3]]*(1-1e-2), injection_params[test_inds[3]]*(1+1e-2)),
              4: uniform_dist(0.0, 2.0*np.pi),
-             5: uniform_dist(0.0,0.9),
+            #  5: uniform_dist(0.0,0.9),
 #             6: uniform_dist(0.1, 2.),
 #             7: uniform_dist(0.0, np.pi),
 #             8: uniform_dist(0.0, 2 * np.pi),
@@ -286,7 +322,7 @@ labels = [
     ]
 ###############################################################
 
-inv_gamma = np.load('cov_null_test.npy')
+inv_gamma = np.load('cov_null_test.npy')[:-1,:-1]
 
 # sampler starting points around true point
 factor = 1e-9
@@ -344,7 +380,7 @@ sampler = PTEmceeSampler(
     plot_iterations=100,
     plot_source="emri",
 #    periodic=periodic,
-    fp="scalar_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
+    fp="GR_AAK_snr_{:d}_no_noise_{}_{}_{}_{}_{}_T{}.h5".format(
         int(snr_goal), M, mu, a, p0, scalar_charge, T
     ),
     resume=False, # very important

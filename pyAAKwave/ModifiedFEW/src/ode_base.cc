@@ -408,6 +408,7 @@ void KerrCircFlux::deriv_func(double* pdot, double* edot, double* xdot,
 	double y = pow(1./(sqrt(p*p*p) + a), 2./3.) ;
     // double Edot = -epsilon*(interps->Edot->eval(u, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a));//*pow(y, 4)/3 ); //
     double Edot = -epsilon*(interps->Edot->eval(u, a)*pow(y, 6) + EdotPN(p, a) + additional_args[0]*additional_args[0]*interps->ScalarInt->eval(u, a)*pow(y, 4)/3 ); //
+    // double Edot = -epsilon*(interps->Edot->eval(u, a)*pow(y, 6) + EdotPN(p, a)) * (1 + Amp * pow(y, slope ) ;
 
 	*pdot = Edot/dE_dp;
 

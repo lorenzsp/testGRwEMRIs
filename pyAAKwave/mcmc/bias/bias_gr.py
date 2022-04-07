@@ -1,4 +1,4 @@
-dev = 4
+dev = 5
 import os
 os.system(f"CUDA_VISIBLE_DEVICES={dev}")
 os.environ["CUDA_VISIBLE_DEVICES"] = f"{dev}"
@@ -99,7 +99,7 @@ Y0 = 1.0
 a = 0.9
 
 # define other quantities
-T = 4.00  # years
+T = 1.00  # years
 dt = 15.0
 ######################################################################
 # set initial parameters
@@ -109,7 +109,7 @@ if setmu:
     traj_kwargs = {}
     index_of_mu = 3
 
-    t_out = T#*0.999
+    t_out = T*0.999
     # run trajectory
     p_new = get_p_at_t(
         traj,
