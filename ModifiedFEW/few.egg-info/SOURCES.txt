@@ -6,7 +6,6 @@ LICENSE
 README.md
 flux_comp.py
 setup.py
-dist/few-1.4.0-py3.7-macosx-10.9-x86_64.egg
 docs/.nojekyll
 docs/Makefile
 docs/index.html

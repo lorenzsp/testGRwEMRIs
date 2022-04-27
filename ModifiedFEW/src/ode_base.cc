@@ -324,6 +324,7 @@ ScalarSchwarzEccFlux::ScalarSchwarzEccFlux(std::string few_dir)
 #define ScalarSchwarzEccFlux_spinless
 #define ScalarSchwarzEccFlux_equatorial
 #define ScalarSchwarzEccFlux_file1 FluxNewMinusPNScaled_fixed_y_order.dat
+#define ScalarSchwarzEccFlux_file2 SSF_ecc_flux_scaled.dat
 __deriv__
 void ScalarSchwarzEccFlux::deriv_func(double* pdot, double* edot, double* xdot,
                   double Omega_phi, double Omega_theta, double Omega_r,
@@ -346,12 +347,13 @@ void ScalarSchwarzEccFlux::deriv_func(double* pdot, double* edot, double* xdot,
 	double LdotPN = (4*(8 + 7*Power(e,2)))/(5.*Power(-1 + Power(e,2),2)) * pow(yPN, 7./2.);
 
     // Scalar fluxes
-    double EdotScalar = additional_args[0] * additional_args[0] * interps->EdotScalar->eval(p-6-2*e, e)/pow(p,4);
-    double LdotScalar = additional_args[0] * additional_args[0] * interps->LdotScalar->eval(p-6-2*e, e)/pow(p,2.5);
+    double EdotSc = additional_args[0] * additional_args[0] * interps->EdotScalar->eval(p-6-2*e, e)/pow(p,4);
+    double LdotSc = additional_args[0] * additional_args[0] * interps->LdotScalar->eval(p-6-2*e, e)/pow(p,2.5);
+    // cout << "EdotSc" << EdotSc << "q" << additional_args[0] << endl;
 
     // GR Fluxes
-	double Edot = -epsilon*(interps->Edot->eval(y1, e)*pow(yPN,6.) + EdotPN + EdotScalar);
-	double Ldot = -epsilon*(interps->Ldot->eval(y1, e)*pow(yPN,9./2.) + LdotPN + LdotScalar);
+	double Edot = -epsilon*( interps->Edot->eval(y1, e)*pow(yPN,6.) + EdotPN + EdotSc );
+	double Ldot = -epsilon*( interps->Ldot->eval(y1, e)*pow(yPN,9./2.) + LdotPN + LdotSc );
     
 
 	*pdot = (-2*(Edot*Sqrt((4*Power(e,2) - Power(-2 + p,2))/(3 + Power(e,2) - p))*(3 + Power(e,2) - p)*Power(p,1.5) + Ldot*Power(-4 + p,2)*Sqrt(-3 - Power(e,2) + p)))/(4*Power(e,2) - Power(-6 + p,2));

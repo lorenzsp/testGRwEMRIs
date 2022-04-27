@@ -34,3 +34,6 @@ __pycache__/
 *.app
 
 *.npy
+*.h5
+*.hdf5
+.ipynb_checkpoints
