@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from few.trajectory.inspiral import EMRIInspiral
 from few.summation.aakwave import AAKSummation
-from few.waveform import Pn5AAKWaveform, AAKWaveformBase, SchwarzschildEccentricWaveformBase
+from few.waveform import Pn5AAKWaveform, AAKWaveformBase, SchwarzschildEccentricWaveformBase, GenerateEMRIWaveform
 from few.utils.utility import (get_overlap, 
                                get_mismatch, 
                                get_fundamental_frequencies, 
@@ -121,16 +121,16 @@ def PowerSpectralDensity(f):
     L = 2.5*10**9   # Length of LISA arm
     f0 = 19.09*10**(-3)    
 
-    Poms = ((1.5e-11)*(1.5e-11))*(1 + np.power((2e-3)/f, 4))  # Optical Metrology Sensor
-    Pacc = (3e-15)*(3e-15)* (1 + (4e-4/f)*(4e-4/f))*(1 + np.power(f/(8e-3),4 ))  # Acceleration Noise
+    Poms = ((1.5e-11)*(1.5e-11))*(1 + xp.power((2e-3)/f, 4))  # Optical Metrology Sensor
+    Pacc = (3e-15)*(3e-15)* (1 + (4e-4/f)*(4e-4/f))*(1 + xp.power(f/(8e-3),4 ))  # Acceleration Noise
     alpha = 0.171
     beta = 292
     k =1020
     gamma = 1680
     f_k = 0.00215 
-    Sc = 0 #9e-45 * np.power(f,-7/3)*np.exp(-np.power(f,alpha) + beta*f*np.sin(k*f)) * (1 + np.tanh(gamma*(f_k- f)))  
+    Sc = 0 #9e-45 * xp.power(f,-7/3)*xp.exp(-xp.power(f,alpha) + beta*f*xp.sin(k*f)) * (1 + xp.tanh(gamma*(f_k- f)))  
 
-    PSD = (sky_averaging_constant)* ((10/(3*L*L))*(Poms + (4*Pacc)/(np.power(2*np.pi*f,4)))*(1 + 0.6*(f/f0)*(f/f0)) + Sc) # PSD
+    PSD = (sky_averaging_constant)* ((10/(3*L*L))*(Poms + (4*Pacc)/(xp.power(2*xp.pi*f,4)))*(1 + 0.6*(f/f0)*(f/f0)) + Sc) # PSD
 
     return PSD
 
@@ -141,19 +141,19 @@ def InnerProd_LISA(sig1,sig2,delta_t):
         print("Signals do not have the same length")
     
     N = len(sig1)   # Calculate the length of the signal
-    freq_bin = np.delete(np.fft.rfftfreq(N,delta_t),0)  # Sample individual fourier frequencies f_{j} = j/(N*delta_t)
+    freq_bin = xp.fft.rfftfreq(N,delta_t)[1:]  # Sample individual fourier frequencies f_{j} = j/(N*delta_t)
     
     n_f = len(freq_bin)
-    fft_1 = np.delete(np.fft.rfft(sig1),0)
-    fft_2 = np.delete(np.fft.rfft(sig2),0)
-    PSD =PowerSpectralDensity(np.abs(freq_bin))
+    fft_1 = xp.fft.rfft(sig1)[1:]
+    fft_2 = xp.fft.rfft(sig2)[1:]
+    PSD =PowerSpectralDensity(xp.abs(freq_bin))
     # notice that we did not multiply the fourier transform by dt because we consider that now!
-    return (4*delta_t)*np.real(np.sum( (fft_1)* np.conj(fft_2)/(PSD *N) ) )
+    return (4*delta_t)*xp.real(xp.sum( (fft_1)* xp.conj(fft_2)/(PSD *N) ) )
 
 
 def Overlap_LISA(sig1,sig2,delta_t):
     numerator = InnerProd_LISA(sig1,sig2,delta_t)
-    denominator = np.sqrt(InnerProd_LISA(sig1,sig1,delta_t) \
+    denominator = xp.sqrt(InnerProd_LISA(sig1,sig1,delta_t) \
                           * InnerProd_LISA(sig2,sig2,delta_t))
     return numerator/denominator
 
@@ -252,96 +252,106 @@ class WaveformTest(unittest.TestCase):
         inspiral_kwargs={}
         inspiral_kwargs["func"] = "KerrCircFlux"
 
-        wave_generator = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs)
+        wave_generator = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs, use_gpu=gpu_available)
         wave1 = wave_generator(*injection_params, mich=False, dt=dt, T=T).real
 
         injection_params[-1]=0.0
-
-        inspiral_kwargs={}
-        inspiral_kwargs["func"] = "KerrCircFlux"
-        wave_generator2 = NewPn5AAKWaveform(inspiral_kwargs=inspiral_kwargs)
-        wave2 = wave_generator2(*injection_params, mich=False, dt=dt, T=T).real
-
-        self.assertAlmostEqual(Overlap_LISA(wave1, wave2, dt),0.2935622794001746,places=3)
-
-    def test_Schwarz(self):
-        # set initial parameters
-        M = 1e6
-        mu = 1e1
-        a = 0.0
-        p0 = 7.2
-        e0 = 0.4
-        iota0 = 0.0
-        Y0 = np.cos(iota0)
-        Phi_phi0 = 0.0
-        Phi_theta0 = 0.0
-        Phi_r0 = 0.0
-
-        dt = 10.0
-        T = 1.0
-        qS = 0.2
-        phiS = 0.2
-        qK = 0.8
-        phiK = 0.8
-        dist = 1.0
-        mich = False
-
-
-        injection_params = np.array(
-            [
-                M,
-                mu,
-                a,
-                p0,
-                e0,
-                Y0,
-                dist,
-                qS,
-                phiS,
-                qK,
-                phiK,
-                Phi_phi0,
-                Phi_theta0,
-                Phi_r0,
-                1e-2
-            ]
-        )
-        
-        inspiral_kwargs = {
-        "DENSE_STEPPING": 0,  # we want a sparsely sampled trajectory
-        "max_init_len": int(1e3),  # all of the trajectories will be well under len = 1000
-        }
-
-        # keyword arguments for inspiral generator (RomanAmplitude)
-        amplitude_kwargs = {
-            "max_init_len": int(
-                1e3
-            )  # all of the trajectories will be well under len = 1000
-        }
-
-        # keyword arguments for Ylm generator (GetYlms)
-        Ylm_kwargs = {
-            "assume_positive_m": False  # if we assume positive m, it will generate negative m for all m>0
-        }
-
-        # keyword arguments for summation generator (InterpolatedModeSum)
-        sum_kwargs = {}
-
-        wave_generator = SchwarzschildEccentricWaveformBase(
-            inspiral_kwargs=inspiral_kwargs,
-            amplitude_kwargs=amplitude_kwargs,
-            Ylm_kwargs=Ylm_kwargs,
-            sum_kwargs=sum_kwargs,
-            use_gpu=gpu_available,
-        )
-
-        wave1 = wave_generator(*injection_params, mich=False, dt=dt, T=T).real
-
-        injection_params[-1]=0.0
-
 
         wave2 = wave_generator(*injection_params, mich=False, dt=dt, T=T).real
+        Over = Overlap_LISA(wave1, wave2, dt).get()
+        print(Over)
+        self.assertAlmostEqual(Over,0.2935622794001746,places=3)
 
-        print(Overlap_LISA(wave1, wave2, dt))
+    # def test_Schwarz(self):
 
 
+# set initial parameters
+M = 1e6
+mu = 1e1
+a = 0.0
+p0 = 8.0
+e0 = 0.4
+iota0 = 0.0
+Y0 = np.cos(iota0)
+Phi_phi0 = 0.0
+Phi_theta0 = 0.0
+Phi_r0 = 0.0
+
+dt = 10.0
+T = 0.1
+qS = 0.2
+phiS = 0.2
+qK = 0.8
+phiK = 0.8
+dist = 1.0
+mich = False
+
+
+injection_params = np.array(
+    [
+        M,
+        mu,
+        a,
+        p0,
+        e0,
+        Y0,
+        dist,
+        qS,
+        phiS,
+        qK,
+        phiK,
+        Phi_phi0,
+        Phi_theta0,
+        Phi_r0,
+        5e-3
+    ]
+)
+
+inspiral_kwargs = {
+"DENSE_STEPPING": 0,  # we want a sparsely sampled trajectory
+"max_init_len": int(1e3),  # all of the trajectories will be well under len = 1000
+"func": "ScalarSchwarzEccFlux"
+}
+
+# keyword arguments for inspiral generator (RomanAmplitude)
+amplitude_kwargs = {
+    "max_init_len": int(
+        1e3
+    )  # all of the trajectories will be well under len = 1000
+}
+
+# keyword arguments for Ylm generator (GetYlms)
+Ylm_kwargs = {
+    "assume_positive_m": False  # if we assume positive m, it will generate negative m for all m>0
+}
+
+# keyword arguments for summation generator (InterpolatedModeSum)
+sum_kwargs = {}
+
+wave_kw = dict(
+    inspiral_kwargs=inspiral_kwargs,
+    amplitude_kwargs=amplitude_kwargs,
+    Ylm_kwargs=Ylm_kwargs,
+    sum_kwargs=sum_kwargs,
+    use_gpu=gpu_available,
+)
+
+
+args = [
+EMRIInspiral,
+RomanAmplitude,
+InterpolatedModeSum,
+]
+
+
+wave = GenerateEMRIWaveform(SchwarzschildEccentricWaveformBase,*args, **wave_kw)
+
+wave1 = wave(*injection_params, dt=dt, T=T).real
+print(wave1)
+
+injection_params[-1]=0.0
+
+wave2 = wave(*injection_params,  dt=dt, T=T).real
+print(wave2)
+Over = Overlap_LISA(wave1, wave2, dt).get()
+print(Over)
