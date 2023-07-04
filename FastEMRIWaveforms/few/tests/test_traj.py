@@ -91,7 +91,7 @@ class ModuleTest(unittest.TestCase):
         e0 = 0.1
         a=0.85
 
-        for i in range(10):
+        for i in range(100):
             p0 = np.random.uniform(10.0,15)
             e0 = np.random.uniform(0.0, 0.5)
             a = np.random.uniform(0.0, 1.0)
