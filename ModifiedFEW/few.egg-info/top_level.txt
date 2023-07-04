@@ -1,9 +1,0 @@
-few
-pyInspiral
-pyInterp2DAmplitude
-pyParameterMap
-pySpinWeightedSpherHarm
-pyUtility
-pycpuAAK
-pyinterp_cpu
-pymatmul_cpu
