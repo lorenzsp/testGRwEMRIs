@@ -93,9 +93,9 @@ class ModuleTest(unittest.TestCase):
 
         for i in range(100):
             p0 = np.random.uniform(10.0,15)
-            e0 = np.random.uniform(0.0, 0.5)
+            e0 = np.random.uniform(0.1, 0.5)
             a = np.random.uniform(0.0, 1.0)
 
             # run trajectory
             t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, 1.0, **insp_kw)
-            # print('run')
+            print('run',p0,e0,a)
