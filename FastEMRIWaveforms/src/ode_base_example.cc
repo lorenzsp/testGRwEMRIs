@@ -268,6 +268,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     Jac(a, p, e, x, E_here, L_here, Q_here, Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here);
     // Fluxes in E,L from Chebyshev
     double pdot_out, edot_out, xdot_out;
+
     Jac(a, p, e, x, E_here, L_here, Q_here, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), Qdot, pdot_out, edot_out, xdot_out);
     
     double factor = additional_args[0]*additional_args[0]/4;
@@ -276,8 +277,8 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     // cout << "ratio " <<  pdot_cheb/pdot_out << endl;
     // cout << "ratio " <<  edot_cheb/edot_out << endl;
 
-    // cout << "Edot, pdot " <<  Edot << "\t" << pdot_here << "\t" << pdot_here/pdot_out << endl;
-    // cout << "Ldot, edot " <<  Ldot << "\t" << edot_here << "\t" << edot_here/edot_out << endl;
+    // cout << "Edot, pdot " <<  Edot_GR(a,e,r,p) << "\t" << pdot_out << endl;
+    // cout << "Ldot, edot " <<  Ldot_GR(a,e,r,p) << "\t" << edot_out << endl;
 
     // needs adjustment for validity
     if (e > 1e-6)
