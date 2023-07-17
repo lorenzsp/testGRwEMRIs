@@ -41,7 +41,7 @@ a=0.00
 charge = 0.0
 
 # check against Schwarzchild
-plt.figure()
+# plt.figure()
 for i in range(100):
     p0 = np.random.uniform(10.0,15)
     e0 = np.random.uniform(0.1, 0.5)
@@ -55,7 +55,7 @@ for i in range(100):
         print(p0,e0)
         print(np.max(diff),len(p),len(pS))
         # check p-e
-        plt.plot(p, e,'.',label=f'{len(p)}',alpha=0.3)
+        # plt.plot(p, e,'.',label=f'{len(p)}',alpha=0.3)
 
         # check pdot
         # edot = [traj.get_derivative(epsilon, a, pp,ee, 1.0, np.asarray([charge]))[1] for pp,ee in zip(p,e)]
@@ -69,14 +69,19 @@ for i in range(100):
         # plt.semilogy(t[mask], diff); plt.xlabel('t [s]'); plt.ylabel('Phase difference'); 
         # plt.show()
         # plt.figure(); plt.semilogy(t[-50:], Phi_phi[-50:],'.', label='a->0'); plt.semilogy(tS[-50:], Phi_phiS[-50:],'--',label='Schwarz'); plt.legend(); plt.xlabel('t [s]'); plt.ylabel('Phase difference'); plt.show()
-plt.legend()
-plt.show()
-breakpoint()
+
+# plt.legend()
+# plt.show()
+
 # for i in range(100):
 # p0 = np.random.uniform(10.0,15)
 # e0 = np.random.uniform(0.1, 0.5)
 # a = np.random.uniform(0.0, 1.0)
-t_S, p_S, e_S, F1, F2, Om1, Om2 = np.loadtxt("ev_GR_rp6_ra11.dat").T
+charge = 0.1
+if charge == 0.0:
+    t_S, p_S, e_S, F1, F2, Om1, Om2 = np.loadtxt("ev_rp6_ra11_GR_newL.dat").T
+else:
+    t_S, p_S, e_S, F1, F2, Om1, Om2 = np.loadtxt("ev_rp6_ra11_d01_newL.dat").T
 a=0.9
 p0, e0 = p_S[0], e_S[0]
 # run trajectory
@@ -91,14 +96,25 @@ for ii in range(len(p_S)):
     # breakpoint()
 print('run',p0,e0,a)
 
+interp = CubicSplineInterpolant(t_S, p_S)
+
+plt.figure()
+plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+plt.semilogy(t, np.abs(interp(t) - p)/interp(t),'-',label=f"FEW")
+plt.xlabel('t [s]')
+plt.ylabel('relative difference p')
+plt.legend()
+plt.savefig('relative difference p')
+
+
 plt.figure()
 plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
 plt.plot(t_S, p_S,'-',label=f"Susanna")
 plt.plot(t, p,':',label=f"FEW")
-plt.xlabel('p')
-plt.ylabel('e')
+plt.xlabel('t [s]')
+plt.ylabel('p')
 plt.legend()
-plt.show()
+plt.savefig('p_evolution')
 
 plt.figure()
 plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
@@ -107,4 +123,4 @@ plt.plot(p, e,':',label=f"FEW")
 plt.xlabel('p')
 plt.ylabel('e')
 plt.legend()
-plt.show()
+plt.savefig('p-e_evolution')
