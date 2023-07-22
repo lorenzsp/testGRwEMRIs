@@ -39,7 +39,7 @@ M=1e6
 mu=1e1
 p0, e0 = p_S[0], e_S[0]
 # run trajectory
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=1.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=1.5)
 
 print('run',p0,e0,a)
 
