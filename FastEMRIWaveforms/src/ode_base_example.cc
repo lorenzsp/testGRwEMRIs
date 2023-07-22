@@ -262,14 +262,16 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
     
     // Transform to pdot, edot for the scalar fluxes
-    Edot = Edot_SC(a, e, r) * pow(p,-4) ;
-    Ldot = Ldot_SC(a, e, r) * pow(p,-7./2.);
+    Edot = Edot_SC(a, e, r);
+    Ldot = Ldot_SC(a, e, r);
     Qdot = 0.0;
     Jac(a, p, e, x, E_here, L_here, Q_here, Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here);
+    // pdot_edot_from_fluxes(pdot_here, edot_here, Edot, Ldot, a, e, p);
     // Fluxes in E,L from Chebyshev
     double pdot_out, edot_out, xdot_out;
 
     Jac(a, p, e, x, E_here, L_here, Q_here, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), Qdot, pdot_out, edot_out, xdot_out);
+    // pdot_edot_from_fluxes(pdot_out, edot_out, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), a, e, p);
     
     double factor = additional_args[0]*additional_args[0]/4;
     
@@ -277,8 +279,8 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     // cout << "ratio " <<  pdot_cheb/pdot_out << endl;
     // cout << "ratio " <<  edot_cheb/edot_out << endl;
 
-    // cout << "Edot, pdot " <<  Edot_GR(a,e,r,p) << "\t" << pdot_out << endl;
-    // cout << "Ldot, edot " <<  Ldot_GR(a,e,r,p) << "\t" << edot_out << endl;
+    // cout << "Edot, pdot " <<  Edot << "\t" << pdot_out << endl;
+    // cout << "Ldot, edot " <<  Ldot << "\t" << edot_out << endl;
 
     // needs adjustment for validity
     if (e > 1e-6)
