@@ -90,7 +90,7 @@ class ModuleTest(unittest.TestCase):
         p0 = 12.0
         e0 = 0.1
         a=-0.987
-        charge = 0.0
+        charge = 0.1
         import matplotlib.pyplot as plt
         plt.figure()
         for i in range(4):
