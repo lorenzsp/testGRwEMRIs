@@ -19,6 +19,7 @@ parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", req
 args = vars(parser.parse_args())
 
 import sys
+import matplotlib.pyplot as plt
 import numpy as np
 from eryn.state import State
 from eryn.ensemble import EnsembleSampler
@@ -243,7 +244,7 @@ def run_emri_pe(
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
 
-    # get XYZ
+    # get AE
     data_channels = wave_gen(*injection_in, **emri_kwargs)
 
     check_snr = snr([data_channels[0], data_channels[1]],
@@ -254,6 +255,18 @@ def run_emri_pe(
         PSD_kwargs={},
         use_gpu=use_gpu,
         )
+    
+    print("SNR",check_snr)
+    if use_gpu:
+        plt.figure()
+        plt.plot(data_channels[0].get())
+        plt.savefig(fp[:-3] + "injection.pdf")
+    else:
+        plt.figure()
+        plt.plot(data_channels[0])
+        plt.show()
+        plt.savefig(fp[:-3] + "injection.pdf")
+
 
     # this is a parent likelihood class that manages the parameter transforms
     like = Likelihood(
@@ -308,6 +321,22 @@ def run_emri_pe(
     moves = [
         StretchMove(use_gpu=gpu_available, live_dangerously=True)
     ]
+
+
+    from eryn.backends import HDFBackend
+
+    # check for previous runs
+    try:
+        file_samp = HDFBackend(fp)
+        last_state = file_samp.get_last_sample()
+        inds = last_state.branches_inds.copy()
+        new_coords = last_state.branches_coords.copy()
+        coords = new_coords.copy()
+        resume = True
+        print("resuming")
+    except:
+        resume = False
+        print("file not found")
 
     # prepare sampler
     sampler = EnsembleSampler(
