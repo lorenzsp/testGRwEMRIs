@@ -208,7 +208,7 @@ def run_emri_pe(
                 1: uniform_dist(1.0, 100.0),  # mu
                 2: uniform_dist(0.0, 1.0),  # a
                 3: uniform_dist(10.0, 16.0),  # p0
-                4: uniform_dist(0.001, 0.4),  # e0
+                4: uniform_dist(0.001, 0.45),  # e0
                 5: uniform_dist(0.01, 100.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -216,7 +216,7 @@ def run_emri_pe(
                 9: uniform_dist(0.0, 2 * np.pi),  # phiK
                 10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
                 11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: uniform_dist(0.0, 0.01),  # charge
+                12: uniform_dist(0.0, 0.1),  # charge
             }
         ) 
     }
