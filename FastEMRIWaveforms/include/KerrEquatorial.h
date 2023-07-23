@@ -14,8 +14,8 @@
 // Declare prototype 
 double edot_Cheby_full(const double a, const double e, const double r);
 double pdot_Cheby_full(const double a, const double e, const double r);
-double Ldot_SC(const double a, const double e, const double r);
-double Edot_SC(const double a, const double e, const double r);
+double Ldot_SC(const double a, const double e, const double r, const double p);
+double Edot_SC(const double a, const double e, const double r, const double p);
 double Edot_GR(const double a, const double e, const double r, const double p);
 double Ldot_GR(const double a, const double e, const double r, const double p);
 void Jac(const double a, const double p, const double ecc, const double xi,
