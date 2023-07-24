@@ -1,8 +1,0 @@
-++ initial_radius.dat: 
-contains the value of the inital radius (second column) for different values 
-of the scalar charge (first column) corresponding to one year of evolution up to r_end=2.42 
-which is ~ r_isco(pin=0.9) + 0.1
-
-++ phase_1yr_dXXX.dat
-one year of phase evolution as a function of time (in days) for different values of the scalar charge, 
-starting from the initial radius provided in initial_radius.dat

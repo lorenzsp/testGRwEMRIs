@@ -18,7 +18,11 @@ parser.add_argument("-ntemps", "--ntemps", help="number of MCMC temperatures", r
 parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", required=False, type=int, default=1000)
 args = vars(parser.parse_args())
 
+os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
+os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
+os.system("echo $CUDA_VISIBLE_DEVICES")
 import sys
+sys.path.append('/data/lsperi/lisa-on-gpu/')
 import matplotlib.pyplot as plt
 import numpy as np
 from eryn.state import State
@@ -33,20 +37,18 @@ from lisatools.diagnostic import *
 
 from lisatools.sensitivity import get_sensitivity
 
-from few.waveform import GenerateEMRIWaveform
 from eryn.utils import TransformContainer
 
 from fastlisaresponse import ResponseWrapper
 
-from few.utils.constants import *
 SEED = 26011996
 np.random.seed(SEED)
 
 try:
     import cupy as xp
     # set GPU device
-    xp.cuda.runtime.setDevice(0)
     gpu_available = True
+    print("using gpus")
 
 except (ImportError, ModuleNotFoundError) as e:
     import numpy as xp
@@ -57,10 +59,10 @@ import warnings
 warnings.filterwarnings("ignore")
 
 # whether you are using 
-use_gpu = False
+use_gpu = True
 
-if use_gpu is True:
-    xp = np
+# if use_gpu is True:
+#     xp = np
 
 if use_gpu and not gpu_available:
     raise ValueError("Requesting gpu with no GPU available or cupy issue.")
@@ -76,23 +78,25 @@ insp_kwargs = {
 # keyword arguments for summation generator (AAKSummation)
 sum_kwargs = {
     "use_gpu": gpu_available,  # GPU is availabel for this type of summation
-    "pad_output": False,
+    "pad_output": True,
 }
 
-num_threads = 16
 from few.waveform import AAKWaveformBase, Pn5AAKWaveform
 from few.trajectory.inspiral import EMRIInspiral
 from few.summation.aakwave import AAKSummation
+from few.waveform import GenerateEMRIWaveform
+from few.utils.constants import *
+from few.utils.utility import get_p_at_t, get_separatrix
 
-waveform_class = AAKWaveformBase(
-            EMRIInspiral,
-            AAKSummation,
-            inspiral_kwargs=insp_kwargs,
-            sum_kwargs=sum_kwargs,
-            use_gpu=gpu_available,
-            # num_threads=num_threads,
-        )
-
+few_gen = GenerateEMRIWaveform(
+    AAKWaveformBase, 
+    EMRIInspiral,
+    AAKSummation,
+    return_list=False,
+    inspiral_kwargs=insp_kwargs,
+    sum_kwargs=sum_kwargs,
+    use_gpu=gpu_available,
+)
 
 # function call
 def run_emri_pe(
@@ -114,18 +118,8 @@ def run_emri_pe(
     # frequencies
     freqs = xp.fft.rfftfreq(N_obs, dt)
 
-    few_gen = GenerateEMRIWaveform(
-        AAKWaveformBase, 
-        EMRIInspiral,
-        AAKSummation,
-        return_list=False,
-        inspiral_kwargs=insp_kwargs,
-        sum_kwargs=sum_kwargs,
-        use_gpu=gpu_available,
 
-    )
-
-    orbit_file_esa = "../../lisa-on-gpu/orbit_files/esa-trailing-orbits.h5"
+    orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
 
     tdi_gen = "1st generation"
@@ -192,11 +186,6 @@ def run_emri_pe(
     emri_injection_params[9] = np.cos(emri_injection_params[9]) 
     emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
 
-    # phases
-    emri_injection_params[-1] = emri_injection_params[-1] % (2 * np.pi)
-    emri_injection_params[-2] = emri_injection_params[-2] % (2 * np.pi)
-    emri_injection_params[-3] = emri_injection_params[-3] % (2 * np.pi)
-
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
 
@@ -238,12 +227,11 @@ def run_emri_pe(
 
     # sampler treats periodic variables by wrapping them properly
     periodic = {
-        "emri": {6: 2 * np.pi, 8: np.pi, 9: 2 * np.pi, 10: 2 * np.pi}
+        "emri": {7: 2 * np.pi, 9: np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
     }
 
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
-
     # get AE
     data_channels = wave_gen(*injection_in, **emri_kwargs)
 
@@ -258,9 +246,20 @@ def run_emri_pe(
     
     print("SNR",check_snr)
     if use_gpu:
+        ffth = xp.fft.rfft(data_channels[0])
+        fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+        PSD_arr = get_sensitivity(fft_freq, sens_fn="noisepsd_AE")
+
         plt.figure()
-        plt.plot(data_channels[0].get())
-        plt.savefig(fp[:-3] + "injection.pdf")
+        plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+        plt.loglog(fft_freq.get(), PSD_arr.get())
+        plt.savefig(fp[:-3] + "injection_fd.pdf")
+
+        plt.figure()
+        plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
+        plt.savefig(fp[:-3] + "injection_td.pdf")
+        
+        
     else:
         plt.figure()
         plt.plot(data_channels[0])
@@ -277,7 +276,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=nwalkers,  # may need this subset
+        subset=4,  # may need this subset
     )
 
     nchannels = 2
@@ -317,9 +316,25 @@ def run_emri_pe(
         log_prior=start_prior.reshape(ntemps, nwalkers)
     )
 
+    # gibbs sampling
+    update_all = np.repeat(True,ndim)
+    update_none = np.repeat(False,ndim)
+    indx_list = []
+    
+    def get_True_vec(ind_in):
+        out = update_none.copy()
+        out[ind_in] = update_all[ind_in]
+        return out
+    
+    # gibbs variables
+    indx_list.append(get_True_vec([0,1,2,3,4,10,11,12]))
+    indx_list.append(get_True_vec([5,6,7,8,9]))
+
+    gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
+    
     # MCMC moves (move, percentage of draws)
     moves = [
-        StretchMove(use_gpu=gpu_available, live_dangerously=True)
+        StretchMove(use_gpu=gpu_available, live_dangerously=True, gibbs_setup=gibbs_setup)
     ]
 
 
@@ -389,6 +404,24 @@ if __name__ == "__main__":
 
     ntemps = args["ntemps"]
     nwalkers = args["nwalkers"]
+
+
+    traj = EMRIInspiral(func="KerrEccentricEquatorial")
+    breakpoint()
+    yo = 1.0/ (0.876 + np.power(get_separatrix(0.876,0.272429,x0)/( 1.0 + 0.272429 ), 1.5) )
+    trj.get
+    print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
+    # fix p0 given T
+    p0 = get_p_at_t(
+        traj,
+        Tobs * 0.99,
+        [M, mu, a, e0, 1.0, 0.0],
+        bounds=[get_separatrix(a,e0,x0)+0.1, 50.0],
+        traj_kwargs={"dt":dt}
+    )
+    print("new p0 fixed by Tobs", p0)
+
+
     fp = f"./MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
 

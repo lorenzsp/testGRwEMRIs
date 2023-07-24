@@ -218,6 +218,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
 {
 
     double p_sep = get_separatrix(a, e, x);
+    
     // make sure we do not step into separatrix
     if ((e < 0.0)||(p<p_sep))
     {
@@ -226,13 +227,14 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
         *xdot = 0.0;
         return;
     }
-
     // evaluate ODEs
     // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<endl;
-    
     // auto start = std::chrono::steady_clock::now();
     // the frequency variables are pointers!
     KerrGeoEquatorialCoordinateFrequencies(Omega_phi, Omega_theta, Omega_r, a, p, e, x);// shift to avoid problem in fundamental frequencies
+    
+
+    
     // auto end = std::chrono::steady_clock::now();
     // std::chrono::duration<double>  msec = end-start;
     // std::cout << "elapsed time fund freqs: " << msec.count() << "s\n";
