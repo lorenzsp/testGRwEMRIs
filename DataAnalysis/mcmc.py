@@ -1,4 +1,4 @@
-# python -Tobs 1 -dt 15.0 -M 1e6 -mu 1e1 -a 0.876 -p0 13.0 -e0 0.3 -charge 0.0 -dev 0 -nwalkers 8 -ntemps 1 -nsteps 10
+# python -Tobs 2 -dt 15.0 -M 1e6 -mu 1e1 -a 0.9 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
 import argparse
 import os
 print("PID:",os.getpid())
@@ -10,6 +10,7 @@ parser.add_argument("-mu", "--mu", help="Compact Object Mass in solar masses", r
 parser.add_argument("-a", "--a", help="dimensionless spin", required=True, type=float)
 parser.add_argument("-p0", "--p0", help="Semi-latus Rectum", required=True, type=float)
 parser.add_argument("-e0", "--e0", help="Eccentricity", required=True, type=float)
+parser.add_argument("-x0", "--x0", help="prograde orbits", default=1.0, required=False, type=float)
 parser.add_argument("-charge", "--charge", help="Scalar Charge", required=True, type=float)
 parser.add_argument("-dev", "--dev", help="Cuda Device", required=False, type=int, default=0)
 parser.add_argument("-dt", "--dt", help="sampling interval delta t", required=False, type=float, default=10.0)
@@ -71,7 +72,7 @@ if use_gpu and not gpu_available:
 insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
-    "max_init_len": int(1e3),
+    "max_init_len": int(1e4),
     "func":"KerrEccentricEquatorial"
     }
 
@@ -95,7 +96,7 @@ few_gen = GenerateEMRIWaveform(
     return_list=False,
     inspiral_kwargs=insp_kwargs,
     sum_kwargs=sum_kwargs,
-    use_gpu=gpu_available,
+    use_gpu=use_gpu,
 )
 
 # function call
@@ -106,11 +107,12 @@ def run_emri_pe(
     fp,
     ntemps,
     nwalkers,
+    nsteps,
     emri_kwargs={}
 ):
 
     # sets the proper number of points and what not
-    
+    print("use gpus",use_gpu)
     N_obs = int(Tobs * YRSID_SI / dt) # may need to put "- 1" here because of real transform
     Tobs = (N_obs * dt) / YRSID_SI
     t_arr = xp.arange(N_obs) * dt
@@ -196,8 +198,8 @@ def run_emri_pe(
                 0: uniform_dist(np.log(5e5), np.log(5e6)),  # M
                 1: uniform_dist(1.0, 100.0),  # mu
                 2: uniform_dist(0.0, 1.0),  # a
-                3: uniform_dist(10.0, 16.0),  # p0
-                4: uniform_dist(0.001, 0.45),  # e0
+                3: uniform_dist(6.0, 10.0),  # p0
+                4: uniform_dist(0.01, 0.45),  # e0
                 5: uniform_dist(0.01, 100.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -205,7 +207,7 @@ def run_emri_pe(
                 9: uniform_dist(0.0, 2 * np.pi),  # phiK
                 10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
                 11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: uniform_dist(0.0, 0.1),  # charge
+                12: uniform_dist(0.0, 0.5),  # charge
             }
         ) 
     }
@@ -276,7 +278,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=4,  # may need this subset
+        subset=12,  # may need this subset
     )
 
     nchannels = 2
@@ -291,15 +293,17 @@ def run_emri_pe(
 
     # generate starting points
     factor = 1.0
-    cov = np.ones(ndim) * 1e-3
-    cov[0] = 1e-10
+    cov = np.eye(ndim) * 1e-15
 
     start_like = np.zeros((nwalkers * ntemps))
     
-    tmp = (emri_injection_params_in[None, :] * (1. + factor * cov * np.random.randn(nwalkers * ntemps, ndim)))
+    tmp = np.random.multivariate_normal(emri_injection_params_in,factor * cov,size=nwalkers * ntemps)
     
+    np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
+    tmp[:,-1] = np.abs(tmp[:,-1])
+    # tmp[0] = emri_injection_params_in.copy()
     logp = priors["emri"].logpdf(tmp)
-    
+    print("logprior",logp)
     tic = time.time()
     start_like = like(tmp, **emri_kwargs)
     toc = time.time()
@@ -334,9 +338,14 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        StretchMove(use_gpu=gpu_available, live_dangerously=True, gibbs_setup=gibbs_setup)
+        StretchMove(use_gpu=use_gpu, live_dangerously=False)#, gibbs_setup=gibbs_setup)
     ]
 
+    def get_time(i, res, samp):
+        if i % 20 == 0:
+            print("acceptance ratio", samp.acceptance_fraction)
+            print("max last loglike", np.max(samp.get_log_like()[-1]))
+        return False
 
     from eryn.backends import HDFBackend
 
@@ -365,12 +374,18 @@ def run_emri_pe(
         backend=fp,
         vectorize=True,
         periodic=periodic,  # TODO: add periodic to proposals
-        #update_fn=None,
-        #update_iterations=-1,
+        stopping_fn=get_time,
+        stopping_iterations=1,
         branch_names=["emri"],
     )
+    
+    if resume:
+        log_prior = sampler.compute_log_prior(coords, inds=inds)
+        log_like = sampler.compute_log_like(coords, inds=inds, logp=log_prior)[0]
+        print("initial loglike", log_like)
+        start_state = State(coords, log_like=log_like, log_prior=log_prior, inds=inds)
 
-    nsteps = 1000
+
     out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=0)
 
     # get samples
@@ -388,15 +403,15 @@ if __name__ == "__main__":
     mu = args["mu"]  # 10.0
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
-    x0 = 1.0  # will be ignored in Schwarzschild waveform
-    qK = 0.2  # polar spin angle
-    phiK = 0.2  # azimuthal viewing angle
-    qS = 0.3  # polar sky angle
-    phiS = 0.3  # azimuthal viewing angle
+    x0 = args["x0"]  # will be ignored in Schwarzschild waveform
+    qK = np.pi/3  # polar spin angle
+    phiK = np.pi/3  # azimuthal viewing angle
+    qS = np.pi/3  # polar sky angle
+    phiS = np.pi/3  # azimuthal viewing angle
     dist = 3.0  # distance
-    Phi_phi0 = 1.0
-    Phi_theta0 = 2.0
-    Phi_r0 = 3.0
+    Phi_phi0 = np.pi/2
+    Phi_theta0 = 0.0
+    Phi_r0 = np.pi/2
     charge = args['charge']
 
     Tobs = args["Tobs"]  # years
@@ -407,10 +422,7 @@ if __name__ == "__main__":
 
 
     traj = EMRIInspiral(func="KerrEccentricEquatorial")
-    breakpoint()
-    yo = 1.0/ (0.876 + np.power(get_separatrix(0.876,0.272429,x0)/( 1.0 + 0.272429 ), 1.5) )
-    trj.get
-    print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
+    # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
     # fix p0 given T
     p0 = get_p_at_t(
         traj,
@@ -422,8 +434,7 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs", p0)
 
 
-    fp = f"./MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
-
+    fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
@@ -456,6 +467,7 @@ if __name__ == "__main__":
         fp,
         ntemps,
         nwalkers,
+        args['nsteps'],
         emri_kwargs=waveform_kwargs
     )
 
