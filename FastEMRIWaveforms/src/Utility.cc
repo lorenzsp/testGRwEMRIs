@@ -307,15 +307,24 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double rp = M + sqrt(pow(M, 2) - pow(a, 2));
     double rm = M - sqrt(pow(M, 2) - pow(a, 2));
 
+    // diff_r3_rp was introduced to avoid round off errors
+    double diff_r3_rp = (r3/rp - 1.) * rp;
+
     double hr = (r1 - r2)/(r1 - r3);
     double hp = ((r1 - r2) * (r3 - rp))/((r1 - r3) * (r2 - rp));
     double hm = ((r1 - r2) * (r3 - rm))/((r1 - r3) * (r2 - rm));
 
     // (*Eq. (21)*)
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L)/(r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))));
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L)/(diff_r3_rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))) );
 
-    double CapitalGamma = 4 * pow(M, 2) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr,pow(kr, 2))) + (2* M)/(rp - rm) * (((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En)/(r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,pow(kr, 2)))));
+    double CapitalGamma = 4 * pow(M, 2) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr,pow(kr, 2))) + (2* M)/(rp - rm) * (((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En)/(diff_r3_rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,pow(kr, 2)))));
 
+    // printf("in utility %f, %f, %f, %f \n", hr, 
+    //                                     hp, 
+    //                                     hm, 
+    //                                     rp);
+    // printf("mannagia %e, %e, %e \n",diff_r3_rp,(2 * M * En * rp - a * L), ((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) );
+    
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
     *CapitalUpsilonTheta_ = abs(CapitalUpsilonTheta);
@@ -336,7 +345,8 @@ void KerrGeoEquatorialCoordinateFrequencies(double* OmegaPhi_, double* OmegaThet
         KerrGeoEquatorialMinoFrequencies(&CapitalGamma, &CapitalUpsilonPhi, &CapitalUpsilonTheta, &CapitalUpsilonR,
                                   a, p, e, x);
     // }
-    
+    // printf("in utility %f, %f, %f, %f \n", CapitalGamma, CapitalUpsilonPhi,CapitalUpsilonTheta, CapitalUpsilonR);
+
     *OmegaPhi_ = CapitalUpsilonPhi / CapitalGamma;
     *OmegaTheta_ = CapitalUpsilonTheta / CapitalGamma;
     *OmegaR_ = CapitalUpsilonR / CapitalGamma;

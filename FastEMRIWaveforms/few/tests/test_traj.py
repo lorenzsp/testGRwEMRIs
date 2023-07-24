@@ -83,32 +83,37 @@ class ModuleTest(unittest.TestCase):
         
         # initialize trajectory class
         traj = EMRIInspiral(func="KerrEccentricEquatorial")
-
         # set initial parameters
         M = 1e6
         mu = 5e1
         p0 = 12.0
         e0 = 0.1
         a=-0.987
+        x0=1.0
         charge = 0.1
-        import matplotlib.pyplot as plt
-        plt.figure()
-        for i in range(4):
-            # print(p0,e0)
-            p0 = np.random.uniform(9.0,17)
-            e0 = np.random.uniform(0.01, 0.5)
-            # for j in range(2):
-            a = np.random.uniform(-0.987, 0.987)
 
+        # problematic point r3-rp
+        # traj.get_derivative(mu/M, 0.876000 , 8.241867 , 0.272429 , 1.000000, np.asarray([charge]) )
+        # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
+
+        for i in range(1000):
+            p0 = np.random.uniform(9.0,17.0)#12.630316331069114#
+            e0 = np.random.uniform(0.1, 0.5)#0.1944201853385856#
+            # for j in range(2):
+            a = np.random.uniform(-0.987, 0.987)#-0.841917420770555#
+            
             # run trajectory
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
+            try:
+                t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
+            except:
+                breakpoint()
             # print(e[-1])
-            plt.plot(p,e,label=f'a={a:.2e}',alpha=0.7)
+            # plt.plot(p,e,label=f'a={a:.2e}',alpha=0.7)
             # breakpoint()
 
-        plt.legend(); plt.xlabel('p'); plt.ylabel('e')
+        # plt.legend(); plt.xlabel('p'); plt.ylabel('e')
 
-        plt.savefig(f'a_p_e.png')
+        # plt.savefig(f'a_p_e.png')
 
         # test against Schwarz
         traj_Schw = EMRIInspiral(func="SchwarzEccFlux")
