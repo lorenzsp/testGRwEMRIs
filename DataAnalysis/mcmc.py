@@ -1,6 +1,8 @@
-# python -Tobs 2 -dt 15.0 -M 1e6 -mu 1e1 -a 0.9 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
+# python mcmc.py -Tobs 2 -dt 15.0 -M 1e6 -mu 1e1 -a 0.9 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
 import argparse
 import os
+os.environ["OMP_NUM_THREADS"] = str(1)
+os.system("OMP_NUM_THREADS=1")
 print("PID:",os.getpid())
 import time
 parser = argparse.ArgumentParser(description="MCMC of EMRI source")
@@ -198,7 +200,7 @@ def run_emri_pe(
                 0: uniform_dist(np.log(5e5), np.log(5e6)),  # M
                 1: uniform_dist(1.0, 100.0),  # mu
                 2: uniform_dist(0.0, 1.0),  # a
-                3: uniform_dist(6.0, 10.0),  # p0
+                3: uniform_dist(6.0, 20.0),  # p0
                 4: uniform_dist(0.01, 0.45),  # e0
                 5: uniform_dist(0.01, 100.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
@@ -338,7 +340,7 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        StretchMove(use_gpu=use_gpu, live_dangerously=False)#, gibbs_setup=gibbs_setup)
+        StretchMove(use_gpu=use_gpu, live_dangerously=True)#, gibbs_setup=gibbs_setup)
     ]
 
     def get_time(i, res, samp):
@@ -431,8 +433,8 @@ if __name__ == "__main__":
         bounds=[get_separatrix(a,e0,x0)+0.1, 50.0],
         traj_kwargs={"dt":dt}
     )
-    print("new p0 fixed by Tobs", p0)
-
+    print("new p0 fixed by Tobs, p0=", p0)
+    
 
     fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
