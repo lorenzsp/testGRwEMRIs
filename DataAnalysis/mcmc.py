@@ -110,7 +110,8 @@ def run_emri_pe(
     ntemps,
     nwalkers,
     nsteps,
-    emri_kwargs={}
+    emri_kwargs={},
+    log_prior=False
 ):
 
     # sets the proper number of points and what not
@@ -189,6 +190,12 @@ def run_emri_pe(
     emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
     emri_injection_params[9] = np.cos(emri_injection_params[9]) 
     emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
+    
+    if log_prior:
+        emri_injection_params[-1] = np.log(1e-20)
+        prior_charge = uniform_dist(np.log(1e-20) , np.log(5e-1))
+    else:
+        prior_charge = uniform_dist(0.0, 0.5)
 
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
@@ -197,7 +204,7 @@ def run_emri_pe(
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(np.log(5e5), np.log(5e6)),  # M
+                0: uniform_dist(np.log(1e5), np.log(5e6)),  # M
                 1: uniform_dist(1.0, 100.0),  # mu
                 2: uniform_dist(0.0, 1.0),  # a
                 3: uniform_dist(6.0, 20.0),  # p0
@@ -209,7 +216,7 @@ def run_emri_pe(
                 9: uniform_dist(0.0, 2 * np.pi),  # phiK
                 10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
                 11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: uniform_dist(0.0, 0.5),  # charge
+                12: prior_charge,  # charge
             }
         ) 
     }
@@ -217,11 +224,20 @@ def run_emri_pe(
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
     # on my list of things to improve
-    parameter_transforms = {
-        0: np.exp,  # M 
-        7: np.arccos, # qS
-        9: np.arccos,  # qK
-    }
+    if log_prior:
+        parameter_transforms = {
+            0: np.exp,  # M 
+            7: np.arccos, # qS
+            9: np.arccos,  # qK
+            14: np.exp
+        }
+    else:
+        parameter_transforms = {
+            0: np.exp,  # M 
+            7: np.arccos, # qS
+            9: np.arccos,  # qK
+            14: np.exp
+        }
 
     transform_fn = TransformContainer(
         parameter_transforms=parameter_transforms,
@@ -301,8 +317,13 @@ def run_emri_pe(
     
     tmp = np.random.multivariate_normal(emri_injection_params_in,factor * cov,size=nwalkers * ntemps)
     
+    # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
-    tmp[:,-1] = np.abs(tmp[:,-1])
+    if log_prior:
+        tmp[:,-1] = np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
+    else:
+        tmp[:,-1] = np.abs(tmp[:,-1])
+    
     # tmp[0] = emri_injection_params_in.copy()
     logp = priors["emri"].logpdf(tmp)
     print("logprior",logp)
@@ -424,7 +445,6 @@ if __name__ == "__main__":
 
 
     traj = EMRIInspiral(func="KerrEccentricEquatorial")
-    # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
     # fix p0 given T
     p0 = get_p_at_t(
         traj,
@@ -434,9 +454,13 @@ if __name__ == "__main__":
         traj_kwargs={"dt":dt}
     )
     print("new p0 fixed by Tobs, p0=", p0)
-    
+    print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1])
 
-    fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+    logprior = True
+    if logprior:
+        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+    else:
+        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
@@ -470,6 +494,7 @@ if __name__ == "__main__":
         ntemps,
         nwalkers,
         args['nsteps'],
-        emri_kwargs=waveform_kwargs
+        emri_kwargs=waveform_kwargs,
+        log_prior=logprior
     )
 
