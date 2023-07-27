@@ -310,6 +310,7 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     // diff_r3_rp was introduced to avoid round off errors
     double diff_r3_rp = r3 - M;
     diff_r3_rp = rp*diff_r3_rp - sqrt(pow(M, 2) - pow(a, 2))*rp;
+    
     if (diff_r3_rp==0.0){
         printf("round off error %e\n", diff_r3_rp);
         diff_r3_rp = 1e-15;
