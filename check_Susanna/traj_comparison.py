@@ -15,7 +15,7 @@ from few.utils.constants import *
 
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 # run trajectory
-err = 1e-10
+err = 1e-12
 insp_kw = {
     "err": err,
     "DENSE_STEPPING": 0,
@@ -30,12 +30,12 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
-filename = "evolution_GR_aneg09876_rp9_ra15"#"evolution_GR_a01234_rp6_ra11"
+filename = "evolution_d01_a09_rp6_ra11"#"evolution_GR_a01234_rp6_ra11"
 # Susanna trajectory
-charge = 0.0
+charge = 0.1
 t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename + ".dat").T
 
-a=0.9876
+a=0.9
 M=1e6
 mu=1e1
 p0, e0 = p_S[0], e_S[0]
