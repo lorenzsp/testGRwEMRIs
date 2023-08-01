@@ -2,6 +2,7 @@
 import unittest
 import numpy as np
 import warnings
+import time
 
 from few.trajectory.inspiral import EMRIInspiral
 from few.amplitude.romannet import RomanAmplitude
@@ -104,7 +105,10 @@ class ModuleTest(unittest.TestCase):
             
             # run trajectory
             try:
+                tic = time.perf_counter()
                 t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
+                toc = time.perf_counter()
+                print('elapsed time', toc-tic, ' number of points', len(t) )
             except:
                 breakpoint()
             # print(e[-1])

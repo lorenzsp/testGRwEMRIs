@@ -229,13 +229,11 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     }
     // evaluate ODEs
     // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<endl;
-    // auto start = std::chrono::steady_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
     // the frequency variables are pointers!
     KerrGeoEquatorialCoordinateFrequencies(Omega_phi, Omega_theta, Omega_r, a, p, e, x);// shift to avoid problem in fundamental frequencies
     
-
-    
-    // auto end = std::chrono::steady_clock::now();
+    // auto end = std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double>  msec = end-start;
     // std::cout << "elapsed time fund freqs: " << msec.count() << "s\n";
     

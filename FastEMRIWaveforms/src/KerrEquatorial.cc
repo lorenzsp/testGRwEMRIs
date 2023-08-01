@@ -12,7 +12,7 @@
 /*-*-*-*-*-*-*-*-*-*-*-* External functions (can be refered by other source files) *-*-*-*-*-*-*-*-*-*-*-*/
 double edot_Cheby_full(const double a, const double e, const double r){
   double result;
-double Compile_$3 = pow(a,2);
+double Compile_$3 = (a * a);
 double Compile_$8 = pow(a,3);
 double Compile_$14 = pow(a,4);
 double Compile_$20 = pow(a,5);
@@ -248,7 +248,7 @@ result = -0.08656597731179448 - 0.00026594440430338347*Compile_$1 - 0.0001806533
 
 double pdot_Cheby_full(const double a, const double e, const double r){
   double result;
-double Compile_$3 = pow(a,2);
+double Compile_$3 = (a * a);
 double Compile_$8 = pow(a,3);
 double Compile_$14 = pow(a,4);
 double Compile_$20 = pow(a,5);
@@ -484,7 +484,7 @@ result = -0.35766508994227225 + 0.020863645038898704*Compile_$1 + 0.002233108648
 
 double Edot_SC(const double a, const double e, const double r, const double p){
   double result;
-double Compile_$4 = pow(a,2);
+double Compile_$4 = (a * a);
 double Compile_$9 = pow(a,3);
 double Compile_$14 = pow(a,4);
 double Compile_$2 = 0.e-24 + a;
@@ -568,7 +568,7 @@ return result;
 
 double Ldot_SC(const double a, const double e, const double r, const double p){
   double result;
-double Compile_$4 = pow(a,2);
+double Compile_$4 = (a * a);
 double Compile_$9 = pow(a,3);
 double Compile_$14 = pow(a,4);
 double Compile_$2 = 0.e-24 + a;
@@ -652,7 +652,7 @@ return result;
 
 double Edot_GR(const double a, const double e, const double r, const double p){
   double result;
-  double Compile_$6 = pow(a,2);
+  double Compile_$6 = (a * a);
 double Compile_$11 = pow(a,3);
 double Compile_$18 = pow(a,4);
 double Compile_$26 = pow(a,5);
@@ -888,7 +888,7 @@ result = (32*(1.17592905559062198204488 + 0.00158574516272590826805355*Compile_$
 
 double Ldot_GR(const double a, const double e, const double r, const double p){
   double result;
-double Compile_$6 = pow(a,2);
+double Compile_$6 = (a * a);
 double Compile_$11 = pow(a,3);
 double Compile_$18 = pow(a,4);
 double Compile_$26 = pow(a,5);
@@ -1195,93 +1195,93 @@ void Jac(const double a, const double p, const double ecc, const double xi,
   }
 
 double dL_dp(const double a, const double e, const double p){
-  return sqrt(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-              2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))/sqrt(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p) + 
-   (p*(-((3 + pow(e,2) - 3*p)*(3 + pow(e,2) - p)*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-             p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))) + 
-        ((-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*(pow(a,6)*pow(-1 + pow(e,2),2) - 2*pow(a,4)*(1 + pow(e,2))*pow(p,2) + 
-             pow(p,1.5)*(-3 - pow(e,2) + 2*p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))) - 
-             pow(a,2)*pow(p,2)*(4 - 4*pow(e,2) - 8*p + 3*pow(p,2) - sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                   2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p)))/sqrt(p))))/
-         (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))))/
-    (2.*pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,1.5)*
-      sqrt(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))) + (a*(1 - pow(e,2))*
-      (1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - 
-                (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-         (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p) + ((-1 + pow(e,2))*p*
-           ((3 + pow(e,2) - 3*p)*(3 + pow(e,2) - p)*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-                p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))) + 
-             ((4*pow(a,2)*pow(-1 + pow(e,2),2) - pow(3 + pow(e,2) - p,2)*p)*
-                (pow(a,6)*pow(-1 + pow(e,2),2) - 2*pow(a,4)*(1 + pow(e,2))*pow(p,2) + 
-                  pow(p,1.5)*(-3 - pow(e,2) + 2*p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))) - 
-                  pow(a,2)*pow(p,2)*(4 - 4*pow(e,2) - 8*p + 3*pow(p,2) - sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                        2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p)))/sqrt(p))))/
-              (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))))/
-         pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,2)))/
-    (2.*pow(p,2)*sqrt(1 - ((1 - pow(e,2))*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-                  p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-              (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)))/p));
+  return sqrt((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+              2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))/sqrt(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p) + 
+   (p*(-((3 + (e * e) - 3*p)*(3 + (e * e) - p)*((a * a)*(1 + 3*(e * e) + p) + 
+             p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))) + 
+        ((-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*(pow(a,6)*pow(-1 + (e * e),2) - 2*pow(a,4)*(1 + (e * e))*(p * p) + 
+             pow(p,1.5)*(-3 - (e * e) + 2*p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))) - 
+             (a * a)*(p * p)*(4 - 4*(e * e) - 8*p + 3*(p * p) - sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                   2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p)))/sqrt(p))))/
+         (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))))/
+    (2.*pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,1.5)*
+      sqrt((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))) + (a*(1 - (e * e))*
+      (1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - 
+                (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+         (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p) + ((-1 + (e * e))*p*
+           ((3 + (e * e) - 3*p)*(3 + (e * e) - p)*((a * a)*(1 + 3*(e * e) + p) + 
+                p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))) + 
+             ((4*(a * a)*pow(-1 + (e * e),2) - pow(3 + (e * e) - p,2)*p)*
+                (pow(a,6)*pow(-1 + (e * e),2) - 2*pow(a,4)*(1 + (e * e))*(p * p) + 
+                  pow(p,1.5)*(-3 - (e * e) + 2*p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))) - 
+                  (a * a)*(p * p)*(4 - 4*(e * e) - 8*p + 3*(p * p) - sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                        2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p)))/sqrt(p))))/
+              (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))))/
+         pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,2)))/
+    (2.*(p * p)*sqrt(1 - ((1 - (e * e))*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + 
+                  p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+              (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)))/p));
 }
 
 double dE_dp(const double a, const double e, const double p){
-  return ((1 - pow(e,2))*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - 
-               (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-        (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p) + ((-1 + pow(e,2))*p*
-          ((3 + pow(e,2) - 3*p)*(3 + pow(e,2) - p)*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-               p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))) + 
-            ((4*pow(a,2)*pow(-1 + pow(e,2),2) - pow(3 + pow(e,2) - p,2)*p)*(pow(a,6)*pow(-1 + pow(e,2),2) - 2*pow(a,4)*(1 + pow(e,2))*pow(p,2) + 
-                 pow(p,1.5)*(-3 - pow(e,2) + 2*p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))) - 
-                 pow(a,2)*pow(p,2)*(4 - 4*pow(e,2) - 8*p + 3*pow(p,2) - sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                       2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p)))/sqrt(p))))/
-             (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))))/
-        pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,2)))/
-   (2.*pow(p,2)*sqrt(1 - ((1 - pow(e,2))*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-                 p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-             (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)))/p));
+  return ((1 - (e * e))*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - 
+               (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+        (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p) + ((-1 + (e * e))*p*
+          ((3 + (e * e) - 3*p)*(3 + (e * e) - p)*((a * a)*(1 + 3*(e * e) + p) + 
+               p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))) + 
+            ((4*(a * a)*pow(-1 + (e * e),2) - pow(3 + (e * e) - p,2)*p)*(pow(a,6)*pow(-1 + (e * e),2) - 2*pow(a,4)*(1 + (e * e))*(p * p) + 
+                 pow(p,1.5)*(-3 - (e * e) + 2*p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))) - 
+                 (a * a)*(p * p)*(4 - 4*(e * e) - 8*p + 3*(p * p) - sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                       2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p)))/sqrt(p))))/
+             (pow(p,1.5)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))))/
+        pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,2)))/
+   (2.*(p * p)*sqrt(1 - ((1 - (e * e))*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + 
+                 p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+             (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)))/p));
 }
 
 double dE_de(const double a, const double e, const double p){
-  return (2*e*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - 
-                (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-         (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)) - ((1 - pow(e,2))*
-        ((-1 + pow(e,2))*(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*
-           (6*pow(a,2)*e - 2*e*p - (4*pow(a,2)*e*(pow(a,4)*(-1 + pow(e,2)) - 2*pow(p,2) + pow(a,2)*p*(2 + p)))/
-              (sqrt(p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))) - 
-          4*e*(-1 + pow(e,2))*(-4*pow(a,2)*(-1 + pow(e,2)) + (3 + pow(e,2) - p)*p)*
-           (pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                     2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))) + 2*e*(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*
-           (pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                     2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))))/pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,2))/
-   (2.*p*sqrt(1 - ((1 - pow(e,2))*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-                 p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-             (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)))/p));
+  return (2*e*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - 
+                (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+         (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)) - ((1 - (e * e))*
+        ((-1 + (e * e))*(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*
+           (6*(a * a)*e - 2*e*p - (4*(a * a)*e*(pow(a,4)*(-1 + (e * e)) - 2*(p * p) + (a * a)*p*(2 + p)))/
+              (sqrt(p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))) - 
+          4*e*(-1 + (e * e))*(-4*(a * a)*(-1 + (e * e)) + (3 + (e * e) - p)*p)*
+           ((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                     2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))) + 2*e*(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*
+           ((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                     2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))))/pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,2))/
+   (2.*p*sqrt(1 - ((1 - (e * e))*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + 
+                 p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+             (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)))/p));
 }
 
 double dL_de(const double a, const double e, const double p){
-  return ((p*((-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*(6*pow(a,2)*e - 2*e*p - 
-             (4*pow(a,2)*e*(pow(a,4)*(-1 + pow(e,2)) - 2*pow(p,2) + pow(a,2)*p*(2 + p)))/
-              (sqrt(p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))) - 
-          4*e*(-4*pow(a,2)*(-1 + pow(e,2)) + (3 + pow(e,2) - p)*p)*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-             p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))))/
-      (pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,1.5)*
-        sqrt(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                  2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))) + (a*
-        (2*e*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - 
-                     (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-              (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)) - 
-          ((1 - pow(e,2))*((-1 + pow(e,2))*(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*
-                (6*pow(a,2)*e - 2*e*p - (4*pow(a,2)*e*(pow(a,4)*(-1 + pow(e,2)) - 2*pow(p,2) + pow(a,2)*p*(2 + p)))/
-                   (sqrt(p)*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))) - 
-               4*e*(-1 + pow(e,2))*(-4*pow(a,2)*(-1 + pow(e,2)) + (3 + pow(e,2) - p)*p)*
-                (pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                          2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))) + 
-               2*e*(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)*
-                (pow(a,2)*(1 + 3*pow(e,2) + p) + p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 
-                          2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5)))))/pow(-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p,2)))/
-      (p*sqrt(1 - ((1 - pow(e,2))*(1 + ((-1 + pow(e,2))*(pow(a,2)*(1 + 3*pow(e,2) + p) + 
-                    p*(-3 - pow(e,2) + p - (2*sqrt(pow(a,6)*pow(-1 + pow(e,2),2) + pow(a,2)*(-4*pow(e,2) + pow(-2 + p,2))*pow(p,2) + 2*pow(a,4)*p*(-2 + p + pow(e,2)*(2 + p))))/pow(p,1.5))))/
-                (-4*pow(a,2)*pow(-1 + pow(e,2),2) + pow(3 + pow(e,2) - p,2)*p)))/p)))/2.;
+  return ((p*((-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*(6*(a * a)*e - 2*e*p - 
+             (4*(a * a)*e*(pow(a,4)*(-1 + (e * e)) - 2*(p * p) + (a * a)*p*(2 + p)))/
+              (sqrt(p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))) - 
+          4*e*(-4*(a * a)*(-1 + (e * e)) + (3 + (e * e) - p)*p)*((a * a)*(1 + 3*(e * e) + p) + 
+             p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))))/
+      (pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,1.5)*
+        sqrt((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                  2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))) + (a*
+        (2*e*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - 
+                     (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+              (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)) - 
+          ((1 - (e * e))*((-1 + (e * e))*(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*
+                (6*(a * a)*e - 2*e*p - (4*(a * a)*e*(pow(a,4)*(-1 + (e * e)) - 2*(p * p) + (a * a)*p*(2 + p)))/
+                   (sqrt(p)*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))) - 
+               4*e*(-1 + (e * e))*(-4*(a * a)*(-1 + (e * e)) + (3 + (e * e) - p)*p)*
+                ((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                          2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))) + 
+               2*e*(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)*
+                ((a * a)*(1 + 3*(e * e) + p) + p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 
+                          2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5)))))/pow(-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p,2)))/
+      (p*sqrt(1 - ((1 - (e * e))*(1 + ((-1 + (e * e))*((a * a)*(1 + 3*(e * e) + p) + 
+                    p*(-3 - (e * e) + p - (2*sqrt(pow(a,6)*pow(-1 + (e * e),2) + (a * a)*(-4*(e * e) + pow(-2 + p,2))*(p * p) + 2*pow(a,4)*p*(-2 + p + (e * e)*(2 + p))))/pow(p,1.5))))/
+                (-4*(a * a)*pow(-1 + (e * e),2) + pow(3 + (e * e) - p,2)*p)))/p)))/2.;
 }
 
 
