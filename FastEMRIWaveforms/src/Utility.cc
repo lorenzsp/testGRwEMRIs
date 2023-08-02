@@ -305,6 +305,8 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     // get radial roots
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
+    // long double r1long, r2long, r3long, r4long;
+    // KerrGeoRadialRootsLong(&r1long, &r2long, &r3long, &r4long, a, p, e, x, En, Q);
 
     double Epsilon0 = (a*a) * (1 - (En*En))/(L*L);
     //double zm = 0;
@@ -319,22 +321,25 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double CapitalUpsilonr = (M_PI * sqrt((1 - (En*En)) * (r1-r3) * (r2)))/(2 * EllipticK((kr*kr))); //(*Eq.(15)*)
     double CapitalUpsilonTheta= x * sqrt(zp); //(*Eq.(15)*)
 
-    double rp = M + sqrt((M*M) - (a*a));
-    double rm = M - sqrt((M*M) - (a*a));
-
-    // introduced to avoid round off errors
-    long double r1long, r2long, r3long, r4long;
-    KerrGeoRadialRootsLong(&r1long, &r2long, &r3long, &r4long, a, p, e, x, En, Q);
     long double Mlong=1.0;
     long double along=a;
     long double rplong = Mlong + sqrt((Mlong*Mlong) - (along*along));
+    long double diff_r3_rp = r3 - Mlong; // r3-rp
+    diff_r3_rp = rplong*diff_r3_rp - sqrt((Mlong*Mlong) - (along*along))*rplong;
+
+    double rp = M + sqrt((M*M) - (a*a));
+    double rm = M - sqrt((M*M) - (a*a));
+
     // diff_r3_rp was introduced to avoid round off errors
-    long double diff_r3_rp = r3long - rplong;
+    // double diff_r3_rp = r3 - M; // r3-rp
+    // diff_r3_rp = rp*diff_r3_rp - sqrt((M*M) - (a*a))*rp;
+    
     
     // if (abs(diff_r3_rp)<(long double)1e-16){
-    //     printf("round off error %Le.\n", diff_r3_rp);
-    //     diff_r3_rp = 1e-15;
+    //     printf("round off error %Lf:\n", diff_r3_rp);
+    //     // diff_r3_rp = 1e-15;
     // }
+    // Omega 3.164623e+00       1.506353e+01:
 
 
     double hr = (r1 - r2)/(r1 - r3);
@@ -342,12 +347,11 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double hm = ((r1 - r2) * (r3 - rm))/((r1 - r3) * (r2 - rm));
 
     // (*Eq. (21)*)
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * ( (2 * M * En * rp - a * L)/diff_r3_rp * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, (kr*kr))) - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))) );
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * ( (2 * M * En * rp - a * L)*rp/(diff_r3_rp) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, (kr*kr))) - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))) );
 
-    double CapitalGamma = 4 * (M*M) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK((kr*kr)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,(kr*kr)) + (r1 - r3) * (r2 - r4) * EllipticE((kr*kr))) + 2 * M * En * (r3 * EllipticK((kr*kr)) + (r2 - r3) * EllipticPi(hr,(kr*kr))) + (2* M)/(rp - rm) * (((4 * (M*M) * En - a * L) * rp - 2 * M * (a*a) * En)/diff_r3_rp * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, (kr*kr))) - ((4 * (M*M) * En - a * L) * rm - 2 * M * (a*a) * En)/(r3 - rm) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,(kr*kr)))));
+    double CapitalGamma = 4 * (M*M) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK((kr*kr)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,(kr*kr)) + (r1 - r3) * (r2 - r4) * EllipticE((kr*kr))) + 2 * M * En * (r3 * EllipticK((kr*kr)) + (r2 - r3) * EllipticPi(hr,(kr*kr))) + (2* M)/(rp - rm) * (((4 * (M*M) * En - a * L) * rp - 2 * M * (a*a) * En)*rp/(diff_r3_rp) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, (kr*kr))) - ((4 * (M*M) * En - a * L) * rm - 2 * M * (a*a) * En)/(r3 - rm) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,(kr*kr)))));
 
-    
-    
+    // printf("Omega %e \t %e:\n", CapitalUpsilonPhi, CapitalGamma);
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
     *CapitalUpsilonTheta_ = abs(CapitalUpsilonTheta);

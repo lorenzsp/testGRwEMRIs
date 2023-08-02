@@ -15,7 +15,7 @@ from few.utils.constants import *
 
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 # run trajectory
-err = 1e-12
+err = 1e-10
 insp_kw = {
     "err": err,
     "DENSE_STEPPING": 0,
@@ -30,22 +30,22 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
-filename = "evolution_d01_a09_rp6_ra11"#"evolution_GR_a01234_rp6_ra11"
+filename = "evolution_GR_a09876_rp6_ra11"
 # Susanna trajectory
-charge = 0.1
+charge = 0.0
 t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename + ".dat").T
 
 
-a=0.9
+a=0.9876
 M=1e6
 mu=1e1
 p0, e0 = p_S[0], e_S[0]
 
-print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[0] for pp,ee in zip(p_S,e_S)]/F1/(MTSUN_SI * M))
-print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[1] for pp,ee in zip(p_S,e_S)]/F2/(MTSUN_SI * M))
+# print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[0] for pp,ee in zip(p_S,e_S)]/F1/(MTSUN_SI * M))
+# print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[1] for pp,ee in zip(p_S,e_S)]/F2/(MTSUN_SI * M))
 
 # run trajectory
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=4.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, -1.0, charge, T=4.0)
 
 print('run',p0,e0,a)
 
@@ -62,9 +62,11 @@ plt.figure()
 plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
 plt.loglog(t_S, np.abs(interp(t_S) - PhiphiS),'-',label=f"phi")
 plt.loglog(t_S, np.abs(interp2(t_S) - PhirS),'-',label=f"r")
+plt.ylim(1e-4,10.5)
 plt.xlabel('t [s]')
 plt.ylabel('Phase difference')
 plt.legend()
+plt.grid()
 plt.savefig('Phase_difference_'+filename)
 
 interp = CubicSplineInterpolant(t, p)
