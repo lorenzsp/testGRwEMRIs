@@ -33,8 +33,8 @@ from eryn.ensemble import EnsembleSampler
 from eryn.prior import ProbDistContainer, uniform_dist
 import corner
 from lisatools.utils.utility import AET
+from eryn.moves import StretchMove, GaussianMove
 
-from eryn.moves import StretchMove
 from lisatools.sampling.likelihood import Likelihood
 from lisatools.diagnostic import *
 
@@ -80,7 +80,7 @@ insp_kwargs = {
 
 # keyword arguments for summation generator (AAKSummation)
 sum_kwargs = {
-    "use_gpu": gpu_available,  # GPU is availabel for this type of summation
+    "use_gpu": use_gpu,  # GPU is availabel for this type of summation
     "pad_output": True,
 }
 
@@ -257,7 +257,22 @@ def run_emri_pe(
 
     check_snr = snr([data_channels[0], data_channels[1]],
         dt=dt,
+        PSD="noisepsd_AE",
+        PSD_args=(),
+        PSD_kwargs={},
+        use_gpu=use_gpu,
+        )
+    dist_factor = check_snr.get() / 50.0
 
+    emri_injection_params[6] *= dist_factor
+    emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
+    # get injected parameters after transformation
+    injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
+    # get AE
+    data_channels = wave_gen(*injection_in, **emri_kwargs)
+
+    check_snr = snr([data_channels[0], data_channels[1]],
+        dt=dt,
         PSD="noisepsd_AE",
         PSD_args=(),
         PSD_kwargs={},
@@ -310,17 +325,17 @@ def run_emri_pe(
     ndim = 13
 
     # generate starting points
-    factor = 1.0
-    cov = np.eye(ndim) * 1e-15
+    factor = 1e-7
+    cov = np.load("covariance.npy")[:-1,:-1]
 
     start_like = np.zeros((nwalkers * ntemps))
     
-    tmp = np.random.multivariate_normal(emri_injection_params_in,factor * cov,size=nwalkers * ntemps)
+    tmp = np.random.multivariate_normal(emri_injection_params_in, factor*cov,size=nwalkers * ntemps)
     
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     if log_prior:
-        tmp[:,-1] = np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
+        tmp[:,-1] = np.log(np.abs(tmp[:,-1])) #np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
@@ -360,16 +375,31 @@ def run_emri_pe(
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
     # MCMC moves (move, percentage of draws)
+    cov_ = (np.cov(start_params,rowvar=False) + 1e-7 * np.eye(ndim) ) * 2.38**2 / ndim
     moves = [
-        StretchMove(use_gpu=use_gpu, live_dangerously=True)#, gibbs_setup=gibbs_setup)
+        # (GaussianMove({"emri": cov_}, factor=10, gibbs_setup=gibbs_setup), 0.5),
+        StretchMove(use_gpu=use_gpu, live_dangerously=True, gibbs_setup=gibbs_setup)
+        #, gibbs_setup=gibbs_setup)
     ]
 
     def get_time(i, res, samp):
-        if i % 20 == 0:
-            print("acceptance ratio", samp.acceptance_fraction)
-            print("max last loglike", np.max(samp.get_log_like()[-1]))
-        return False
+        maxit = int(samp.iteration*0.5)
 
+        # if i==0:
+        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+        
+        if i % 50 == 0:
+            print("max last loglike", np.max(samp.get_log_like()[-1]))
+            for el,name in zip(samp.moves,samp.move_keys):
+                print(name, el.acceptance_fraction)
+        
+            # if (i>50)and(i<1000):
+            #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+        
+        # if i==1000:
+        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+        
+        return False
     from eryn.backends import HDFBackend
 
     # check for previous runs
@@ -456,7 +486,7 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1])
 
-    logprior = True
+    logprior = False
     if logprior:
         fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
