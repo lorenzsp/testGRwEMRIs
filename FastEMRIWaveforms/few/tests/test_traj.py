@@ -100,25 +100,14 @@ class ModuleTest(unittest.TestCase):
         for i in range(1000):
             p0 = np.random.uniform(9.0,17.0)#12.630316331069114#
             e0 = np.random.uniform(0.1, 0.5)#0.1944201853385856#
-            # for j in range(2):
             a = np.random.uniform(-0.987, 0.987)#-0.841917420770555#
             
             # run trajectory
-            try:
-                tic = time.perf_counter()
-                t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
-                toc = time.perf_counter()
-                print('elapsed time', toc-tic, ' number of points', len(t) )
-            except:
-                breakpoint()
-            # print(e[-1])
-            # plt.plot(p,e,label=f'a={a:.2e}',alpha=0.7)
-            # breakpoint()
-
-        # plt.legend(); plt.xlabel('p'); plt.ylabel('e')
-
-        # plt.savefig(f'a_p_e.png')
-
+            # tic = time.perf_counter()
+            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
+            # toc = time.perf_counter()
+            # print('elapsed time', toc-tic, ' number of points', len(t) )
+        
         # test against Schwarz
         traj_Schw = EMRIInspiral(func="SchwarzEccFlux")
         a=0.0
