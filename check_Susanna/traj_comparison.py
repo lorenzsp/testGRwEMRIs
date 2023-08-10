@@ -30,7 +30,7 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
-filename = "evolution_d100_a09_rp6_ra11"
+filename = "evolution_d100_a09_rp6_ra11_newinterpolation"
 # Susanna trajectory
 charge = 100.0
 t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename + ".dat").T
