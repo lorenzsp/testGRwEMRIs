@@ -228,7 +228,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
         return;
     }
     // evaluate ODEs
-    // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<endl;
+    // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e << "\t" << "x=" << x << endl;
     // auto start = std::chrono::high_resolution_clock::now();
     // the frequency variables are pointers!
     KerrGeoEquatorialCoordinateFrequencies(Omega_phi, Omega_theta, Omega_r, a, p, e, x);// shift to avoid problem in fundamental frequencies
@@ -241,7 +241,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     // reference frequency
     
     Omega_phi_sep_circ = 1.0/ (a*copysign(1.0,x) + pow(p_sep/( 1.0 + e ), 1.5) );
-    r = pow(*Omega_phi/ Omega_phi_sep_circ, 2.0/3.0 ) * (1.0 + e);
+    r = pow(abs(*Omega_phi)/ Omega_phi_sep_circ, 2.0/3.0 ) * (1.0 + e);
     
     if (isnan(r)){
         cout << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
@@ -269,10 +269,12 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     double pdot_out, edot_out, xdot_out;
     // sign of function
     double factor = additional_args[0]*additional_args[0]/4;
+    
     Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
     Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
     Qdot = 0.0;
-
+    // cout << 'Edot \t' << Edot << endl;
+    // cout << 'Ldot \t' << Ldot << endl;
     Jac(a, p, e, x, E_here, L_here, Q_here, -Edot, -Ldot, Qdot, pdot_out, edot_out, xdot_out);
     // pdot_edot_from_fluxes(pdot_out, edot_out, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), a, e, p);
 
@@ -293,7 +295,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     else{
         
         *edot = 0.0;
-        *pdot = epsilon * (pdot_out + factor * pdot_here);
+        *pdot = epsilon * pdot_out;
         // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
     }
 

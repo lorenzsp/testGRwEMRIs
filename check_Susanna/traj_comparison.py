@@ -30,22 +30,23 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
-filename = "evolution_GR_a09876_rp6_ra11"
+filename = "evolution_d100_a09_rp6_ra11"
 # Susanna trajectory
-charge = 0.0
+charge = 100.0
 t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename + ".dat").T
 
 
-a=0.9876
+a=0.9
 M=1e6
 mu=1e1
 p0, e0 = p_S[0], e_S[0]
-
-# print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[0] for pp,ee in zip(p_S,e_S)]/F1/(MTSUN_SI * M))
+x0=1.0
+print(M, mu, a, p0, e0, x0)
+# print([traj.get_rhs_ode(M, mu, a, pp, ee, x0, charge)[3] for pp,ee in zip(p_S,e_S)]/Om1)
 # print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[1] for pp,ee in zip(p_S,e_S)]/F2/(MTSUN_SI * M))
 
 # run trajectory
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, -1.0, charge, T=4.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0)
 
 print('run',p0,e0,a)
 
@@ -62,7 +63,7 @@ plt.figure()
 plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
 plt.loglog(t_S, np.abs(interp(t_S) - PhiphiS),'-',label=f"phi")
 plt.loglog(t_S, np.abs(interp2(t_S) - PhirS),'-',label=f"r")
-plt.ylim(1e-4,10.5)
+plt.ylim(1e-4,30.5)
 plt.xlabel('t [s]')
 plt.ylabel('Phase difference')
 plt.legend()
@@ -89,4 +90,5 @@ plt.semilogy(p, e,'--',label=f"FEW")
 plt.xlabel('p')
 plt.ylabel('e')
 plt.legend()
+plt.tight_layout()
 plt.savefig('p_e_plane_'+filename)

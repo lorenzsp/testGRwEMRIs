@@ -239,8 +239,8 @@ class EMRIInspiral(TrajectoryBase):
             )
             a = fill_value
 
-        if self.equatorial:
-            x0 = 1.0
+        # if self.equatorial:
+        #     x0 = 1.0
 
         if self.circular:
             e0 = 0.0
@@ -310,8 +310,8 @@ class EMRIInspiral(TrajectoryBase):
             )
             a = fill_value
 
-        if self.equatorial:
-            x = 1.0
+        # if self.equatorial:
+        #     x = 1.0
 
         if self.circular:
             e = 0.0
