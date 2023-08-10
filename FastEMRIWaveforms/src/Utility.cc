@@ -324,7 +324,7 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     long double Mlong=1.0;
     long double along=a;
     long double rplong = Mlong + sqrt((Mlong*Mlong) - (along*along));
-    long double diff_r3_rp = r3 - Mlong; // r3-rp
+    long double diff_r3_rp = r3 - Mlong;
     diff_r3_rp = rplong*diff_r3_rp - sqrt((Mlong*Mlong) - (along*along))*rplong;
 
     double rp = M + sqrt((M*M) - (a*a));

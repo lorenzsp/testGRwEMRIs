@@ -22,7 +22,7 @@ M = 1e6
 mu = 1e1
 a = 0.9
 p0 = 7.2
-e0 = 0.0
+e0 = 0.3
 iota0 = 0.0
 Y0 = np.cos(iota0)
 Phi_phi0 = 0.0
@@ -32,7 +32,7 @@ Phi_r0 = 0.0
 dt = 10.0
 T = 4.0
 
-traj = EMRIInspiral(func="KerrCircFlux")
+traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
 def plot_config(ECC, IOTA, SPIN, var, charz, filename, ang1, ang2):
     fig = plt.figure()
@@ -76,7 +76,7 @@ def plot_config(ECC, IOTA, SPIN, var, charz, filename, ang1, ang2):
     plt.savefig(filename)
 
 #######################################################################
-num = 30
+num = 4
 p_vec = np.linspace(8.0,18.0, num=num)
 spin = np.linspace(0.01,0.99, num=num)
 n = len(p_vec)
@@ -114,9 +114,9 @@ for p0 in p_vec:
         
         # run trajectory
         args=np.array([charge])
-        t, p, e, Y, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p0, e0, Y0,  Phi_phi0, Phi_theta0, Phi_r0, *args,  T=T, dt=dt)
+        t, p, e, Y, Phi_phi, Phi_r, Phi_theta = traj(M, mu, a, p0, e0, Y0, *args, Phi_phi0, Phi_theta0, Phi_r0,   T=T, dt=dt)
         args=np.array([0.0])
-        t2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2 = traj(M, mu, a, p0, e0, Y0, Phi_phi0, Phi_theta0, Phi_r0, *args, T=T, dt=dt)#, upsample=True, new_t=t)
+        t2, p2, e2, Y2, Phi_phi2, Phi_r2, Phi_theta2 = traj(M, mu, a, p0, e0, Y0, *args, Phi_phi0, Phi_theta0, Phi_r0, T=T, dt=dt)#, upsample=True, new_t=t)
         
         
         tfinal = np.min([t[-1], t2[-1]])
