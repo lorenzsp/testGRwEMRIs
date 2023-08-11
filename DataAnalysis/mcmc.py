@@ -173,7 +173,7 @@ def run_emri_pe(
         e0, 
         x0,
         dist, 
-        qS,
+        qS, # 7
         phiS,
         qK, 
         phiK, 
@@ -247,7 +247,7 @@ def run_emri_pe(
 
     # sampler treats periodic variables by wrapping them properly
     periodic = {
-        "emri": {7: 2 * np.pi, 9: np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
+        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
     }
 
     # get injected parameters after transformation
@@ -311,7 +311,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=12,  # may need this subset
+        subset=8,  # may need this subset
     )
 
     nchannels = 2
@@ -369,8 +369,8 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,1,2,3,4,10,11,12]))
-    indx_list.append(get_True_vec([5,6,7,8,9]))
+    indx_list.append(get_True_vec([0,1,2,3,4,12]))
+    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
@@ -479,12 +479,12 @@ if __name__ == "__main__":
     p0 = get_p_at_t(
         traj,
         Tobs * 0.99,
-        [M, mu, a, e0, 1.0, 0.0],
-        bounds=[get_separatrix(a,e0,x0)+0.1, 50.0],
+        [M, mu, a, e0, x0, 0.0],
+        bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
         traj_kwargs={"dt":dt}
     )
     print("new p0 fixed by Tobs, p0=", p0)
-    print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1])
+    print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
     logprior = False
     if logprior:
