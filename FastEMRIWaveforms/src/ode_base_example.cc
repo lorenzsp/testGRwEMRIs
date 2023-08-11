@@ -246,7 +246,11 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     if (isnan(r)){
         cout << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
         cout << "omegaphi circ " <<  Omega_phi_sep_circ << " omegaphi " <<  *Omega_phi << " omegar " <<  *Omega_r <<endl;
-        throw std::exception();
+        // throw std::exception();
+        *pdot = 0.0;
+        *edot = 0.0;
+        *xdot = 0.0;
+        return;
         }
 
     
@@ -254,9 +258,9 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     double one_minus_e2 = 1. - pow(e,2);
 
     // Fluxes in p,e from Chebyshev
-    double pdot_cheb, edot_cheb;
-    pdot_cheb = pdot_Cheby_full(a*copysign(1.0,x), e, r) * ((8.*pow(one_minus_e2,1.5)*(8. + 7.*pow(e,2)))/(5.*p*(pow(p - risco,2) - pow(-risco + p_sep,2))));
-    edot_cheb = edot_Cheby_full(a*copysign(1.0,x), e, r) * ((pow(one_minus_e2,1.5)*(304. + 121.*pow(e,2)))/(15.*pow(p,2)*(pow(p - risco,2) - pow(-risco + p_sep,2))));
+    // double pdot_cheb, edot_cheb;
+    // pdot_cheb = pdot_Cheby_full(a*copysign(1.0,x), e, r) * ((8.*pow(one_minus_e2,1.5)*(8. + 7.*pow(e,2)))/(5.*p*(pow(p - risco,2) - pow(-risco + p_sep,2))));
+    // edot_cheb = edot_Cheby_full(a*copysign(1.0,x), e, r) * ((pow(one_minus_e2,1.5)*(304. + 121.*pow(e,2)))/(15.*pow(p,2)*(pow(p - risco,2) - pow(-risco + p_sep,2))));
 
     double Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here, E_here, L_here, Q_here;
     KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
