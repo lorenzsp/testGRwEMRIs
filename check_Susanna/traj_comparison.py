@@ -2,14 +2,9 @@
 import unittest
 import numpy as np
 import warnings
-
+import glob
 from few.trajectory.inspiral import EMRIInspiral
-from few.amplitude.romannet import RomanAmplitude
-from few.amplitude.interp2dcubicspline import Interp2DAmplitude
-from few.waveform import FastSchwarzschildEccentricFlux, SlowSchwarzschildEccentricFlux
 from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
-from few.utils.ylm import GetYlms
-from few.utils.modeselector import ModeSelector
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
@@ -30,65 +25,70 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
-filename = "evolution_d100_a09_rp6_ra11_newinterpolation"
-# Susanna trajectory
-charge = 100.0
-t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename + ".dat").T
-
-
-a=0.9
 M=1e6
 mu=1e1
-p0, e0 = p_S[0], e_S[0]
-x0=1.0
-print(M, mu, a, p0, e0, x0)
-# print([traj.get_rhs_ode(M, mu, a, pp, ee, x0, charge)[3] for pp,ee in zip(p_S,e_S)]/Om1)
-# print([traj.get_rhs_ode(M, mu, a, pp, ee, 1.0, charge)[1] for pp,ee in zip(p_S,e_S)]/F2/(MTSUN_SI * M))
+files = glob.glob('evolution_*.dat')
+for filename in files:
 
-# run trajectory
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0)
+    print(filename)
+    if filename.split('_')[1] == 'GR':
+        charge = 0.0
+    else:
+        charge = float(filename.split('_')[1].split('d')[1] )
 
-print('run',p0,e0,a)
+    # # define parameters
+    a= float(filename.split('_')[2].split('a')[1])
+    print('set charge and spin to',charge,a)
+    x0 = np.sign(a) * 1.0
+    a = np.abs(a)
 
-interp = CubicSplineInterpolant(t, Phi_phi)
-interp2 = CubicSplineInterpolant(t, Phi_r)
-last_p = 5
-t_S = t_S[:-last_p]
-PhiphiS = PhiphiS[:-last_p]
-PhirS = PhirS[:-last_p]
-p_S = p_S[:-last_p]
-e_S = e_S[:-last_p]
+    t_S, p_S, e_S, F1, F2, Om1, Om2, PhiphiS, PhirS = np.loadtxt(filename ).T
 
-plt.figure()
-plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
-plt.loglog(t_S, np.abs(interp(t_S) - PhiphiS),'-',label=f"phi")
-plt.loglog(t_S, np.abs(interp2(t_S) - PhirS),'-',label=f"r")
-plt.ylim(1e-4,30.5)
-plt.xlabel('t [s]')
-plt.ylabel('Phase difference')
-plt.legend()
-plt.grid()
-plt.savefig('Phase_difference_'+filename)
+    p0, e0 = p_S[0], e_S[0]
 
-interp = CubicSplineInterpolant(t, p)
-interp2 = CubicSplineInterpolant(t, e)
-last_p = 5
+    # run trajectory
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0)
+    # interpolate to compare
+    interp = CubicSplineInterpolant(t, Phi_phi)
+    interp2 = CubicSplineInterpolant(t, Phi_r)
+    last_p = 1
+    t_S = t_S[:-last_p]
+    PhiphiS = PhiphiS[:-last_p]
+    PhirS = PhirS[:-last_p]
+    p_S = p_S[:-last_p]
+    e_S = e_S[:-last_p]
 
-plt.figure()
-plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
-plt.semilogy(t_S, np.abs(interp(t_S) - p_S),'-',label=f"p")
-plt.semilogy(t_S, np.abs(interp2(t_S) - e_S),'-',label=f"e")
-plt.xlabel('t [s]')
-plt.ylabel('orbital difference')
-plt.legend()
-plt.savefig('p_e_difference_'+filename)
+    filename = filename.split('.dat')[0] + '.png'
+    plt.figure()
+    plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    plt.loglog(t_S, np.abs(interp(t_S) - PhiphiS),'-',label=f"phi")
+    plt.loglog(t_S, np.abs(interp2(t_S) - PhirS),'-',label=f"r")
+    plt.ylim(1e-4,30.5)
+    plt.xlabel('t [s]')
+    plt.ylabel('Phase difference')
+    plt.legend()
+    plt.grid()
+    plt.savefig('Phase_difference_'+filename)
 
-plt.figure()
-plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
-plt.semilogy(p_S, e_S,'-',label=f"S")
-plt.semilogy(p, e,'--',label=f"FEW")
-plt.xlabel('p')
-plt.ylabel('e')
-plt.legend()
-plt.tight_layout()
-plt.savefig('p_e_plane_'+filename)
+    interp = CubicSplineInterpolant(t, p)
+    interp2 = CubicSplineInterpolant(t, e)
+    last_p = 5
+
+    # plt.figure()
+    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    # plt.semilogy(t_S, np.abs(interp(t_S) - p_S),'-',label=f"p")
+    # plt.semilogy(t_S, np.abs(interp2(t_S) - e_S),'-',label=f"e")
+    # plt.xlabel('t [s]')
+    # plt.ylabel('orbital difference')
+    # plt.legend()
+    # plt.savefig('p_e_difference_'+filename)
+
+    # plt.figure()
+    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    # plt.semilogy(p_S, e_S,'-',label=f"S")
+    # plt.semilogy(p, e,'--',label=f"FEW")
+    # plt.xlabel('p')
+    # plt.ylabel('e')
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig('p_e_plane_'+filename)
