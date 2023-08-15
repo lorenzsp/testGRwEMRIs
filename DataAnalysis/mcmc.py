@@ -161,7 +161,7 @@ def run_emri_pe(
     # (you need to remove them from the other parts of initialization)
     fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.array([ 1.0, 0.0]), # spin and inclination and Phi_theta
+       "fill_values": np.array([ emri_injection_params[5], 0.0]), # spin and inclination and Phi_theta
        "fill_inds": np.array([ 5, 12]),
     }
 
