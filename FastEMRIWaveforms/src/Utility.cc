@@ -305,8 +305,8 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     // get radial roots
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
-    // long double r1long, r2long, r3long, r4long;
-    // KerrGeoRadialRootsLong(&r1long, &r2long, &r3long, &r4long, a, p, e, x, En, Q);
+    long double r1long, r2long, r3long, r4long;
+    KerrGeoRadialRootsLong(&r1long, &r2long, &r3long, &r4long, a, p, e, x, En, Q);
 
     double Epsilon0 = (a*a) * (1 - (En*En))/(L*L);
     //double zm = 0;
@@ -324,7 +324,7 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     long double Mlong=1.0;
     long double along=a;
     long double rplong = Mlong + sqrt((Mlong*Mlong) - (along*along));
-    long double diff_r3_rp = r3 - Mlong;
+    long double diff_r3_rp = r3long - Mlong;
     diff_r3_rp = rplong*diff_r3_rp - sqrt((Mlong*Mlong) - (along*along))*rplong;
 
     double rp = M + sqrt((M*M) - (a*a));
