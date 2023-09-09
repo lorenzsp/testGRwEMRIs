@@ -60,7 +60,7 @@ for filename in files:
 
     filename = filename.split('.dat')[0] + '.png'
     plt.figure()
-    plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
     plt.loglog(t_S, np.abs(interp(t_S) - PhiphiS),'-',label=f"phi")
     plt.loglog(t_S, np.abs(interp2(t_S) - PhirS),'-',label=f"r")
     plt.ylim(1e-4,30.5)
@@ -75,7 +75,7 @@ for filename in files:
     last_p = 5
 
     # plt.figure()
-    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
     # plt.semilogy(t_S, np.abs(interp(t_S) - p_S),'-',label=f"p")
     # plt.semilogy(t_S, np.abs(interp2(t_S) - e_S),'-',label=f"e")
     # plt.xlabel('t [s]')
@@ -84,7 +84,7 @@ for filename in files:
     # plt.savefig('p_e_difference_'+filename)
 
     # plt.figure()
-    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, sigma={charge:.2e}")
+    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
     # plt.semilogy(p_S, e_S,'-',label=f"S")
     # plt.semilogy(p, e,'--',label=f"FEW")
     # plt.xlabel('p')
