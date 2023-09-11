@@ -333,14 +333,6 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     // diff_r3_rp was introduced to avoid round off errors
     // double diff_r3_rp = r3 - M; // r3-rp
     // diff_r3_rp = rp*diff_r3_rp - sqrt((M*M) - (a*a))*rp;
-    
-    
-    // if (abs(diff_r3_rp)<(long double)1e-16){
-    //     printf("round off error %Lf:\n", diff_r3_rp);
-    //     // diff_r3_rp = 1e-15;
-    // }
-    // Omega 3.164623e+00       1.506353e+01:
-
 
     double hr = (r1 - r2)/(r1 - r3);
     double hp = ((r1 - r2) * (r3 - rp))/((r1 - r3) * (r2 - rp));
@@ -351,6 +343,11 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
 
     double CapitalGamma = 4 * (M*M) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK((kr*kr)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,(kr*kr)) + (r1 - r3) * (r2 - r4) * EllipticE((kr*kr))) + 2 * M * En * (r3 * EllipticK((kr*kr)) + (r2 - r3) * EllipticPi(hr,(kr*kr))) + (2* M)/(rp - rm) * (((4 * (M*M) * En - a * L) * rp - 2 * M * (a*a) * En)*rp/(diff_r3_rp) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, (kr*kr))) - ((4 * (M*M) * En - a * L) * rm - 2 * M * (a*a) * En)/(r3 - rm) * (EllipticK((kr*kr)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,(kr*kr)))));
 
+    // if (abs(diff_r3_rp)<(long double)1e-16){
+    //     printf("round off error %Le:\n", diff_r3_rp);
+    //     printf("Omega %e \t %e:\n", CapitalUpsilonPhi, CapitalGamma);
+    //     // diff_r3_rp = 1e-15;
+    // }
     // printf("Omega %e \t %e:\n", CapitalUpsilonPhi, CapitalGamma);
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;

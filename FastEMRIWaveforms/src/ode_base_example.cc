@@ -246,7 +246,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     if (isnan(r)){
         cout << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
         cout << "omegaphi circ " <<  Omega_phi_sep_circ << " omegaphi " <<  *Omega_phi << " omegar " <<  *Omega_r <<endl;
-        // throw std::exception();
+        throw std::exception();
         *pdot = 0.0;
         *edot = 0.0;
         *xdot = 0.0;
