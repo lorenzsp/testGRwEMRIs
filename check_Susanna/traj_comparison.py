@@ -86,7 +86,7 @@ for filename in files:
     # plt.legend()
     # plt.savefig('p_e_difference_'+filename)
 
-    grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/grav_Edot_Ldot/grav_data.dat")
+    grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
     plt.figure()
     plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
     plt.semilogy(p_S, e_S,'-',label=f"S")
