@@ -47,7 +47,10 @@ for filename in files:
     p0, e0 = p_S[0], e_S[0]
 
     # run trajectory
-    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0)
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=3.0, dt=10.0, **insp_kw)
+    out_deriv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p, e, x)])
+
+    print('length', len(t) )
     # interpolate to compare
     interp = CubicSplineInterpolant(t, Phi_phi)
     interp2 = CubicSplineInterpolant(t, Phi_r)
@@ -83,12 +86,18 @@ for filename in files:
     # plt.legend()
     # plt.savefig('p_e_difference_'+filename)
 
-    # plt.figure()
-    # plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
-    # plt.semilogy(p_S, e_S,'-',label=f"S")
-    # plt.semilogy(p, e,'--',label=f"FEW")
-    # plt.xlabel('p')
-    # plt.ylabel('e')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig('p_e_plane_'+filename)
+    grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+    plt.figure()
+    plt.title(f"a={a},M={M:.1e},mu={mu:.1e}\n e0={e0:.2}, p0={p0:.2}, charge={charge:.2e}")
+    plt.semilogy(p_S, e_S,'-',label=f"S")
+    plt.semilogy(p, e,'.',label=f"FEW",alpha=0.4)
+    # plt.plot(grid[:,1], grid[:,2],'x')
+    plt.xlabel('p')
+    plt.ylabel('e')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig('p_e_plane_'+filename)
+    # plt.show()
+
+    
+
