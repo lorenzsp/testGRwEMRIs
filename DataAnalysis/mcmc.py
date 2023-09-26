@@ -186,6 +186,7 @@ def run_emri_pe(
     # get the right parameters
     # log of large mass
     emri_injection_params[0] = np.log(emri_injection_params[0])
+    emri_injection_params[1] = np.log(emri_injection_params[1])
     emri_injection_params[7] = np.cos(emri_injection_params[7]) 
     emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
     emri_injection_params[9] = np.cos(emri_injection_params[9]) 
@@ -204,8 +205,8 @@ def run_emri_pe(
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(np.log(1e5), np.log(5e6)),  # M
-                1: uniform_dist(1.0, 100.0),  # mu
+                0: uniform_dist(np.log(1e5), np.log(5e6)),  # ln M
+                1: uniform_dist(np.log(1.0), np.log(100.0)),  # ln mu
                 2: uniform_dist(0.0, 1.0),  # a
                 3: uniform_dist(6.0, 20.0),  # p0
                 4: uniform_dist(0.01, 0.45),  # e0
@@ -227,6 +228,7 @@ def run_emri_pe(
     if log_prior:
         parameter_transforms = {
             0: np.exp,  # M 
+            1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
             14: np.exp
@@ -234,6 +236,7 @@ def run_emri_pe(
     else:
         parameter_transforms = {
             0: np.exp,  # M 
+            1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
             14: np.exp
@@ -326,7 +329,7 @@ def run_emri_pe(
 
     # generate starting points
     factor = 1e-7
-    cov = np.load("covariance.npy")[:-1,:-1]
+    cov = np.eye(ndim)*1e-12#np.load("covariance.npy")[:-1,:-1]
 
     start_like = np.zeros((nwalkers * ntemps))
     
@@ -335,7 +338,7 @@ def run_emri_pe(
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     if log_prior:
-        tmp[:,-1] = np.log(np.abs(tmp[:,-1])) #np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
+        tmp[:,-1] = np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
@@ -478,7 +481,7 @@ if __name__ == "__main__":
     # fix p0 given T
     p0 = get_p_at_t(
         traj,
-        Tobs * 0.99,
+        Tobs * 0.999,
         [M, mu, a, e0, x0, 0.0],
         bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
         traj_kwargs={"dt":dt}
@@ -486,7 +489,7 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
-    logprior = False
+    logprior = True
     if logprior:
         fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:

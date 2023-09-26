@@ -25,6 +25,18 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
+grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+
+diff = np.abs(grid[:,2] - get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0))
+plt.figure(); plt.semilogy(diff); plt.savefig('diff')
+plt.figure()
+plt.plot(grid[:,1], grid[:,2],'x')
+plt.semilogx(get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0),grid[:,2],'.')
+plt.xlabel('p')
+plt.ylabel('e')
+plt.savefig('p_e_grid.png')
+breakpoint()
+
 M=1e6
 mu=1e1
 files = glob.glob('evolution_*.dat')
@@ -87,7 +99,6 @@ for filename in files:
     # plt.legend()
     # plt.savefig('p_e_difference_'+filename)
 
-    # grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
     # plt.plot(grid[:,1], grid[:,2],'x')
 
     plt.figure()
