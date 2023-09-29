@@ -194,7 +194,7 @@ def run_emri_pe(
     
     if log_prior:
         emri_injection_params[-1] = np.log(1e-20)
-        prior_charge = uniform_dist(np.log(1e-20) , np.log(5e-1))
+        prior_charge = uniform_dist(np.log(1e-10) , np.log(1.0))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
 
@@ -239,7 +239,7 @@ def run_emri_pe(
             1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
-            14: np.exp
+            # 14: np.exp
         }
 
     transform_fn = TransformContainer(
@@ -338,7 +338,7 @@ def run_emri_pe(
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     if log_prior:
-        tmp[:,-1] = np.random.uniform(np.log(1e-20) , np.log(5e-1),size=nwalkers * ntemps)
+        tmp[:,-1] = np.random.uniform(np.log(1e-10) , np.log(5e-1),size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
