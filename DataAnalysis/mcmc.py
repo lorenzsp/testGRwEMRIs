@@ -296,6 +296,25 @@ def run_emri_pe(
         plt.figure()
         plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
         plt.savefig(fp[:-3] + "injection_td.pdf")
+
+        plt.figure()
+        for cc in 10**np.linspace(-5,-2):
+            injection_temp = injection_in.copy()
+            injection_temp[-1] = cc
+            data_temp = wave_gen(*injection_temp, **emri_kwargs)
+            
+            Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],
+                dt=dt,
+                PSD="noisepsd_AE",
+                PSD_args=(),
+                PSD_kwargs={},
+                use_gpu=use_gpu,
+                normalize=True
+                )
+            plt.loglog(cc, 1-Overlap.get(),'ko')
+        plt.ylabel('Mismatch')
+        plt.xlabel('Charge')
+        plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
         
         
     else:
@@ -490,9 +509,9 @@ if __name__ == "__main__":
 
     logprior = True
     if logprior:
-        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  

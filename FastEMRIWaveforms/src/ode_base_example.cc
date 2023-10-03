@@ -273,6 +273,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     double pdot_out, edot_out, xdot_out;
     // sign of function
     double factor = additional_args[0]*additional_args[0]/4;
+    // cout << factor << endl;
     
     Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
     Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);

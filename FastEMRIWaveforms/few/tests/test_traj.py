@@ -39,7 +39,7 @@ insp_kw = {
 "upsample": False,
 }
 
-np.random.seed(42)
+np.random.seed(26011996)
 
 class ModuleTest(unittest.TestCase):
     def test_trajectory_pn5(self):
@@ -95,10 +95,10 @@ class ModuleTest(unittest.TestCase):
         charge = 0.1
 
         for i in range(100):
-            p0 = np.random.uniform(9.0,17.0)
             e0 = np.random.uniform(0.01, 0.499)
             a = np.random.uniform(-0.99, 0.99)
-            
+            charge = np.random.uniform(0.0,1.0)
+            p0 = np.random.uniform(get_separatrix(np.abs(a),e0,np.sign(a)*1.0)+1.0,17.0)
             # run trajectory
             # tic = time.perf_counter()
             t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
