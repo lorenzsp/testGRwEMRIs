@@ -31,7 +31,7 @@ from few.waveform import AAKWaveformBase, Pn5AAKWaveform
 from few.trajectory.inspiral import EMRIInspiral
 from few.summation.aakwave import AAKSummation
 from few.waveform import GenerateEMRIWaveform
-np.random.seed(42)
+np.random.seed(26011996)
 
 class ModuleTest(unittest.TestCase):
 
@@ -57,7 +57,7 @@ class ModuleTest(unittest.TestCase):
         Phi_phi0 = np.pi/2
         Phi_theta0 = 0.0
         Phi_r0 = np.pi/2
-        charge = 0.0
+        
 
         insp_kwargs = {
             "err": 1e-10,
@@ -85,11 +85,18 @@ class ModuleTest(unittest.TestCase):
         Tobs = 2.0
         dt = 15.0
 
+        charge = 0.0
+        h_p_c = few_gen(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
+        charge = 0.1
+        h_p_c_bgr = few_gen(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
+
+        self.assertAlmostEqual(get_overlap(h_p_c.get(), h_p_c_bgr.get()), 0.09514356141359209)
+        
         if gpu_available:
             for i in range(100):
-                p0 = np.random.uniform(9.0,17.0)
                 e0 = np.random.uniform(0.01, 0.499)
                 a = np.random.uniform(-0.99, 0.99)
-                few_gen(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
-        else:
-            few_gen(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
+                charge = np.random.uniform(0.0,1.0)
+                p0 = np.random.uniform(get_separatrix(np.abs(a),e0,np.sign(a)*1.0)+1.0,17.0)
+                # print(p0,e0,a)
+                h_p_c = few_gen(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
