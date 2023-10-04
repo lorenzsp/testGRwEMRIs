@@ -99,6 +99,7 @@ few_gen = GenerateEMRIWaveform(
     inspiral_kwargs=insp_kwargs,
     sum_kwargs=sum_kwargs,
     use_gpu=use_gpu,
+    frame="detector"
 )
 
 # function call
@@ -115,7 +116,7 @@ def run_emri_pe(
 ):
 
     # sets the proper number of points and what not
-    print("use gpus",use_gpu)
+    print("use gpus, use logprior", use_gpu, log_prior)
     N_obs = int(Tobs * YRSID_SI / dt) # may need to put "- 1" here because of real transform
     Tobs = (N_obs * dt) / YRSID_SI
     t_arr = xp.arange(N_obs) * dt
@@ -194,7 +195,7 @@ def run_emri_pe(
     
     if log_prior:
         emri_injection_params[-1] = np.log(1e-20)
-        prior_charge = uniform_dist(np.log(1e-10) , np.log(1.0))
+        prior_charge = uniform_dist(np.log(1e-7) , np.log(1.0))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
 
@@ -357,7 +358,7 @@ def run_emri_pe(
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     if log_prior:
-        tmp[:,-1] = np.random.uniform(np.log(1e-10) , np.log(5e-1),size=nwalkers * ntemps)
+        tmp[:,-1] = np.random.uniform(np.log(1e-4) , np.log(5e-1),size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
