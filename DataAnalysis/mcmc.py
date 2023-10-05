@@ -139,7 +139,7 @@ def run_emri_pe(
     index_beta = 7
 
     # with longer signals we care less about this
-    t0 = 20000.0  # throw away on both ends when our orbital information is weird
+    t0 = 40000.0  # throw away on both ends when our orbital information is weird
    
     wave_gen = ResponseWrapper(
         few_gen,
@@ -401,7 +401,7 @@ def run_emri_pe(
     cov_ = (np.cov(start_params,rowvar=False) + 1e-7 * np.eye(ndim) ) * 2.38**2 / ndim
     moves = [
         # (GaussianMove({"emri": cov_}, factor=10, gibbs_setup=gibbs_setup), 0.5),
-        StretchMove(live_dangerously=True, gibbs_setup=gibbs_setup,use_gpu=use_gpu)
+        StretchMove(live_dangerously=True, gibbs_setup=gibbs_setup, use_gpu=use_gpu)
     ]
 
     def get_time(i, res, samp):
@@ -479,9 +479,9 @@ if __name__ == "__main__":
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
-    qK = np.pi/3  # polar spin angle
+    qK = np.pi/4  # polar spin angle
     phiK = np.pi/3  # azimuthal viewing angle
-    qS = np.pi/3  # polar sky angle
+    qS = np.pi/4  # polar sky angle
     phiS = np.pi/3  # azimuthal viewing angle
     dist = 3.0  # distance
     Phi_phi0 = np.pi/2
@@ -508,11 +508,11 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
-    logprior = True
+    logprior = False
     if logprior:
-        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
