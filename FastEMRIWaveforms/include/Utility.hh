@@ -25,7 +25,7 @@ void KerrEqSpinFrequenciesCorrVectorized(double* OmegaPhi_, double* OmegaTheta_,
 
 void KerrEqSpinFrequenciesCorrection(double* deltaOmegaR_, double* deltaOmegaPhi_,
                               double a, double p, double e, double x);
-
+void KerrScott(double* OmegaPhi_, double* OmegaTheta_, double* OmegaR_,double a, double p, double e, double xI);
 void SchwarzschildGeoCoordinateFrequencies(double* OmegaPhi, double* OmegaR, double p, double e);
 
 double get_separatrix(double a, double e, double x);
