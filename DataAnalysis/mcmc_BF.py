@@ -74,7 +74,7 @@ if use_gpu and not gpu_available:
 insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
-    "max_init_len": int(1e4),
+    "max_init_len": int(1e6),
     "func":"KerrEccentricEquatorial"
     }
 
@@ -364,8 +364,8 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,1,2,3,4]))
-    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list.append(get_True_vec([0,1,2,3,4,5,8,9,10,11]))
+    indx_list.append(get_True_vec([6,7]))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
@@ -430,7 +430,7 @@ def run_emri_pe(
         ndims,  # assumes ndim_max
         my_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": np.inf},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 100},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -503,11 +503,11 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
-    logprior = True
+    logprior = False
     if logprior:
-        fp = f"./test/MCMC_BF_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_d{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./results_mcmc/MCMC_BF_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_d{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./test/MCMC_BF_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_d{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./results_mcmc/MCMC_BF_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_d{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  

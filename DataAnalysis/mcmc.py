@@ -349,7 +349,10 @@ def run_emri_pe(
 
     # generate starting points
     factor = 1e-7
-    cov = np.eye(ndim)*1e-12#np.load("covariance.npy")[:-1,:-1]
+    try:
+        cov = np.load(fp[:-3] +"covariance.npy")
+    except:
+        cov = np.eye(ndim)*1e-12#np.load(fp[:-3] +"covariance.npy")[:-1,:-1]
 
     start_like = np.zeros((nwalkers * ntemps))
     
@@ -392,8 +395,8 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,1,2,3,4,12]))
-    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list.append(get_True_vec([0,1,2,3,4,5,8,9,10,11,12]))
+    indx_list.append(get_True_vec([6,7]))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
