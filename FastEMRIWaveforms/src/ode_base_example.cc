@@ -232,7 +232,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     // auto start = std::chrono::high_resolution_clock::now();
     // the frequency variables are pointers!
     KerrGeoEquatorialCoordinateFrequencies(Omega_phi, Omega_theta, Omega_r, a, p, e, x);// shift to avoid problem in fundamental frequencies
-    
+    // KerrScott(Omega_phi, Omega_theta, Omega_r, a, p, e, x);
     // auto end = std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double>  msec = end-start;
     // std::cout << "elapsed time fund freqs: " << msec.count() << "s\n";

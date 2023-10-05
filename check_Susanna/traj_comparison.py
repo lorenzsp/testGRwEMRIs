@@ -99,7 +99,7 @@ for filename in files:
     plt.legend()
     plt.tight_layout()
     plt.savefig('p_e_plane_'+filename)
-    plt.show()
+    # plt.show()
 
     
 
