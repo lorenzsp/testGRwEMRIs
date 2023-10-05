@@ -17,6 +17,8 @@ insp_kw = {
     "max_init_len": int(1e4),
     }
 
+
+
 np.random.seed(32)
 import matplotlib.pyplot as plt
 import time, os
@@ -25,8 +27,49 @@ print(os.getpid())
 # initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
+grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+
+# diff = np.abs(grid[:,2] - get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0))
+# plt.figure(); plt.semilogy(diff); plt.savefig('diff')
+
+# plot grid points
+plt.figure()
+plt.plot(grid[:,1], grid[:,2],'x')
+plt.semilogx(get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0),grid[:,2],'.')
+plt.xlabel('p')
+plt.ylabel('e')
+plt.savefig('p_e_grid.png')
+
+# rhs ode
 M=1e6
 mu=1e1
+a = 0.987
+evec = np.linspace(0.01, 0.5, num=50)
+epsilon = mu/M
+p_all, e_all = np.asarray([temp.ravel() for temp in np.meshgrid( np.linspace(get_separatrix(a, 0.4, 1.0)+0.25 , 14.0, num=50), evec )])
+out = np.asarray([traj.get_derivative(epsilon, a, pp, ee, 1.0, np.asarray([0.0]))  for pp,ee in zip(p_all,e_all)])
+pdot = out[:,0]/epsilon 
+edot = out[:,1]/epsilon
+Omega_phi = out[:,3]
+Omega_r = out[:,5]
+
+plt.figure()
+cb = plt.tricontourf(p_all, e_all, np.log10(np.abs(pdot)))
+plt.colorbar(cb,label=r'$log_{10} (\dot{p}) $')
+plt.xlabel('p')
+plt.ylabel('e')
+plt.tight_layout()
+# plt.savefig('pdot.png')
+
+plt.figure()
+cb = plt.tricontourf(p_all, e_all, np.log10(np.abs(edot)))
+plt.colorbar(cb,label=r'$log_{10} (\dot{e}) $')
+plt.xlabel('p')
+plt.ylabel('e')
+plt.tight_layout()
+# plt.savefig(f'edot.png')
+# breakpoint()
+
 files = glob.glob('evolution_*.dat')
 for filename in files:
 
@@ -87,7 +130,6 @@ for filename in files:
     # plt.legend()
     # plt.savefig('p_e_difference_'+filename)
 
-    # grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
     # plt.plot(grid[:,1], grid[:,2],'x')
 
     plt.figure()
