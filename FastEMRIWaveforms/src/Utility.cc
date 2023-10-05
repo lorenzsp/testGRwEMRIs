@@ -217,85 +217,6 @@ double rj(const double x, const double y, const double z, const double p)
   return ans;
 }
 
-
-void Constants(const double p, const double e, const double xI,
-		     double & Energy, double & EllZee, double & Kyu,
-		     double & arr3, double & arr4, const double r1, const double r2, const double a, const double sinI)
-{
-  // define Schmidt's functions f(r) etc. for r1
-  const double Delta1 = r1*r1 - 2.0*r1 + a*a;
-  double f1, g1, h1, d1;
-  if (e == 0.) {
-    d1 = 2.*(2.*r1 - 3.)*r1*r1 + 2.*a*a*((2. - xI*xI)*r1 - sinI*sinI);
-    f1 = 4.*r1*r1*r1 + 2.*a*a*((2. - xI*xI)*r1 + xI*xI);
-    g1 = 2.0*a;
-    h1 = 2.*(r1 - 1.)/(xI*xI);
-  } else {
-    d1 = (r1*r1 + a*a*sinI*sinI)*Delta1;
-    f1 = r1*r1*r1*r1 + a*a*(r1*(r1 + 2.0) + sinI*sinI*Delta1);
-    g1 = 2.0*a*r1;
-    h1 = r1*(r1 - 2.0) + sinI*sinI*Delta1/(xI*xI);
-  }
-  // define Schmidt's functions f(r) etc. for r2
-  const double Delta2 = r2*r2 - 2.0*r2 + a*a;
-  const double d2 = (r2*r2 + a*a*sinI*sinI)*Delta2;
-  const double f2 = r2*r2*r2*r2 + a*a*(r2*(r2 + 2.0) + sinI*sinI*Delta2);
-  const double g2 = 2.0*a*r2;
-  const double h2 = r2*(r2 - 2.0) + sinI*sinI*Delta2/(xI*xI);
-  
-  // compute determinants.  Note sign flip! --- because I swapped
-  // the order of r1 and r2.
-  const double kappa =          d2*h1 - d1*h2;
-  const double epsilon =        d2*g1 - d1*g2;
-  const double rho =            f2*h1 - f1*h2;
-  const double eta =            f2*g1 - f1*g2;
-  const double sigma =          g2*h1 - g1*h2;
-
-  // compute energy 
-  Energy = kappa*rho + 2.0*epsilon*sigma;
-  const double sign = (xI >= 0 ? 1. : -1.);
-  Energy -= 2.0*sign*sqrt(sigma*(sigma*epsilon*epsilon + rho*epsilon*kappa
-				 - eta*kappa*kappa));
-  Energy /= rho*rho + 4.0*eta*sigma;
-  Energy = sqrt(Energy);
-  
-  // compute angular momentum
-  //
-  // for non-zero a, we can make an equation which is 
-  // linear in Lz from Schmidt's Eq. (B.17), by scaling
-  // the two equations and subtracting them so as to 
-  // knock out the Lz^2 term to get  
-  //
-  //  Lz = (E*E*rho - kappa) / (2.0*E*sigma).
-  //
-  // This trick doesn't work in the a=0 limit, since 
-  // then the "linear" equation doesn't involve Lz.
-  // So, to allow for a=0, we use this ugly block
-  // to get Lz...
-  //
-  if (a > 0.0001) {
-    EllZee = (Energy*Energy*rho - kappa) / (2.0*Energy*sigma);
-  } else {
-    double BB = 2.0*g1*Energy / h1;
-    double CC = (d1 - f1*Energy*Energy) / h1;
-    if (xI >= 0.) {
-      EllZee = -0.5*BB + 0.5*sqrt(BB*BB - 4.0*CC);
-    } else {
-      EllZee = -0.5*BB - 0.5*sqrt(BB*BB - 4.0*CC);
-    }
-  }
-
-  // now compute Carter constant
-  Kyu = sinI*sinI*(a*a*(1. - Energy)*(1. + Energy) + EllZee*EllZee/(xI*xI));
-  if (fabs(Kyu/(EllZee*EllZee)) < 1.e-15) Kyu = 0.;
-
-  // compute values of arr3, arr4 on this orbit.
-  double AplusB = 2./((1. + Energy)*(1. - Energy)) - (r1 + r2);
-  double AtimesB = a*a*Kyu/((1. - Energy)*(1. + Energy)*r1*r2);
-    arr3 = 0.5*(AplusB + sqrt(AplusB*AplusB - 4.*AtimesB));
-  arr4 = AtimesB/arr3;
-}
-
 int sanity_check(double a, double p, double e, double Y){
     int res = 0;
     
@@ -466,11 +387,11 @@ void KerrGeoConstantsOfMotionVectorized(double* E_out, double* L_out, double* Q_
 void KerrGeoRadialRoots(double* r1_, double*r2_, double* r3_, double* r4_, double a, double p, double e, double x, double En, double Q)
 {
     double M = 1.0;
-    double r1 = p / (1. - e);
-    double r2 = p /(1.+e);
-    double AplusB = (2. * M)/(1.-(En*En)) - (r1 + r2);
-    double AB = ((a*a) * Q)/((1.-(En*En)) * r1 *  r2);
-    double r3 = (AplusB+sqrt((AplusB*AplusB) - 4. * AB))/2.;
+    double r1 = p / (1 - e);
+    double r2 = p /(1+e);
+    double AplusB = (2 * M)/(1-(En*En)) - (r1 + r2);
+    double AB = ((a*a) * Q)/((1-(En*En)) * r1 *  r2);
+    double r3 = (AplusB+sqrt((AplusB*AplusB) - 4 * AB))/2;
     double r4 = AB/r3;
 
     *r1_ = r1;
@@ -588,16 +509,6 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
 
-    // Roots from Scott
-    // double rmin = p / (1.0 + e);
-    // double rmax = p / (1.0 - e);
-    // r1 = rmax;
-    // r2 = rmin;
-    // double Es,Lzs,Qs;
-    // double sinI = sqrt((1. - x)*(1. + x));
-    // Constants(p, e, x, Es, Lzs, Q, r3, r4, r1, r2, a, sinI);
-    // End part from Scott
-
     double Epsilon0 = pow(a, 2) * (1 - pow(En, 2))/pow(L, 2);
     //double zm = 0;
     double a2zp =(pow(L, 2) + pow(a, 2) * (-1 + pow(En, 2)) * (-1))/( (-1 + pow(En, 2)) * (-1));
@@ -614,11 +525,9 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double rp = M + sqrt(pow(M, 2) - pow(a, 2));
     double rm = M - sqrt(pow(M, 2) - pow(a, 2));
 
-    // diff_r3_rp was introduced to avoid round off errors
-    // double diff_r3_rp = ;
-    // if (diff_r3_rp==0.0){
-    //     // printf("round off error %e\n", diff_r3_rp);
-    //     diff_r3_rp = 1e10;
+    // this check was introduced to avoid round off errors
+    // if (r3 - rp==0.0){
+        // printf("round off error %e %e %e\n", r3 - rp, L, 2*rp*En/a);
     // }
 
     double hr = (r1 - r2)/(r1 - r3);
@@ -626,15 +535,113 @@ void KerrGeoEquatorialMinoFrequencies(double* CapitalGamma_, double* CapitalUpsi
     double hm = ((r1 - r2) * (r3 - rm))/((r1 - r3) * (r2 - rm));
 
     // (*Eq. (21)*)
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ( (2 * M * En * rp - a * L)/(r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))) );
+    // This term is zero when r3 - rp == 0.0
+    double prob1 = (2 * M * En * rp - a * L) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2)));
+    if (abs(prob1)!=0.0){
+        prob1 = prob1/(r3 - rp);
+    }
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta)/(sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr)/(M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ( prob1 - (2 * M * En * rm - a * L)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm, pow(kr,2))) );
 
-    double CapitalGamma = 4 * pow(M, 2) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr,pow(kr, 2))) + (2* M)/(rp - rm) * (((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En)/(r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,pow(kr, 2)))));
+    // This term is zero when r3 - rp == 0.0
+    double prob2 = ((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rp) * EllipticPi(hp, pow(kr, 2)));
+    if (abs(prob2)!=0.0){
+        prob2 = prob2/(r3 - rp);
+    }
+    double CapitalGamma = 4 * pow(M, 2) * En+ (2 * CapitalUpsilonr)/(M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En/2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr,pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr,pow(kr, 2))) + (2* M)/(rp - rm) * (
+        prob2
+    - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En)/(r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3)/(r2 - rm) * EllipticPi(hm,pow(kr, 2)))
+    )
+    );
+
+    // This check makes sure that the problematic terms are zero when r3-rp is zero
+    // if (r3 - rp==0.0){
+        // printf("prob %e %e\n", prob1, prob2);
+        // diff_r3_rp = 1e10;
+    // }
 
     
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
     *CapitalUpsilonTheta_ = abs(CapitalUpsilonTheta);
     *CapitalUpsilonr_ = CapitalUpsilonr;
+}
+
+void Constants(const double p, const double e, const double xI,
+		     double & Energy, double & EllZee, double & Kyu,
+		     double & arr3, double & arr4, const double r1, const double r2, const double a, const double sinI)
+{
+  // define Schmidt's functions f(r) etc. for r1
+  const double Delta1 = r1*r1 - 2.0*r1 + a*a;
+  double f1, g1, h1, d1;
+  if (e == 0.) {
+    d1 = 2.*(2.*r1 - 3.)*r1*r1 + 2.*a*a*((2. - xI*xI)*r1 - sinI*sinI);
+    f1 = 4.*r1*r1*r1 + 2.*a*a*((2. - xI*xI)*r1 + xI*xI);
+    g1 = 2.0*a;
+    h1 = 2.*(r1 - 1.)/(xI*xI);
+  } else {
+    d1 = (r1*r1 + a*a*sinI*sinI)*Delta1;
+    f1 = r1*r1*r1*r1 + a*a*(r1*(r1 + 2.0) + sinI*sinI*Delta1);
+    g1 = 2.0*a*r1;
+    h1 = r1*(r1 - 2.0) + sinI*sinI*Delta1/(xI*xI);
+  }
+  // define Schmidt's functions f(r) etc. for r2
+  const double Delta2 = r2*r2 - 2.0*r2 + a*a;
+  const double d2 = (r2*r2 + a*a*sinI*sinI)*Delta2;
+  const double f2 = r2*r2*r2*r2 + a*a*(r2*(r2 + 2.0) + sinI*sinI*Delta2);
+  const double g2 = 2.0*a*r2;
+  const double h2 = r2*(r2 - 2.0) + sinI*sinI*Delta2/(xI*xI);
+  
+  // compute determinants.  Note sign flip! --- because I swapped
+  // the order of r1 and r2.
+  const double kappa =          d2*h1 - d1*h2;
+  const double epsilon =        d2*g1 - d1*g2;
+  const double rho =            f2*h1 - f1*h2;
+  const double eta =            f2*g1 - f1*g2;
+  const double sigma =          g2*h1 - g1*h2;
+
+  // compute energy 
+  Energy = kappa*rho + 2.0*epsilon*sigma;
+  const double sign = (xI >= 0 ? 1. : -1.);
+  Energy -= 2.0*sign*sqrt(sigma*(sigma*epsilon*epsilon + rho*epsilon*kappa
+				 - eta*kappa*kappa));
+  Energy /= rho*rho + 4.0*eta*sigma;
+  Energy = sqrt(Energy);
+  
+  // compute angular momentum
+  //
+  // for non-zero a, we can make an equation which is 
+  // linear in Lz from Schmidt's Eq. (B.17), by scaling
+  // the two equations and subtracting them so as to 
+  // knock out the Lz^2 term to get  
+  //
+  //  Lz = (E*E*rho - kappa) / (2.0*E*sigma).
+  //
+  // This trick doesn't work in the a=0 limit, since 
+  // then the "linear" equation doesn't involve Lz.
+  // So, to allow for a=0, we use this ugly block
+  // to get Lz...
+  //
+  if (a > 0.0001) {
+    EllZee = (Energy*Energy*rho - kappa) / (2.0*Energy*sigma);
+  } else {
+    double BB = 2.0*g1*Energy / h1;
+    double CC = (d1 - f1*Energy*Energy) / h1;
+    if (xI >= 0.) {
+      EllZee = -0.5*BB + 0.5*sqrt(BB*BB - 4.0*CC);
+    } else {
+      EllZee = -0.5*BB - 0.5*sqrt(BB*BB - 4.0*CC);
+    }
+  }
+
+  // now compute Carter constant
+  Kyu = sinI*sinI*(a*a*(1. - Energy)*(1. + Energy) + EllZee*EllZee/(xI*xI));
+  if (fabs(Kyu/(EllZee*EllZee)) < 1.e-15) Kyu = 0.;
+
+  // compute values of arr3, arr4 on this orbit.
+  double AplusB = 2./((1. + Energy)*(1. - Energy)) - (r1 + r2);
+  double AtimesB = a*a*Kyu/((1. - Energy)*(1. + Energy)*r1*r2);
+    arr3 = 0.5*(AplusB + sqrt(AplusB*AplusB - 4.*AtimesB));
+  arr4 = AtimesB/arr3;
 }
 
 void KerrScott(double* OmegaPhi_, double* OmegaTheta_, double* OmegaR_, double a, double p, double e, double xI){
@@ -735,24 +742,25 @@ void KerrGeoEquatorialCoordinateFrequencies(double* OmegaPhi_, double* OmegaThet
         KerrGeoEquatorialMinoFrequencies(&CapitalGamma, &CapitalUpsilonPhi, &CapitalUpsilonTheta, &CapitalUpsilonR,a, p, e, x);
         
 
-    if ((CapitalUpsilonPhi!=CapitalUpsilonPhi) || (CapitalGamma!=CapitalGamma) || (CapitalUpsilonR!=CapitalUpsilonR) ){
-        printf("(a, p, e, x) = (%f , %f , %f , %f) \n", a, p, e, x);
-        printf("(CapitalUpsilonPhi, CapitalUpsilonR, CapitalGamma) = (%f , %f , %f) \n", CapitalUpsilonPhi, CapitalUpsilonR, CapitalGamma);
-        KerrScott(OmegaPhi_,OmegaTheta_,OmegaR_, a, p, e, x);
-        // throw std::invalid_argument("Nan in fundamental frequencies");
+    if ((CapitalUpsilonPhi!=CapitalUpsilonPhi) || (CapitalGamma!=CapitalGamma) || (CapitalUpsilonR!=CapitalUpsilonR)||(CapitalGamma==0.0) ){
+        // KerrScott(OmegaPhi_,OmegaTheta_,OmegaR_, a, p, e, x);
+        // if ((OmegaPhi_!=OmegaPhi_) || (OmegaTheta_!=OmegaTheta_) || (OmegaR_!=OmegaR_) ){
+        //     printf("moving away from x=1.0 \n");
+        //     printf("(a, p, e, x) = (%f , %f , %f , %f) \n", a, p, e, x);
+        //     printf("(CapitalUpsilonPhi, CapitalUpsilonR, CapitalGamma) = (%f , %f , %f) \n", CapitalUpsilonPhi, CapitalUpsilonR, CapitalGamma);
+        //     KerrScott(OmegaPhi_,OmegaTheta_,OmegaR_, a, p, e, x-1e-10);
+        // }
+        throw std::invalid_argument("Nan in fundamental frequencies");
     }
-    else{
-    
-        // 
     // }
     // printf("in utility %f, %f, %f, %f \n", CapitalGamma, CapitalUpsilonPhi,CapitalUpsilonTheta, CapitalUpsilonR);
 
     *OmegaPhi_ = CapitalUpsilonPhi / CapitalGamma;
     *OmegaTheta_ = CapitalUpsilonTheta / CapitalGamma;
     *OmegaR_ = CapitalUpsilonR / CapitalGamma;
-    }
 
 }
+
 
 void SchwarzschildGeoCoordinateFrequencies(double* OmegaPhi, double* OmegaR, double p, double e)
 {
