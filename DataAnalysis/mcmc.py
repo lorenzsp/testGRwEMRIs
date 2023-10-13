@@ -352,7 +352,7 @@ def run_emri_pe(
     try:
         cov = np.load(fp[:-3] +"covariance.npy")
     except:
-        cov = np.eye(ndim)*1e-12#np.load(fp[:-3] +"covariance.npy")[:-1,:-1]
+        cov = 1e-7 * np.eye(ndim) / ndim
 
     start_like = np.zeros((nwalkers * ntemps))
     
@@ -395,17 +395,45 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,1,2,3,4,5,8,9,10,11,12]))
-    indx_list.append(get_True_vec([6,7]))
+    # import itertools
+    # stuff = np.arange(ndim)
+    # list_comb = []
+    # for subset in itertools.combinations(stuff, 2):
+    #     list_comb.append(subset)
+    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+
+    indx_list.append(get_True_vec([0,2,3,4]))
+    indx_list.append(get_True_vec([0,1,2,3,4,5,12]))
+    indx_list.append(get_True_vec([1,5,12]))
+    indx_list.append(get_True_vec([6,8]))
+    indx_list.append(get_True_vec([7,9]))
+    indx_list.append(get_True_vec([6,7,8,9]))
+    indx_list.append(get_True_vec([10,11]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
     # MCMC moves (move, percentage of draws)
-    cov_ = (np.cov(start_params,rowvar=False) + 1e-7 * np.eye(ndim) ) * 2.38**2 / ndim
     moves = [
-        # (GaussianMove({"emri": cov_}, factor=10, gibbs_setup=gibbs_setup), 0.5),
-        StretchMove(live_dangerously=True, gibbs_setup=gibbs_setup, use_gpu=use_gpu)
+        GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=0.1)
+        # (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None),0.5),
+        # (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.5)
     ]
+
+    def update_covariance_matrix(covariance_matrix, sample_covariance_matrix, learning_rate):
+        """Updates the covariance matrix using a running average.
+
+        Args:
+            covariance_matrix: The current covariance matrix.
+            sample_covariance_matrix: The sample covariance matrix of the current iteration.
+            learning_rate: A learning rate parameter.
+
+        Returns:
+            The updated covariance matrix.
+        """
+
+        updated_covariance_matrix = (1 - learning_rate) * covariance_matrix + learning_rate * sample_covariance_matrix
+        return updated_covariance_matrix
 
     def get_time(i, res, samp):
         maxit = int(samp.iteration*0.5)
@@ -414,15 +442,22 @@ def run_emri_pe(
         #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
         
         if i % 50 == 0:
-            print("max last loglike", np.max(samp.get_log_like()[-1]))
+            print("max last loglike", samp.get_log_like()[-1])
             for el,name in zip(samp.moves,samp.move_keys):
                 print(name, el.acceptance_fraction)
         
-            # if (i>50)and(i<1000):
-            #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+            if (i>50)and(i<1000):
+                samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+                prev_cov = samp.moves[0].all_proposal['emri'].scale.copy() 
+                learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
+                samp.moves[0].all_proposal['emri'].scale = update_covariance_matrix(prev_cov,samp_cov,learning_reate) 
+                samp.moves[0].swap_walkers=1-learning_reate
+            else:
+                samp.moves[0].swap_walkers=None
         
-        # if i==1000:
-        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+        if i==1000:
+            samp.moves[0].swap_walkers=None
+            samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
         
         return False
     from eryn.backends import HDFBackend
@@ -446,7 +481,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": np.inf},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e3},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -513,9 +548,9 @@ if __name__ == "__main__":
 
     logprior = False
     if logprior:
-        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./results_mcmc/MCMC_adaptive_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./results_mcmc/MCMC_adaptive_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
