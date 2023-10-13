@@ -15,7 +15,7 @@ ntemps=1
 nsteps=500000
 
 # ---------------------------------------------------------
-dev=6
+dev=1
 # Create a dynamic output filename
 output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
@@ -23,7 +23,7 @@ output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_
 nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps > $output_filename &
 
 # ---------------------------------------------------------
-dev=0
+dev=5
 e0=0.1
 # Create a dynamic output filename
 output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
@@ -33,7 +33,7 @@ nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0
 
 e0=0.4
 # ---------------------------------------------------------
-dev=1
+dev=7
 Tobs=4
 dt=30
 # Create a dynamic output filename
