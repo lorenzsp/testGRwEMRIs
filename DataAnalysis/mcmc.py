@@ -31,9 +31,10 @@ import numpy as np
 from eryn.state import State
 from eryn.ensemble import EnsembleSampler
 from eryn.prior import ProbDistContainer, uniform_dist
+from eryn.backends import HDFBackend
 import corner
 from lisatools.utils.utility import AET
-from eryn.moves import StretchMove, GaussianMove
+from eryn.moves import StretchMove, GaussianMove, DIMEMove
 
 from lisatools.sampling.likelihood import Likelihood
 from lisatools.diagnostic import *
@@ -101,6 +102,70 @@ few_gen = GenerateEMRIWaveform(
     use_gpu=use_gpu,
     frame="detector"
 )
+
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d import proj3d
+
+class Arrow3D(FancyArrowPatch):
+    def __init__(self, xs, ys, zs, *args, **kwargs):
+        super().__init__((0,0), (0,0), *args, **kwargs)
+        self._verts3d = xs, ys, zs
+
+    def do_3d_projection(self, renderer=None):
+        xs3d, ys3d, zs3d = self._verts3d
+        xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, self.axes.M)
+        self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
+
+        return np.min(zs)
+
+def get_plot_sky_location(qK,phiK,qS,phiS,name=None):
+    # draw the SSB frame
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    arrow_prop_dict = dict(mutation_scale=20, arrowstyle='->')
+
+    a = Arrow3D([0, 1], [0, 0], [0, 0], **arrow_prop_dict, color='k')
+    ax.add_artist(a)
+    a = Arrow3D([0, 0], [0, 1], [0, 0], **arrow_prop_dict, color='k')
+    ax.add_artist(a)
+    a = Arrow3D([0, 0], [0, 0], [0, 1], **arrow_prop_dict, color='k',label='SSB')
+    ax.add_artist(a)
+
+    ax.text(1.1, 0, 0, r'$x$')
+    ax.text(0, 1.1, 0, r'$y$')
+    ax.text(0, 0, 1.1, r'$z$')
+
+    # sky direction
+    th, ph, lab = qS, phiS, 'Sky location'
+    x_ = np.sin(th) * np.cos(ph)
+    y_ = np.sin(th) * np.sin(ph)
+    z_ = np.cos(th)
+    a = Arrow3D([0, x_], [0, y_], [0, z_], **arrow_prop_dict, color='blue', label=lab)
+    ax.add_artist(a)
+    ax.scatter(x_,y_,z_,s=40,label='source')
+
+    # sky spin
+    th, ph, lab = qK, phiK, 'MBH Spin'
+    x_s = np.sin(th) * np.cos(ph)
+    y_s = np.sin(th) * np.sin(ph)
+    z_s = np.cos(th)
+    a = Arrow3D([x_, x_+x_s], [y_, y_+y_s], [z_, z_+z_s], **arrow_prop_dict, color='red', label=lab)
+    ax.add_artist(a)
+
+    ax.view_init(azim=-70, elev=20)
+    ax.set_xlim([-1.5,1.5])
+    ax.set_ylim([-1.5,1.5])
+    ax.set_zlim([-1.5,1.5])
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ax.set_zticks([])
+    plt.legend()
+    if name is None:
+        plt.savefig('skylocalization.pdf')
+    else:
+        plt.savefig(name)
 
 # function call
 def run_emri_pe(
@@ -270,6 +335,7 @@ def run_emri_pe(
 
     emri_injection_params[6] *= dist_factor
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
+    print("new distance based on SNR", emri_injection_params)
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     # get AE
@@ -352,7 +418,7 @@ def run_emri_pe(
     try:
         cov = np.load(fp[:-3] +"covariance.npy")
     except:
-        cov = 1e-7 * np.eye(ndim) / ndim
+        cov = 1e-12 * np.eye(ndim) / ndim
 
     start_like = np.zeros((nwalkers * ntemps))
     
@@ -415,8 +481,9 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=0.1)
-        # (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None),0.5),
+        (DIMEMove(live_dangerously=True),0.8),
+        # GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None)
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=0.9),0.2),
         # (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.5)
     ]
 
@@ -443,24 +510,25 @@ def run_emri_pe(
         
         if i % 50 == 0:
             print("max last loglike", samp.get_log_like()[-1])
-            for el,name in zip(samp.moves,samp.move_keys):
-                print(name, el.acceptance_fraction)
+            print("acceptance", samp.acceptance_fraction )
+            # for el,name in zip(samp.moves,samp.move_keys):
+            #     print(name, el.acceptance_fraction)
         
             if (i>50)and(i<1000):
                 samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
-                prev_cov = samp.moves[0].all_proposal['emri'].scale.copy() 
+                prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
                 learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
-                samp.moves[0].all_proposal['emri'].scale = update_covariance_matrix(prev_cov,samp_cov,learning_reate) 
-                samp.moves[0].swap_walkers=1-learning_reate
+                samp.moves[1].all_proposal['emri'].scale = samp_cov # update_covariance_matrix(prev_cov,samp_cov,learning_reate) 
+                samp.moves[1].swap_walkers= 0.9 # 1-learning_reate
             else:
-                samp.moves[0].swap_walkers=None
+                samp.moves[1].swap_walkers=None
         
         if i==1000:
-            samp.moves[0].swap_walkers=None
-            samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+            samp.moves[1].swap_walkers=None
+            samp.moves[1].all_proposal['emri'].scale = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
         
         return False
-    from eryn.backends import HDFBackend
+    
 
     # check for previous runs
     try:
@@ -517,10 +585,11 @@ if __name__ == "__main__":
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
-    qK = np.pi/4  # polar spin angle
-    phiK = np.pi/3  # azimuthal viewing angle
-    qS = np.pi/4  # polar sky angle
-    phiS = np.pi/3  # azimuthal viewing angle
+    qK = np.pi/12  # polar spin angle
+    phiK = np.pi  # azimuthal viewing angle
+    qS = np.pi/3 # polar sky angle
+    phiS = 3*np.pi/4 # azimuthal viewing angle
+    get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
     Phi_phi0 = np.pi/2
     Phi_theta0 = 0.0
@@ -548,9 +617,9 @@ if __name__ == "__main__":
 
     logprior = False
     if logprior:
-        fp = f"./results_mcmc/MCMC_adaptive_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_adaptive_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
@@ -587,4 +656,3 @@ if __name__ == "__main__":
         emri_kwargs=waveform_kwargs,
         log_prior=logprior
     )
-
