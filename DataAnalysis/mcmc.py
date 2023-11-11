@@ -273,9 +273,9 @@ def run_emri_pe(
             {
                 0: uniform_dist(np.log(1e5), np.log(5e6)),  # ln M
                 1: uniform_dist(np.log(1.0), np.log(100.0)),  # ln mu
-                2: uniform_dist(0.0, 1.0),  # a
-                3: uniform_dist(6.0, 20.0),  # p0
-                4: uniform_dist(0.01, 0.45),  # e0
+                2: uniform_dist(0.0, 0.99),  # a
+                3: uniform_dist(7.0, 16.0),  # p0
+                4: uniform_dist(0.05, 0.45),  # e0
                 5: uniform_dist(0.01, 100.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -481,10 +481,9 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        (DIMEMove(live_dangerously=True),0.8),
-        # GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None)
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=0.9),0.2),
-        # (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.5)
+        (DIMEMove(live_dangerously=True),0.33),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None),0.33),
+        (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.33)
     ]
 
     def update_covariance_matrix(covariance_matrix, sample_covariance_matrix, learning_rate):
@@ -549,7 +548,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e3},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e1},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
