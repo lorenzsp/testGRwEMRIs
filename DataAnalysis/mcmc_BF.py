@@ -1,4 +1,4 @@
-# python mcmc_BF.py -Tobs 2 -dt 15.0 -M 1e6 -mu 1e1 -a 0.9 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 16 -ntemps 3 -nsteps 1000
+# python mcmc_BF.py -Tobs 2 -dt 15.0 -M 5e+05 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 1 -nwalkers 32 -ntemps 2 -nsteps 1000
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(1)
@@ -194,9 +194,10 @@ def run_emri_pe(
     
     if log_prior:
         emri_injection_params[-1] = np.log(1e-20)
-        prior_charge = uniform_dist(np.log(1e-20) , np.log(5e-1))
+        prior_charge = uniform_dist(np.log(1e-7) , np.log(1.0))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
+
 
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
@@ -345,14 +346,14 @@ def run_emri_pe(
         branch_names[ii]: np.zeros((ntemps, nwalkers, nleaves_max[ii], ndims[ii])) for ii in range(len(ndims))
     }
     # generate starting points
+    chain = np.loadtxt("results_mcmc/MCMC_new_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_T2.0_seed26011996_nw64_nt1_params")[-ntemps*nwalkers*nleaves_max[0]:,:-1]
     factor = 1e-7
-    cov = np.eye(ndim)*1e-12#np.load("covariance.npy")[:-1,:-1]    
-    tmp = np.random.multivariate_normal(emri_injection_params_in[:-1], factor*cov,size=(ntemps, nwalkers, nleaves_max[0]))
-    coords["emri"] = tmp.copy()
-    coords["bgr"] = priors["bgr"].rvs(size=(ntemps, nwalkers, nleaves_max[1]))
+    cov = np.cov(chain,rowvar=False) * factor #np.eye(ndim)*1e-15
+    coords["emri"] = chain.reshape((ntemps, nwalkers, nleaves_max[1],ndim))
+    coords["bgr"] = np.random.normal(emri_injection_params_in[-1], factor, size=(ntemps, nwalkers, nleaves_max[1],1)) #priors['bgr'].rvs(size=(ntemps, nwalkers, nleaves_max[1])) #
     inds["emri"][...]=True
     inds["bgr"][...]=np.array(np.random.randint(2,size=(ntemps, nwalkers, nleaves_max[1])),dtype=bool)
-
+    
     # gibbs sampling
     update_all = np.repeat(True,ndim)
     update_none = np.repeat(False,ndim)
@@ -364,36 +365,37 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,1,2,3,4,5,8,9,10,11]))
-    indx_list.append(get_True_vec([6,7]))
+    indx_list.append(get_True_vec([0,2,3,4]))
+    indx_list.append(get_True_vec([0,1,2,3,4,5]))
+    indx_list.append(get_True_vec([1,5]))
+    indx_list.append(get_True_vec([6,8]))
+    indx_list.append(get_True_vec([7,9]))
+    indx_list.append(get_True_vec([6,7,8,9]))
+    indx_list.append(get_True_vec([10,11]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
+    gibbs_setup += [("bgr",None)]
     
     # MCMC moves (move, percentage of draws)
-    # cov_ = (np.cov(start_params,rowvar=False) + 1e-7 * np.eye(ndim) ) * 2.38**2 / ndim
-    moves = [
-        # (GaussianMove({"emri": cov_}, factor=10, gibbs_setup=gibbs_setup), 0.5),
-        StretchMove(live_dangerously=True, gibbs_setup=gibbs_setup,use_gpu=use_gpu)
-    ]
+    tomove = {"emri": cov, "bgr": np.eye(1)}
+    moves = GaussianMove(tomove, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None)
 
     def get_time(i, res, samp):
         maxit = int(samp.iteration*0.5)
 
-        # if i==0:
-        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
-        
         if i % 50 == 0:
-            print("max last loglike", np.max(samp.get_log_like()[-1]))
-            for el,name in zip(samp.moves,samp.move_keys):
-                print(name, el.acceptance_fraction)
+            print("max last loglike", samp.get_log_like()[-1])
+            print("acceptance", samp.acceptance_fraction )
         
-            # if (i>50)and(i<1000):
-            #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
-        
-        # if i==1000:
-        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
+            if (i>50)and(i<1000):
+                for ii, el in enumerate(branch_names):
+                    item_samp = samp.get_chain()[el][-maxit:,0][samp.get_inds()[el][-maxit:,0]]
+                    for mm in samp.moves:
+                        mm.all_proposal[el].scale = 2.38**2 / ndims[ii] * (np.cov(item_samp,rowvar=False) + 1e-6 * np.eye(ndims[ii]))
         
         return False
+
     from eryn.backends import HDFBackend
 
     # check for previous runs
@@ -430,7 +432,7 @@ def run_emri_pe(
         ndims,  # assumes ndim_max
         my_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 100},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 2, "adaptive": True},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -474,16 +476,19 @@ if __name__ == "__main__":
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
-    qK = np.pi/3  # polar spin angle
-    phiK = np.pi/3  # azimuthal viewing angle
-    qS = np.pi/3  # polar sky angle
-    phiS = np.pi/3  # azimuthal viewing angle
+    qK = np.pi/12  # polar spin angle
+    phiK = np.pi  # azimuthal viewing angle
+    qS = np.pi/3 # polar sky angle
+    phiS = 3*np.pi/4 # azimuthal viewing angle
     dist = 3.0  # distance
     Phi_phi0 = np.pi/2
     Phi_theta0 = 0.0
     Phi_r0 = np.pi/2
     charge = args['charge']
-
+    
+    # alpha_lvk = 10**0.8 / 10
+    # d = (alpha_lvk/(5*MRSUN_SI/1e3))**2 / 2
+    # 0.003651653199713658
     Tobs = args["Tobs"]  # years
     dt = args["dt"]  # seconds
 
