@@ -289,6 +289,8 @@ def run_emri_pe(
         )
     
     print("SNR",check_snr)
+    np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
+    
     if use_gpu:
         ffth = xp.fft.rfft(data_channels[0])
         fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
@@ -346,12 +348,10 @@ def run_emri_pe(
         branch_names[ii]: np.zeros((ntemps, nwalkers, nleaves_max[ii], ndims[ii])) for ii in range(len(ndims))
     }
     # generate starting points
-    chain = np.loadtxt("results_mcmc/MCMC_new_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_T2.0_seed26011996_nw64_nt1_params")[-ntemps*nwalkers*nleaves_max[0]:,:-1]
-    factor = 1e-7
-    cov = np.cov(chain,rowvar=False) * factor #np.eye(ndim)*1e-15
-    coords["emri"] = chain.reshape((ntemps, nwalkers, nleaves_max[1],ndim))
-    coords["bgr"] = np.random.normal(emri_injection_params_in[-1], factor, size=(ntemps, nwalkers, nleaves_max[1],1)) #priors['bgr'].rvs(size=(ntemps, nwalkers, nleaves_max[1])) #
-    inds["emri"][...]=True
+    factor = 1.0
+    cov = np.eye(ndim)*1e-20
+    coords["emri"] = np.random.multivariate_normal(emri_injection_params_in[:-1], factor*cov, size=(ntemps, nwalkers, nleaves_max[0]))
+    coords["bgr"] = np.random.normal(emri_injection_params_in[-1], 1e-20, size=(ntemps, nwalkers, nleaves_max[1],1)) #priors['bgr'].rvs(size=(ntemps, nwalkers, nleaves_max[1])) #
     inds["bgr"][...]=np.array(np.random.randint(2,size=(ntemps, nwalkers, nleaves_max[1])),dtype=bool)
     
     # gibbs sampling
@@ -365,13 +365,13 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    indx_list.append(get_True_vec([0,2,3,4]))
-    indx_list.append(get_True_vec([0,1,2,3,4,5]))
-    indx_list.append(get_True_vec([1,5]))
-    indx_list.append(get_True_vec([6,8]))
-    indx_list.append(get_True_vec([7,9]))
-    indx_list.append(get_True_vec([6,7,8,9]))
-    indx_list.append(get_True_vec([10,11]))
+    import itertools
+    stuff = np.arange(ndim)
+    list_comb = []
+    for subset in itertools.combinations(stuff, 2):
+        list_comb.append(subset)
+    [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+
     indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
@@ -420,7 +420,7 @@ def run_emri_pe(
     def my_like(params, groups, inds=None, **kwargs):
 
         emri_par, bgr_par = params
-        to_eval = np.zeros((emri_par.shape[0],emri_par.shape[1]+1))-50.0
+        to_eval = np.zeros((emri_par.shape[0],emri_par.shape[1]+1))
 
         to_eval[groups[0],:-1] = emri_par.copy()
         to_eval[groups[1],-1:] = bgr_par.copy()
