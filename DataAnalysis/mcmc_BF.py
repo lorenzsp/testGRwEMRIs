@@ -379,7 +379,10 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     tomove = {"emri": cov, "bgr": np.eye(1)}
-    moves = GaussianMove(tomove, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None)
+    moves = [
+        (GaussianMove(tomove, mode="AM", factor=100, indx_list=gibbs_setup),0.5),
+        (GaussianMove(tomove, mode="Gaussian", factor=100, indx_list=gibbs_setup),0.5)
+        ]
 
     def get_time(i, res, samp):
         maxit = int(samp.iteration*0.5)
@@ -390,7 +393,7 @@ def run_emri_pe(
         
             if (i>50)and(i<1000):
                 for ii, el in enumerate(branch_names):
-                    item_samp = samp.get_chain()[el][-maxit:,0][samp.get_inds()[el][-maxit:,0]]
+                    item_samp = samp.get_chain()[el][-maxit:,:][samp.get_inds()[el][-maxit:,:]]
                     for mm in samp.moves:
                         mm.all_proposal[el].scale = 2.38**2 / ndims[ii] * (np.cov(item_samp,rowvar=False) + 1e-6 * np.eye(ndims[ii]))
         

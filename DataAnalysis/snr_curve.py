@@ -114,7 +114,7 @@ def get_redshift(distance):
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 def get_p0(M, mu, a, e0, x0, Tobs):
     # fix p0 given T
-    p0 = get_p_at_t(traj,Tobs * 0.9999,[M, mu, a, e0, x0, 0.0],bounds=[get_separatrix(a,e0,x0)+0.1, 40.0])
+    p0 = get_p_at_t(traj,Tobs * 0.9999,[M, mu, a, e0, x0, 0.0],bounds=[get_separatrix(a,e0,x0)+0.1, 30.0])
     print("new p0 fixed by Tobs, p0=", p0, traj(M, mu, a, p0, e0, x0, T=10.0)[0][-1]/YRSID_SI)
     return p0
 
@@ -271,10 +271,8 @@ def run_emri_pe(
     logmu = np.log(mu)
     logM = np.log(M)
     snrhere = get_snr_avg(logM, logmu, a, e0, x0, Tobs, avg_n=500)
-    print('snr',snrhere)
-    z = get_redshift(snrhere/20.0)
-    print("redshift",z)
-    np.savetxt(f'./horizon_z/M{M}_redshift.txt',np.asarray([M, z]))
+    d_L = snrhere/20.0
+    np.savetxt(f'./horizon_z/M{M}_redshift.txt',np.asarray([logM, logmu, a, e0, x0, Tobs, d_L]))
 
     # plt.figure()
     # plt.title(f"spin={a}, e0={e0}, mu={mu}", fontsize=15)
