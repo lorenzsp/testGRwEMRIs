@@ -461,45 +461,39 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    # import itertools
-    # stuff = np.arange(ndim)
-    # list_comb = []
-    # for subset in itertools.combinations(stuff, 2):
-    #     list_comb.append(subset)
-    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+    import itertools
+    stuff = np.asarray([0,1,2,3,4,12])
+    list_comb = []
+    for subset in itertools.combinations(stuff, 2):
+        list_comb.append(subset)
+    [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+    
+    stuff = np.asarray([5,6,7,8,9,10,11])
+    list_comb = []
+    for subset in itertools.combinations(stuff, 2):
+        list_comb.append(subset)
+    [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
 
-    indx_list.append(get_True_vec([0,2,3,4]))
-    indx_list.append(get_True_vec([0,1,2,3,4,5,12]))
-    indx_list.append(get_True_vec([1,5,12]))
-    indx_list.append(get_True_vec([6,8]))
-    indx_list.append(get_True_vec([7,9]))
-    indx_list.append(get_True_vec([6,7,8,9]))
-    indx_list.append(get_True_vec([10,11]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
+    # indx_list.append(get_True_vec([0,2,3,4]))
+    # indx_list.append(get_True_vec([0,1,2,3,4,5,12]))
+    # indx_list.append(get_True_vec([1,5,12]))
+    # indx_list.append(get_True_vec([6,8]))
+    # indx_list.append(get_True_vec([7,9]))
+    # indx_list.append(get_True_vec([6,7,8,9]))
+    # indx_list.append(get_True_vec([10,11]))
+    # indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
+    sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
+    
     # MCMC moves (move, percentage of draws)
     moves = [
-        (DIMEMove(live_dangerously=True),0.33),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None),0.33),
+        # (DIMEMove(live_dangerously=True),0.33),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.33),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.33),
         (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.33)
     ]
-
-    def update_covariance_matrix(covariance_matrix, sample_covariance_matrix, learning_rate):
-        """Updates the covariance matrix using a running average.
-
-        Args:
-            covariance_matrix: The current covariance matrix.
-            sample_covariance_matrix: The sample covariance matrix of the current iteration.
-            learning_rate: A learning rate parameter.
-
-        Returns:
-            The updated covariance matrix.
-        """
-
-        updated_covariance_matrix = (1 - learning_rate) * covariance_matrix + learning_rate * sample_covariance_matrix
-        return updated_covariance_matrix
 
     def get_time(i, res, samp):
         maxit = int(samp.iteration*0.5)
@@ -517,14 +511,12 @@ def run_emri_pe(
                 samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
                 prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
                 learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
-                samp.moves[1].all_proposal['emri'].scale = samp_cov # update_covariance_matrix(prev_cov,samp_cov,learning_reate) 
-                samp.moves[1].swap_walkers= 0.9 # 1-learning_reate
-            else:
-                samp.moves[1].swap_walkers=None
+                samp.moves[1].all_proposal['emri'].scale = samp_cov
+                samp.moves[0].all_proposal['emri'].scale = samp_cov
         
         if i==1000:
-            samp.moves[1].swap_walkers=None
             samp.moves[1].all_proposal['emri'].scale = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+            samp.moves[0].all_proposal['emri'].scale = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
         
         return False
     
@@ -616,9 +608,9 @@ if __name__ == "__main__":
 
     logprior = False
     if logprior:
-        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./test/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./test/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
