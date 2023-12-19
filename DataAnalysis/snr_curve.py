@@ -1,4 +1,4 @@
-# python snr_curve.py -Tobs 2 -dt 15.0 -dev 0 -M 1e6 -mu 30.0, -e0 0.3 -a 0.95 -x0 1.0
+# python snr_curve.py -Tobs 2 -dt 15.0 -dev 7 -M 1e6 -mu 30.0 -e0 0.3 -a 0.95 -x0 1.0
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(1)
@@ -226,6 +226,12 @@ def run_emri_pe(
             }
         ) 
     }
+    bounds = [[priors["emri"].priors[i][1].min_val, priors["emri"].priors[i][1].max_val]  for i in range(len(emri_injection_params_in))]
+
+    
+    # sky_range = np.asarray([np.linspace(*bounds[el],num=10) for el in [6,7,8,9]])
+    inp = np.asarray([np.linspace(bounds[el][0],bounds[el][1],num=10) for el in [6,7,8,9]])
+    cosqS_range, phiS_range, cosqK_range, phiK_range = np.meshgrid(*inp)
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -245,8 +251,43 @@ def run_emri_pe(
     )
 
     # get injected parameters after transformation
-
+    true_channels = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None,:])[0], **emri_kwargs)
     inner_kw = dict(dt=dt,PSD="noisepsd_AE",PSD_args=(),PSD_kwargs={},use_gpu=use_gpu)
+    
+    def overlap(cosqS_range, phiS_range, cosqK_range, phiK_range):
+        here_p = emri_injection_params_in.copy()
+        here_p[6] = cosqS_range
+        here_p[7] = phiS_range
+        here_p[8] = cosqK_range
+        here_p[9] = phiK_range
+        data_channels = wave_gen(*transform_fn.both_transforms(here_p[None,:])[0], **emri_kwargs)
+        return inner_product(data_channels, true_channels,normalize=True,**inner_kw).get()
+        # return snr([data_channels[0], data_channels[1]],**inner_kw).get()
+    
+
+    # to check SNR as a function of the sky loc
+    import healpy as hp
+    NSIDE = 8
+    NPIX = hp.nside2npix(NSIDE)
+    print("NPIX",NPIX)
+    theta, phi = hp.pix2ang(nside=NSIDE, ipix=np.arange(NPIX))
+    vec_test=[]
+    for i in range(NPIX):
+        test_sky = emri_injection_params_in[6:10].copy()
+        # spin or
+        # test_sky[2] = np.cos(theta[i])
+        # test_sky[3] = phi[i]
+        
+        test_sky[2] = np.cos(theta[i])
+        test_sky[3] = phi[i]
+        vec_test.append(test_sky)
+    snr_sky = np.asarray([overlap(*el) for el in vec_test])
+
+    plt.figure();hp.mollview(snr_sky);plt.savefig('sky')
+    breakpoint()
+
+    
+    
     
     def get_snr(inp):
         data_channels = wave_gen(*inp, **emri_kwargs)
@@ -272,7 +313,7 @@ def run_emri_pe(
     logM = np.log(M)
     snrhere = get_snr_avg(logM, logmu, a, e0, x0, Tobs, avg_n=500)
     d_L = snrhere/20.0
-    np.savetxt(f'./horizon_z/M{M}_redshift.txt',np.asarray([logM, logmu, a, e0, x0, Tobs, d_L]))
+    # np.savetxt(f'./horizon_z/M{M}_redshift.txt',np.asarray([logM, logmu, a, e0, x0, Tobs, d_L]))
 
     # plt.figure()
     # plt.title(f"spin={a}, e0={e0}, mu={mu}", fontsize=15)
