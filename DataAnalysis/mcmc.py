@@ -490,9 +490,9 @@ def run_emri_pe(
     # MCMC moves (move, percentage of draws)
     moves = [
         # (DIMEMove(live_dangerously=True),0.33),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.33),
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.33),
-        (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.33)
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.7),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.3),
+        # (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.33)
     ]
 
     def get_time(i, res, samp):
@@ -509,14 +509,15 @@ def run_emri_pe(
         
             if (i>50)and(i<1000):
                 samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
-                prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
-                learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
+                # prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
+                # learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
                 samp.moves[1].all_proposal['emri'].scale = samp_cov
                 samp.moves[0].all_proposal['emri'].scale = samp_cov
         
         if i==1000:
-            samp.moves[1].all_proposal['emri'].scale = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
-            samp.moves[0].all_proposal['emri'].scale = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+            samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+            samp.moves[1].all_proposal['emri'].scale = samp_cov
+            samp.moves[0].all_proposal['emri'].scale = samp_cov
         
         return False
     
@@ -608,9 +609,9 @@ if __name__ == "__main__":
 
     logprior = False
     if logprior:
-        fp = f"./results_mcmc/MCMC_new_snr25_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_new_snr25_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
