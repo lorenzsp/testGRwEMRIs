@@ -10,8 +10,8 @@ p0=13.0
 e0=0.4
 x0=1.0
 charge=0.0
-nwalkers=32
-ntemps=2
+nwalkers=16
+ntemps=3
 nsteps=500000
 
 # ---------------------------------------------------------
@@ -76,7 +76,6 @@ output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_
 nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps > $output_filename &
 
 # # ---------------------------------------------------------
-
 # dev=5
 # Tobs=2
 # M=1e6

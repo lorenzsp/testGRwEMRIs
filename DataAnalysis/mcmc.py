@@ -417,6 +417,7 @@ def run_emri_pe(
     factor = 1e-7
     try:
         cov = np.load(fp[:-3] +"covariance.npy")
+        print("covariance imported")
     except:
         cov = 1e-12 * np.eye(ndim) / ndim
 
@@ -461,27 +462,23 @@ def run_emri_pe(
         return out
     
     # gibbs variables
-    import itertools
-    stuff = np.asarray([0,1,2,3,4,12])
-    list_comb = []
-    for subset in itertools.combinations(stuff, 2):
-        list_comb.append(subset)
-    [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+    # import itertools
+    # stuff = np.asarray([0,1,2,3,4,12])
+    # list_comb = []
+    # for subset in itertools.combinations(stuff, 2):
+    #     list_comb.append(subset)
+    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
-    stuff = np.asarray([5,6,7,8,9,10,11])
-    list_comb = []
-    for subset in itertools.combinations(stuff, 2):
-        list_comb.append(subset)
-    [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+    # stuff = np.asarray([5,6,7,8,9,10,11])
+    # list_comb = []
+    # for subset in itertools.combinations(stuff, 2):
+    #     list_comb.append(subset)
+    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
 
     # indx_list.append(get_True_vec([0,2,3,4]))
-    # indx_list.append(get_True_vec([0,1,2,3,4,5,12]))
-    # indx_list.append(get_True_vec([1,5,12]))
-    # indx_list.append(get_True_vec([6,8]))
-    # indx_list.append(get_True_vec([7,9]))
-    # indx_list.append(get_True_vec([6,7,8,9]))
-    # indx_list.append(get_True_vec([10,11]))
-    # indx_list.append(get_True_vec(np.arange(ndim)))
+    indx_list.append(get_True_vec([0,1,2,3,4,12]))
+    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
     
@@ -497,25 +494,31 @@ def run_emri_pe(
 
     def get_time(i, res, samp):
         maxit = int(samp.iteration*0.5)
+        current_it = samp.iteration
 
-        # if i==0:
-        #     samp.moves[0].all_proposal['emri'].scale = (np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) + 1e-7 * np.eye(ndim))* 2.38**2 / ndim
-        
-        if i % 50 == 0:
+        if (current_it>50)and(current_it % 50 == 0):
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
             # for el,name in zip(samp.moves,samp.move_keys):
             #     print(name, el.acceptance_fraction)
         
-            if (i>50)and(i<1000):
-                samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+            if (current_it<1000):
+                chain = samp.get_chain(discard=maxit)['emri']
+                inds = samp.get_inds(discard=maxit)['emri']
+                to_cov = chain[inds]
+                
+                samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
                 # prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
                 # learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
                 samp.moves[1].all_proposal['emri'].scale = samp_cov
                 samp.moves[0].all_proposal['emri'].scale = samp_cov
         
-        if i==1000:
-            samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+        if current_it==1000:
+            # samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
+            chain = samp.get_chain(discard=maxit)['emri']
+            inds = samp.get_inds(discard=maxit)['emri']
+            to_cov = chain[inds]
+            samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             samp.moves[1].all_proposal['emri'].scale = samp_cov
             samp.moves[0].all_proposal['emri'].scale = samp_cov
         
@@ -541,7 +544,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e1},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e1, "adaptive": True},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
