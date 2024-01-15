@@ -177,7 +177,8 @@ def run_emri_pe(
     nwalkers,
     nsteps,
     emri_kwargs={},
-    log_prior=False
+    log_prior=False,
+    source_SNR=50.0
 ):
 
     # sets the proper number of points and what not
@@ -331,7 +332,7 @@ def run_emri_pe(
         PSD_kwargs={},
         use_gpu=use_gpu,
         )
-    dist_factor = check_snr.get() / 50.0
+    dist_factor = check_snr.get() / source_SNR
 
     emri_injection_params[6] *= dist_factor
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
