@@ -2,17 +2,17 @@
 
 # Assign variables to each parameter
 Tobs=2
-dt=15.0
+dt=10.0
 M=0.5e6
 mu=5.0
 a=0.95
 p0=13.0
 e0=0.4
 x0=1.0
-charge=0.00014606612798854626
+charge=0.001
 # 0.003651653199713658
-nwalkers=32
-ntemps=2
+nwalkers=8
+ntemps=3
 nsteps=500000
 
 # ---------------------------------------------------------

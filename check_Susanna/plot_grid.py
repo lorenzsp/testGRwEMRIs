@@ -7,6 +7,7 @@ from few.trajectory.inspiral import EMRIInspiral
 from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
+from few.utils.utility import get_p_at_t, get_separatrix
 
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 # run trajectory
@@ -85,10 +86,18 @@ e0=0.4
 x0=1.0
 e0=0.4
 
-p0=get_separatrix(a,e0,1.0) + 2.0
+p0 = get_p_at_t(
+        traj,
+        2.0 * 0.999,
+        [M, mu, a, e0, x0, 0.0],
+        bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
+    )
+
+# p0=get_separatrix(a,e0,1.0) + 2.0
 charge = 0.0
 
 ind = find_closest_value_indices(grid[:,0],a,)
+
 mask = (grid[:,0]== grid[ind,0])
 
 
@@ -98,9 +107,9 @@ plt.plot(p,e,'.')
 plt.plot(grid[mask,1],grid[mask,2],'x')
 plt.xlabel('p')
 plt.ylabel('e')
-plt.xlim(2,5)
+plt.xlim(1,5)
 plt.tight_layout()
-plt.show()
+plt.savefig('grid_plot')
 
 out_deriv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p, e, np.ones_like(p)*x0)])
 
@@ -110,4 +119,4 @@ plt.plot(p,out_deriv[:,0],'x')
 plt.xlabel('p')
 plt.ylabel('flux')
 plt.tight_layout()
-plt.show()
+plt.savefig('rhs_ode')
