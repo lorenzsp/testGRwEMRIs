@@ -272,7 +272,7 @@ void KerrEccentricEquatorial::deriv_func(double* pdot, double* edot, double* xdo
     // Fluxes in E,L from Chebyshev
     double pdot_out, edot_out, xdot_out;
     // sign of function
-    double factor = additional_args[0]*additional_args[0]/4;
+    double factor = additional_args[0]*additional_args[0]/4.0;
     // cout << factor << endl;
     
     Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);

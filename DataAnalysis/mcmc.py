@@ -19,6 +19,7 @@ parser.add_argument("-dt", "--dt", help="sampling interval delta t", required=Fa
 parser.add_argument("-nwalkers", "--nwalkers", help="number of MCMC walkers", required=True, type=int)
 parser.add_argument("-ntemps", "--ntemps", help="number of MCMC temperatures", required=True, type=int)
 parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", required=False, type=int, default=1000)
+parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, default=50.0)
 args = vars(parser.parse_args())
 
 os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
@@ -76,7 +77,7 @@ insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
     "max_init_len": int(1e4),
-    "func":"KerrEccentricEquatorial"
+    "func":"KerrEccentricEquatorial",
     }
 
 # keyword arguments for summation generator (AAKSummation)
@@ -103,6 +104,20 @@ few_gen = GenerateEMRIWaveform(
     frame="detector"
 )
 
+def pad_to_next_power_of_2(arr):
+    original_length = len(arr)
+    next_power_of_2 = int(2 ** np.ceil(np.log2(original_length)))
+
+    # Calculate the amount of padding needed
+    pad_length = next_power_of_2 - original_length
+
+    # Pad the array with zeros
+    padded_arr = np.pad(arr, (0, pad_length), mode='constant')
+
+    return padded_arr
+
+# def few_gen(*args, **kwargs):
+#     return pad_to_next_power_of_2(few_gen_tmp(*args, **kwargs))
 
 from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.patches import FancyArrowPatch
@@ -194,7 +209,7 @@ def run_emri_pe(
     orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
 
-    tdi_gen = "1st generation"
+    tdi_gen = "2nd generation"
 
     order = 25  # interpolation order (should not change the result too much)
     tdi_kwargs_esa = dict(
@@ -205,7 +220,7 @@ def run_emri_pe(
     index_beta = 7
 
     # with longer signals we care less about this
-    t0 = 40000.0  # throw away on both ends when our orbital information is weird
+    t0 = 10000.0  # throw away on both ends when our orbital information is weird
    
     wave_gen = ResponseWrapper(
         few_gen,
@@ -260,7 +275,7 @@ def run_emri_pe(
     emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
     
     if log_prior:
-        emri_injection_params[-1] = np.log(1e-20)
+        emri_injection_params[-1] = np.log(1e-50)
         prior_charge = uniform_dist(np.log(1e-7) , np.log(1.0))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
@@ -340,7 +355,10 @@ def run_emri_pe(
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     # get AE
+    tic = time.perf_counter()
     data_channels = wave_gen(*injection_in, **emri_kwargs)
+    toc = time.perf_counter()
+    print("timing",toc-tic, "len vec", len(data_channels[0]))
 
     check_snr = snr([data_channels[0], data_channels[1]],
         dt=dt,
@@ -352,7 +370,7 @@ def run_emri_pe(
     
     print("SNR",check_snr)
     if use_gpu:
-        ffth = xp.fft.rfft(data_channels[0])
+        ffth = xp.fft.rfft(data_channels[0])*dt
         fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
         PSD_arr = get_sensitivity(fft_freq, sens_fn="noisepsd_AE")
 
@@ -360,6 +378,7 @@ def run_emri_pe(
         plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
         plt.loglog(fft_freq.get(), PSD_arr.get())
         plt.savefig(fp[:-3] + "injection_fd.pdf")
+        # plt.savefig("injection_fd.pdf")
 
         plt.figure()
         plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
@@ -383,6 +402,8 @@ def run_emri_pe(
         plt.ylabel('Mismatch')
         plt.xlabel('Charge')
         plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
+        # plt.savefig("mismatch_evolution.pdf")
+        
         
         
     else:
@@ -417,7 +438,17 @@ def run_emri_pe(
     # generate starting points
     factor = 1e-7
     try:
-        cov = np.load(fp[:-3] +"covariance.npy")
+        file  = HDFBackend(fp)
+        burn = int(file.iteration*0.25)
+        thin = 1
+        
+        # chains
+        temp=0
+        mask = np.arange(file.nwalkers)
+        # # get samples
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...][file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]]
+        cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
+        
         print("covariance imported")
     except:
         cov = 1e-12 * np.eye(ndim) / ndim
@@ -428,8 +459,10 @@ def run_emri_pe(
     
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
+    
     if log_prior:
-        tmp[:,-1] = np.random.uniform(np.log(1e-4) , np.log(5e-1),size=nwalkers * ntemps)
+        # uniform_dist(np.log(1e-7) , np.log(1.0))
+        tmp[:,-1] = np.random.uniform(np.log(1e-7) , np.log(1e-3),size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
@@ -442,7 +475,7 @@ def run_emri_pe(
     timelike = (toc-tic)/np.prod(tmp.shape)
     start_params = tmp.copy()
     print("start like",start_like, "in ", timelike," seconds")
-
+    
     start_prior = priors["emri"].logpdf(start_params)
 
     # start state
@@ -587,17 +620,17 @@ if __name__ == "__main__":
     phiS = 3*np.pi/4 # azimuthal viewing angle
     get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
-    Phi_phi0 = np.pi/2
+    Phi_phi0 = np.pi # changed
     Phi_theta0 = 0.0
-    Phi_r0 = np.pi/2
+    Phi_r0 = np.pi  # changed
     charge = args['charge']
 
     Tobs = args["Tobs"]  # years
     dt = args["dt"]  # seconds
+    source_SNR = args["SNR"]
 
     ntemps = args["ntemps"]
     nwalkers = args["nwalkers"]
-
 
     traj = EMRIInspiral(func="KerrEccentricEquatorial")
     # fix p0 given T
@@ -611,11 +644,11 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
-    logprior = False
+    logprior = True
     if logprior:
-        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./results_mcmc/MCMC_new_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
@@ -650,5 +683,6 @@ if __name__ == "__main__":
         nwalkers,
         args['nsteps'],
         emri_kwargs=waveform_kwargs,
-        log_prior=logprior
+        log_prior=logprior,
+        source_SNR=source_SNR,
     )
