@@ -1,4 +1,4 @@
-# python mcmc.py -Tobs 2 -dt 15.0 -M 1e6 -mu 1e1 -a 0.9 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
+# python mcmc.py -Tobs 2 -dt 15.0 -M 5e5 -mu 1e1 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(1)
@@ -659,9 +659,9 @@ if __name__ == "__main__":
 
     logprior = True
     if logprior:
-        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  

@@ -121,7 +121,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'results_mcmc/*charge0.0_*nw16_nt3*'
+init_name = 'final_results/*charge*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -133,11 +133,11 @@ inj_pars = []
 for filename,el in zip(datasets,pars_inj):
     file  = HDFBackend(filename)
     print(filename)
-    print("autocorrelation",file.get_autocorr_time(discard=burn, thin=thin), "\n correlation time N/50",(file.iteration-burn)/50)
+    print(file.get_move_info())
     
     # burn = int(file.iteration*0.30)
     # thin = 5
-    # temp=0
+    # print("autocorrelation",file.get_autocorr_time(discard=burn, thin=thin), "\n correlation time N/50",(file.iteration-burn)/50)
     # mask = np.arange(file.nwalkers)
     
     # # create directory
