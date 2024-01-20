@@ -510,9 +510,9 @@ if __name__ == "__main__":
     qS = np.pi/3 # polar sky angle
     phiS = 3*np.pi/4 # azimuthal viewing angle
     dist = 3.0  # distance
-    Phi_phi0 = np.pi/2
+    Phi_phi0 = np.pi
     Phi_theta0 = 0.0
-    Phi_r0 = np.pi/2
+    Phi_r0 = np.pi
     charge = args['charge']
     
     # alpha_lvk = 10**0.8 / 10

@@ -275,7 +275,11 @@ def run_emri_pe(
     emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
     
     if log_prior:
-        emri_injection_params[-1] = np.log(1e-50)
+        if emri_injection_params[-1] == 0.0:
+            emri_injection_params[-1] = np.log(1e-50)
+        else:
+            emri_injection_params[-1] = np.log(emri_injection_params[-1])
+        
         prior_charge = uniform_dist(np.log(1e-7) , np.log(1.0))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
@@ -462,7 +466,10 @@ def run_emri_pe(
     
     if log_prior:
         # uniform_dist(np.log(1e-7) , np.log(1.0))
-        tmp[:,-1] = np.random.uniform(np.log(1e-7) , np.log(1e-3),size=nwalkers * ntemps)
+        if charge == 0.0:
+            tmp[:,-1] = np.random.uniform(np.log(1e-7) , np.log(1e-3),size=nwalkers * ntemps)
+        else:
+            tmp[:,-1] = np.random.normal(np.log(charge), 1e-12,size=nwalkers * ntemps)
     else:
         tmp[:,-1] = np.abs(tmp[:,-1])
     
@@ -623,6 +630,12 @@ if __name__ == "__main__":
     Phi_phi0 = np.pi # changed
     Phi_theta0 = 0.0
     Phi_r0 = np.pi  # changed
+    # LVK bound from paper sqrt(alpha) = 1.1 km 
+    # bound in our scaling sqrt(alpha) = 1.1*np.sqrt(16*np.pi**0.5)
+    # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
+    # sqrt_alpha = 0.4 * np.sqrt( 16 * np.pi**0.5 )
+    # d = (sqrt_alpha/(mu*MRSUN_SI/1e3))**2 / 2
+    # d = (0.4 * np.sqrt( 16 * np.pi**0.5 )/(mu*MRSUN_SI/1e3))**2 / 2
     charge = args['charge']
 
     Tobs = args["Tobs"]  # years
