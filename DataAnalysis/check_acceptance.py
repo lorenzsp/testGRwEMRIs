@@ -135,9 +135,12 @@ for filename,el in zip(datasets,pars_inj):
     print(filename)
     print(file.get_move_info())
     
-    # burn = int(file.iteration*0.30)
-    # thin = 5
-    # print("autocorrelation",file.get_autocorr_time(discard=burn, thin=thin), "\n correlation time N/50",(file.iteration-burn)/50)
+    burn = int(file.iteration*0.30)
+    thin = 1
+    autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
+    print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
+    print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
+    # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     # mask = np.arange(file.nwalkers)
     
     # # create directory
