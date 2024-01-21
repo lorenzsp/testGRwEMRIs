@@ -1,4 +1,4 @@
-# python mcmc.py -Tobs 2 -dt 15.0 -M 5e5 -mu 1e1 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
+# python mcmc.py -Tobs 2 -dt 15.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(1)
@@ -355,7 +355,7 @@ def run_emri_pe(
 
     emri_injection_params[6] *= dist_factor
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
-    print("new distance based on SNR", emri_injection_params)
+    print("new distance based on SNR", emri_injection_params[6])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     # get AE
@@ -415,7 +415,6 @@ def run_emri_pe(
         plt.plot(data_channels[0])
         plt.show()
         plt.savefig(fp[:-3] + "injection.pdf")
-
 
     # this is a parent likelihood class that manages the parameter transforms
     like = Likelihood(
@@ -659,9 +658,9 @@ if __name__ == "__main__":
 
     logprior = True
     if logprior:
-        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./test/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
