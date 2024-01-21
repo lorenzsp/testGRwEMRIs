@@ -131,13 +131,15 @@ temp=0
 samp_final = []
 inj_pars = []
 for filename,el in zip(datasets,pars_inj):
+    print('-------------------------------------')
     file  = HDFBackend(filename)
     print(filename)
-    print(file.get_move_info())
+    # print(file.get_move_info())
     
     burn = int(file.iteration*0.30)
     thin = 1
     autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
+    print("iteration ", file.iteration)
     print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
     # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
