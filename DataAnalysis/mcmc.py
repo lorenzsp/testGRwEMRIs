@@ -45,7 +45,23 @@ from lisatools.sensitivity import get_sensitivity
 from eryn.utils import TransformContainer
 
 from fastlisaresponse import ResponseWrapper
+from eryn.moves.gaussian import reflect_cosines_array
+from scipy.stats import special_ortho_group
 
+def draw_initial_points(mu,cov,size):
+    tmp = np.random.multivariate_normal(mu, cov, size=size)
+    for ii,fact in enumerate(10**np.linspace(-1,-10,num=tmp.shape[0])):
+        Rot = special_ortho_group.rvs(tmp.shape[1])
+        tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot) *fact)
+    
+    # ensure prior
+    for el in [10,11]:
+        tmp[:,el] = tmp[:,el]%(2*np.pi)
+    
+    tmp[:,6],tmp[:,7] = reflect_cosines_array(tmp[:,6],tmp[:,7])
+    tmp[:,8],tmp[:,9] = reflect_cosines_array(tmp[:,8],tmp[:,9])
+    return tmp
+    
 SEED = 26011996
 np.random.seed(SEED)
 
@@ -276,7 +292,7 @@ def run_emri_pe(
     
     if log_prior:
         if emri_injection_params[-1] == 0.0:
-            emri_injection_params[-1] = np.log(1e-50)
+            emri_injection_params[-1] = np.log(1.001e-7)
         else:
             emri_injection_params[-1] = np.log(emri_injection_params[-1])
         
@@ -341,6 +357,10 @@ def run_emri_pe(
 
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
+    # correct for the emri_injection_params set in logprior case
+    if charge == 0.0:
+        injection_in[-1] = 0.0
+    
     # get AE
     data_channels = wave_gen(*injection_in, **emri_kwargs)
 
@@ -358,6 +378,8 @@ def run_emri_pe(
     print("new distance based on SNR", emri_injection_params[6])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
+    if charge == 0.0:
+        injection_in[-1] = 0.0
     # get AE
     tic = time.perf_counter()
     data_channels = wave_gen(*injection_in, **emri_kwargs)
@@ -438,8 +460,8 @@ def run_emri_pe(
 
     ndim = 13
 
+    #####################################################################
     # generate starting points
-    factor = 1e-7
     try:
         file  = HDFBackend(fp)
         burn = int(file.iteration*0.25)
@@ -454,25 +476,18 @@ def run_emri_pe(
         
         print("covariance imported")
     except:
-        cov = 1e-12 * np.eye(ndim) / ndim
+        # precision of 1e-3
+        cov = 1e-6 * np.eye(ndim)
 
-    start_like = np.zeros((nwalkers * ntemps))
-    
-    tmp = np.random.multivariate_normal(emri_injection_params_in, factor*cov,size=nwalkers * ntemps)
-    
+    # draw
+    tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
+    tmp[:,-1] = priors["emri"].rvs(nwalkers*ntemps)[:,-1]
+    # set one to the true value
+    tmp[0] = emri_injection_params_in.copy()
+    #########################################################################
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     
-    if log_prior:
-        # uniform_dist(np.log(1e-7) , np.log(1.0))
-        if charge == 0.0:
-            tmp[:,-1] = np.random.uniform(np.log(1e-7) , np.log(1e-3),size=nwalkers * ntemps)
-        else:
-            tmp[:,-1] = np.random.normal(np.log(charge), 1e-12,size=nwalkers * ntemps)
-    else:
-        tmp[:,-1] = np.abs(tmp[:,-1])
-    
-    # tmp[0] = emri_injection_params_in.copy()
     logp = priors["emri"].logpdf(tmp)
     print("logprior",logp)
     tic = time.time()
@@ -481,7 +496,6 @@ def run_emri_pe(
     timelike = (toc-tic)/np.prod(tmp.shape)
     start_params = tmp.copy()
     print("start like",start_like, "in ", timelike," seconds")
-    
     start_prior = priors["emri"].logpdf(start_params)
 
     # start state
@@ -533,14 +547,22 @@ def run_emri_pe(
     ]
 
     def get_time(i, res, samp):
-        maxit = int(samp.iteration*0.5)
+        maxit = int(samp.iteration*0.25)
         current_it = samp.iteration
-
-        if (current_it>50)and(current_it % 50 == 0):
+        check_it = 50
+        
+        if (current_it>check_it)and(current_it % check_it == 0):
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
             # for el,name in zip(samp.moves,samp.move_keys):
             #     print(name, el.acceptance_fraction)
+            
+            # get samples
+            samples = sampler.get_chain(discard=maxit, thin=1)["emri"][:, 0].reshape(-1, ndim)
+            
+            # plot
+            fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
+            fig.savefig(fp[:-3] + "_corner.png", dpi=150)
         
             if (current_it<1000):
                 chain = samp.get_chain(discard=maxit)['emri']
@@ -584,7 +606,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 1e1, "adaptive": True},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 2.0, "adaptive": True},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -657,10 +679,11 @@ if __name__ == "__main__":
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
     logprior = True
+    folder = "./final_results"
     if logprior:
-        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = folder+ f"/MCMC_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = f"./final_results/MCMC_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = folder + f"/MCMC_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
