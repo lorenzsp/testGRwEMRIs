@@ -121,7 +121,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'final_results/*charge*'
+init_name = 'final_results/MCMC_M*charge*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -136,61 +136,61 @@ for filename,el in zip(datasets,pars_inj):
     print(filename)
     # print(file.get_move_info())
     
-    burn = int(file.iteration*0.30)
+    burn = int(file.iteration*0.10)
     thin = 1
     autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     print("iteration ", file.iteration)
     print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
     # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
-    # mask = np.arange(file.nwalkers)
+    mask = np.arange(file.nwalkers)
     
-    # # create directory
-    # repo_name = el.split('results_mcmc/')[-1].split('new_')[-1].split('_seed')[0]
-    # create_folder(repo_name)
+    # create directory
+    repo_name = el.split('results_mcmc/')[-1].split('new_')[-1].split('_seed')[0]
+    create_folder(repo_name)
     
-    # # loglike
-    # ll = file.get_log_like(discard=burn, thin=thin)[:-1000]
-    # plt.figure()
-    # [plt.plot(ll[:,temp,walker],'-',label=f'{walker}') for walker in mask]
-    # plt.tight_layout()
-    # plt.savefig(repo_name+f'/traceplot_loglike.png')
+    # loglike
+    ll = file.get_log_like(discard=burn, thin=thin)[:]
+    plt.figure()
+    [plt.plot(ll[:,temp,walker],'-',label=f'{walker}') for walker in mask]
+    plt.tight_layout()
+    plt.savefig(repo_name+f'/traceplot_loglike.png')
     
-    # # chains
-    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:-1000,temp,mask,...]
-    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:-1000,temp,mask,...]
-    # toplot = samp[inds]
+    # chains
+    samp = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...]
+    inds = file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]
+    toplot = samp[inds]
 
-    # # check autocorrelation plot
+    # check autocorrelation plot
     # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
     
-    # # check chains
-    # truths = np.load(el)
-    # for ii in range(12):
-    #     plt.figure()
-    #     plt.title(repo_name+f' variable {ii}')
-    #     plt.plot(toplot[:,ii])
-    #     plt.axhline(truths[ii],color='k')
-    #     plt.tight_layout()
-    #     plt.savefig(repo_name+f'/traceplot_chain{ii}.png')
+    # check chains
+    truths = np.load(el)
+    for ii in range(12):
+        plt.figure()
+        plt.title(repo_name+f' variable {ii}')
+        plt.plot(toplot[:,ii])
+        plt.axhline(truths[ii],color='k')
+        plt.tight_layout()
+        plt.savefig(repo_name+f'/traceplot_chain{ii}.png')
         
-    #     plt.figure()
-    #     plt.title(repo_name+f' variable {ii}')
-    #     plt.hist(toplot[:,ii],bins=30,density=True)
-    #     plt.axvline(truths[ii],color='k')
-    #     plt.tight_layout()
-    #     plt.savefig(repo_name+f'/posterior_chain{ii}.png')
+        plt.figure()
+        plt.title(repo_name+f' variable {ii}')
+        plt.hist(toplot[:,ii],bins=30,density=True)
+        plt.axvline(truths[ii],color='k')
+        plt.tight_layout()
+        plt.savefig(repo_name+f'/posterior_chain{ii}.png')
     
-    # # alpha bound
-    # mu = np.exp(toplot[:,1])
-    # d = toplot[:,-1]
-    # w = mu / np.sqrt(d)
-    # y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
-    # plt.figure()
-    # plt.hist(np.log10(y),weights=w/y, bins=40, density=True)
-    # plt.tight_layout()
-    # plt.savefig(repo_name+f'/alpha_bound.png')
+    # alpha bound
+    mu = np.exp(toplot[:,1])
+    d = np.exp(toplot[:,-1])
+    w = mu / np.sqrt(d)
+    y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
+    plt.figure()
+    plt.hist(np.log10(y),weights=w/y, bins=40, density=True)
+    plt.tight_layout()
+    plt.savefig(repo_name+f'/alpha_bound.png')
     
-    # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
+    plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
     
-    # plt.close()
+    plt.close()
