@@ -50,9 +50,9 @@ from scipy.stats import special_ortho_group
 
 def draw_initial_points(mu,cov,size):
     tmp = np.random.multivariate_normal(mu, cov, size=size)
-    for ii,fact in enumerate(10**np.linspace(-1,-10,num=tmp.shape[0])):
+    for ii in range(tmp.shape[0]):
         Rot = special_ortho_group.rvs(tmp.shape[1])
-        tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot) *fact)
+        tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot))
     
     # ensure prior
     for el in [10,11]:
@@ -296,22 +296,29 @@ def run_emri_pe(
         else:
             emri_injection_params[-1] = np.log(emri_injection_params[-1])
         
-        prior_charge = uniform_dist(np.log(1e-7) , np.log(1.0))
+        prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
         prior_charge = uniform_dist(0.0, 0.5)
 
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
 
+    delta = 0.05
+    
     # priors
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(np.log(1e5), np.log(5e6)),  # ln M
-                1: uniform_dist(np.log(1.0), np.log(100.0)),  # ln mu
-                2: uniform_dist(0.0, 0.99),  # a
-                3: uniform_dist(7.0, 16.0),  # p0
-                4: uniform_dist(0.05, 0.45),  # e0
+                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
+                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
+                2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
+                3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
+                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                # 0: uniform_dist(np.log(1e5), np.log(5e6)),  # ln M
+                # 1: uniform_dist(np.log(1.0), np.log(100.0)),  # ln mu
+                # 2: uniform_dist(0.0, 0.99),  # a
+                # 3: uniform_dist(7.0, 16.0),  # p0
+                # 4: uniform_dist(0.05, 0.45),  # e0
                 5: uniform_dist(0.01, 100.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -472,18 +479,51 @@ def run_emri_pe(
         mask = np.arange(file.nwalkers)
         # # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...][file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]]
-        cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-        
+        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim        
+        tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
-        # precision of 1e-3
-        cov = 1e-6 * np.eye(ndim)
+        print("find starting points")
+        # precision of 1e-5
+        cov = 1e-10 * np.eye(ndim)
 
-    # draw
-    tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
-    tmp[:,-1] = priors["emri"].rvs(nwalkers*ntemps)[:,-1]
-    # set one to the true value
-    tmp[0] = emri_injection_params_in.copy()
+        # draw
+        fact = 1.0
+        iter_check = 0
+        max_iter = 50
+        start_like = np.zeros((nwalkers * ntemps))-1e30
+
+        while np.min(start_like) < -1e3:
+
+            logp = np.full_like(start_like, -np.inf)
+            tmp = np.zeros((ntemps * nwalkers, ndim))
+            fix = np.ones((ntemps * nwalkers), dtype=bool)
+            while np.any(fix):
+                tmp[fix] = draw_initial_points(emri_injection_params_in, cov*fact, nwalkers*ntemps)[fix]
+                if charge == 0.0:
+                    if logprior:
+                        tmp[fix,-1] = np.random.uniform(prior_charge.min_val, np.log(1e-5),nwalkers*ntemps)[fix]
+                    else:
+                        tmp[fix,-1] = np.random.uniform(prior_charge.min_val, 1e-5,nwalkers*ntemps)[fix]
+                logp = priors["emri"].logpdf(tmp)
+                fix = np.isinf(logp)
+
+            start_like = like(tmp, **emri_kwargs)
+        
+            iter_check += 1
+            fact /= 10.0
+
+            print("min starting likelihood",np.min(start_like))
+            print("std",np.std(tmp,axis=0))
+
+            if iter_check > max_iter:
+                print("Unable to find starting parameters.")
+                break
+
+        # set one to the true value
+        tmp[0] = emri_injection_params_in.copy()
+        
+        cov = np.cov(tmp,rowvar=False) * 2.38**2 / ndim        
     #########################################################################
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
@@ -563,7 +603,7 @@ def run_emri_pe(
             # plot
             fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
             fig.savefig(fp[:-3] + "_corner.png", dpi=150)
-        
+            
             if (current_it<1000):
                 chain = samp.get_chain(discard=maxit)['emri']
                 inds = samp.get_inds(discard=maxit)['emri']
@@ -630,7 +670,7 @@ def run_emri_pe(
     samples = sampler.get_chain(discard=0, thin=1)["emri"][:, 0].reshape(-1, ndim)
     
     # plot
-    fig = corner.corner(samples, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
+    fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
     fig.savefig(fp[:-3] + "_corner.png", dpi=150)
     return
 
