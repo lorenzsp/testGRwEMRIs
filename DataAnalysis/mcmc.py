@@ -474,11 +474,8 @@ def run_emri_pe(
         burn = int(file.iteration*0.25)
         thin = 1
         
-        # chains
-        temp=0
-        mask = np.arange(file.nwalkers)
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...][file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]]
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][file.get_inds(discard=burn, thin=thin)['emri']]
         cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim        
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
@@ -563,50 +560,36 @@ def run_emri_pe(
     #     list_comb.append(subset)
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
-    # stuff = np.asarray([5,6,7,8,9,10,11])
-    # list_comb = []
-    # for subset in itertools.combinations(stuff, 2):
-    #     list_comb.append(subset)
-    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
-
-    # indx_list.append(get_True_vec([0,2,3,4]))
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
     indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
-    
     sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        # (DIMEMove(live_dangerously=True),0.33),
         (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.7),
         (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.3),
-        # (StretchMove(live_dangerously=True, gibbs_setup=None, use_gpu=use_gpu), 0.33)
     ]
 
     def get_time(i, res, samp):
-        maxit = int(samp.iteration*0.25)
+        discard = int(samp.iteration*0.25)
         current_it = samp.iteration
-        check_it = 50
+        check_it = 100
         
         if (current_it>check_it)and(current_it % check_it == 0):
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
-            # for el,name in zip(samp.moves,samp.move_keys):
-            #     print(name, el.acceptance_fraction)
-            
             # get samples
-            samples = sampler.get_chain(discard=maxit, thin=1)["emri"][:, 0].reshape(-1, ndim)
-            
+            samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
             # plot
             fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
             fig.savefig(fp[:-3] + "_corner.png", dpi=150)
             
             if (current_it<1000):
-                chain = samp.get_chain(discard=maxit)['emri']
-                inds = samp.get_inds(discard=maxit)['emri']
+                chain = samp.get_chain(discard=discard)['emri']
+                inds = samp.get_inds(discard=discard)['emri']
                 to_cov = chain[inds]
                 
                 samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
@@ -615,10 +598,12 @@ def run_emri_pe(
                 samp.moves[1].all_proposal['emri'].scale = samp_cov
                 samp.moves[0].all_proposal['emri'].scale = samp_cov
         
-        if current_it==1000:
-            # samp_cov = np.cov(samp.get_chain()['emri'][-maxit,0,:,0,:],rowvar=False) * 2.38**2 / ndim
-            chain = samp.get_chain(discard=maxit)['emri']
-            inds = samp.get_inds(discard=maxit)['emri']
+        # if (i==0)and(current_it>1) we are starting the mcmc again
+        if (current_it==1000)or((i==0)and(current_it>1)):
+            if (i==0)and(current_it>1):
+                print("resuming run calculate covariance from chain")
+            chain = samp.get_chain(discard=discard)['emri']
+            inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds]
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             samp.moves[1].all_proposal['emri'].scale = samp_cov
@@ -646,7 +631,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 2.0, "adaptive": True},
+        tempering_kwargs={"ntemps": ntemps, "Tmax": 10.0, "adaptive": True},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
