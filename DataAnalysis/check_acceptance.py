@@ -134,7 +134,7 @@ for filename,el in zip(datasets,pars_inj):
     print('-------------------------------------')
     file  = HDFBackend(filename)
     print(filename)
-    print(file.get_move_info())
+    # print(file.get_move_info())
     
     burn = int(file.iteration*0.10)
     thin = 1
@@ -142,7 +142,8 @@ for filename,el in zip(datasets,pars_inj):
     print("iteration ", file.iteration)
     print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
-    print("max last loglike", file.get_log_like()[-1])
+    # print("max last loglike", file.get_log_like()[-1])
+    print("betas ", file.get_betas())
     # # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     # mask = np.arange(file.nwalkers)
     
