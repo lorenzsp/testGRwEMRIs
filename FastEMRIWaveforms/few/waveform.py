@@ -1161,7 +1161,8 @@ class AAKWaveformBase(Pn5AAK, ParallelModuleBase, ABC):
         self.end_time = t[-1]
 
         # number of modes to use (from original AAK model)
-        self.num_modes_kept = self.nmodes = int(30 * e0)
+        # self.num_modes_kept = self.nmodes = int(30 * e0)
+        self.num_modes_kept = self.nmodes = 15
         if self.num_modes_kept < 4:
             self.num_modes_kept = self.nmodes = 4
 
