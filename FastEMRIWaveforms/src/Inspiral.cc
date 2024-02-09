@@ -412,7 +412,7 @@ InspiralHolder InspiralCarrier::run_Inspiral(double t0, double M, double mu, dou
                     // all variables stay the same
 
                     // decrease step
-                    factor *= 0.5;
+                    factor *= 2.0;
                 }
 
                 iter++;
