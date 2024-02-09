@@ -1,8 +1,8 @@
-# python mcmc.py -Tobs 2 -dt 15.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10
+# python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 import argparse
 import os
-os.environ["OMP_NUM_THREADS"] = str(1)
-os.system("OMP_NUM_THREADS=1")
+os.environ["OMP_NUM_THREADS"] = str(8)
+os.system("OMP_NUM_THREADS=8")
 print("PID:",os.getpid())
 import time
 parser = argparse.ArgumentParser(description="MCMC of EMRI source")
@@ -20,6 +20,8 @@ parser.add_argument("-nwalkers", "--nwalkers", help="number of MCMC walkers", re
 parser.add_argument("-ntemps", "--ntemps", help="number of MCMC temperatures", required=True, type=int)
 parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", required=False, type=int, default=1000)
 parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, default=50.0)
+parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
+
 args = vars(parser.parse_args())
 
 os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
@@ -48,18 +50,30 @@ from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
 
-def draw_initial_points(mu,cov,size):
+def draw_initial_points(mu, cov, size, intrinsic_only=False):
+    cov = np.cov(np.load("samples.npy"),rowvar=False)
+    
+    if intrinsic_only:
+        filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
+        cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
+    
     tmp = np.random.multivariate_normal(mu, cov, size=size)
-    for ii in range(tmp.shape[0]):
-        Rot = special_ortho_group.rvs(tmp.shape[1])
-        tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot))
     
-    # ensure prior
-    for el in [10,11]:
-        tmp[:,el] = tmp[:,el]%(2*np.pi)
+    # for ii in range(tmp.shape[0]):
+    #     Rot = special_ortho_group.rvs(tmp.shape[1])
+    #     tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot))
     
-    tmp[:,6],tmp[:,7] = reflect_cosines_array(tmp[:,6],tmp[:,7])
-    tmp[:,8],tmp[:,9] = reflect_cosines_array(tmp[:,8],tmp[:,9])
+    if intrinsic_only:
+        for el in [-2,-3]:
+            tmp[:,el] = tmp[:,el]%(2*np.pi)
+    else:
+        # ensure prior
+        for el in [10,11]:
+            tmp[:,el] = tmp[:,el]%(2*np.pi)
+        
+        tmp[:,6],tmp[:,7] = reflect_cosines_array(tmp[:,6],tmp[:,7])
+        tmp[:,8],tmp[:,9] = reflect_cosines_array(tmp[:,8],tmp[:,9])
+    
     return tmp
     
 SEED = 26011996
@@ -108,17 +122,6 @@ from few.summation.aakwave import AAKSummation
 from few.waveform import GenerateEMRIWaveform
 from few.utils.constants import *
 from few.utils.utility import get_p_at_t, get_separatrix
-
-few_gen = GenerateEMRIWaveform(
-    AAKWaveformBase, 
-    EMRIInspiral,
-    AAKSummation,
-    return_list=False,
-    inspiral_kwargs=insp_kwargs,
-    sum_kwargs=sum_kwargs,
-    use_gpu=use_gpu,
-    frame="detector"
-)
 
 def pad_to_next_power_of_2(arr):
     original_length = len(arr)
@@ -209,9 +212,22 @@ def run_emri_pe(
     nsteps,
     emri_kwargs={},
     log_prior=False,
-    source_SNR=50.0
+    source_SNR=50.0,
+    intrinsic_only=False,
 ):
 
+    few_gen = GenerateEMRIWaveform(
+    AAKWaveformBase, 
+    EMRIInspiral,
+    AAKSummation,
+    # when using intrinsic only , we return a list
+    return_list=intrinsic_only,
+    inspiral_kwargs=insp_kwargs,
+    sum_kwargs=sum_kwargs,
+    use_gpu=use_gpu,
+    frame="detector"
+    )
+    
     # sets the proper number of points and what not
     print("use gpus, use logprior", use_gpu, log_prior)
     N_obs = int(Tobs * YRSID_SI / dt) # may need to put "- 1" here because of real transform
@@ -221,11 +237,10 @@ def run_emri_pe(
     # frequencies
     freqs = xp.fft.rfftfreq(N_obs, dt)
 
-
     orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
 
-    tdi_gen = "2nd generation"
+    tdi_gen = "1st generation"#"2nd generation"
 
     order = 25  # interpolation order (should not change the result too much)
     tdi_kwargs_esa = dict(
@@ -251,7 +266,7 @@ def run_emri_pe(
         remove_garbage="zero",  # removes the beginning of the signal that has bad information
         **tdi_kwargs_esa,
     )
-    # wave_gen = few_gen
+    
 
     # for transforms
     # this is an example of how you would fill parameters 
@@ -262,6 +277,16 @@ def run_emri_pe(
        "fill_values": np.array([ emri_injection_params[5], 0.0]), # spin and inclination and Phi_theta
        "fill_inds": np.array([ 5, 12]),
     }
+    
+    if intrinsic_only:
+        del wave_gen
+        wave_gen = few_gen
+        
+        fill_dict = {
+       "ndim_full": 15,
+       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_inds": np.array([5,6,7,8,9,10,12]),
+        }
 
     (
         M,  
@@ -281,14 +306,16 @@ def run_emri_pe(
         charge
     ) = emri_injection_params
 
-    # get the right parameters
-    # log of large mass
+    # get the sampling parameters
     emri_injection_params[0] = np.log(emri_injection_params[0])
     emri_injection_params[1] = np.log(emri_injection_params[1])
-    emri_injection_params[7] = np.cos(emri_injection_params[7]) 
-    emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
-    emri_injection_params[9] = np.cos(emri_injection_params[9]) 
-    emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
+    
+    # do conversion only when sampling over all parameters
+    if not intrinsic_only:
+        emri_injection_params[7] = np.cos(emri_injection_params[7]) 
+        emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
+        emri_injection_params[9] = np.cos(emri_injection_params[9]) 
+        emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
     
     if log_prior:
         if emri_injection_params[-1] == 0.0:
@@ -298,38 +325,10 @@ def run_emri_pe(
         
         prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
-        prior_charge = uniform_dist(0.0, 0.5)
+        prior_charge = uniform_dist(-0.5, 0.5)
 
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
-
-    delta = 0.05
-    
-    # priors
-    priors = {
-        "emri": ProbDistContainer(
-            {
-                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
-                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
-                3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
-                # 0: uniform_dist(np.log(1e5), np.log(5e6)),  # ln M
-                # 1: uniform_dist(np.log(1.0), np.log(100.0)),  # ln mu
-                # 2: uniform_dist(0.0, 0.99),  # a
-                # 3: uniform_dist(7.0, 16.0),  # p0
-                # 4: uniform_dist(0.05, 0.45),  # e0
-                5: uniform_dist(0.01, 100.0),  # dist in Gpc
-                6: uniform_dist(-0.99999, 0.99999),  # qS
-                7: uniform_dist(0.0, 2 * np.pi),  # phiS
-                8: uniform_dist(-0.99999, 0.99999),  # qK
-                9: uniform_dist(0.0, 2 * np.pi),  # phiK
-                10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
-                11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: prior_charge,  # charge
-            }
-        ) 
-    }
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -350,27 +349,23 @@ def run_emri_pe(
             9: np.arccos,  # qK
             # 14: np.exp
         }
+    
+    if intrinsic_only:
+        del parameter_transforms[7]
+        del parameter_transforms[9]
 
     transform_fn = TransformContainer(
         parameter_transforms=parameter_transforms,
         fill_dict=fill_dict,
-
     )
-
-    # sampler treats periodic variables by wrapping them properly
-    periodic = {
-        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
-    }
-
+    
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
-    # correct for the emri_injection_params set in logprior case
-    if charge == 0.0:
-        injection_in[-1] = 0.0
     
     # get AE
     data_channels = wave_gen(*injection_in, **emri_kwargs)
 
+    ############################## distance based on SNR ########################################################
     check_snr = snr([data_channels[0], data_channels[1]],
         dt=dt,
         PSD="noisepsd_AE",
@@ -378,21 +373,32 @@ def run_emri_pe(
         PSD_kwargs={},
         use_gpu=use_gpu,
         )
-    dist_factor = check_snr.get() / source_SNR
 
+    dist_factor = check_snr.get() / source_SNR
     emri_injection_params[6] *= dist_factor
+    
+    if intrinsic_only:
+        fill_dict = {
+       "ndim_full": 15,
+       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_inds": np.array([5,6,7,8,9,10,12]),
+        }
+        transform_fn = TransformContainer(
+        parameter_transforms=parameter_transforms,
+        fill_dict=fill_dict,
+        )
+    
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     print("new distance based on SNR", emri_injection_params[6])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
-    if charge == 0.0:
-        injection_in[-1] = 0.0
+    
     # get AE
     tic = time.perf_counter()
     data_channels = wave_gen(*injection_in, **emri_kwargs)
     toc = time.perf_counter()
     print("timing",toc-tic, "len vec", len(data_channels[0]))
-
+    
     check_snr = snr([data_channels[0], data_channels[1]],
         dt=dt,
         PSD="noisepsd_AE",
@@ -402,6 +408,57 @@ def run_emri_pe(
         )
     
     print("SNR",check_snr)
+    
+    ############################## priors ########################################################
+    
+    delta = 0.05
+    
+    # priors
+    priors = {
+        "emri": ProbDistContainer(
+            {
+                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
+                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
+                2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
+                3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
+                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                5: uniform_dist(emri_injection_params_in[5]*(0.5),emri_injection_params_in[5]*(1.5)),  # dist in Gpc
+                6: uniform_dist(-0.99999, 0.99999),  # qS
+                7: uniform_dist(0.0, 2 * np.pi),  # phiS
+                8: uniform_dist(-0.99999, 0.99999),  # qK
+                9: uniform_dist(0.0, 2 * np.pi),  # phiK
+                10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
+                11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
+                12: prior_charge,  # charge
+            }
+        ) 
+    }
+    
+    if intrinsic_only:
+        priors = {
+            "emri": ProbDistContainer(
+                {
+                    0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
+                    1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
+                    2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
+                    3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
+                    4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                    5: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
+                    6: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
+                    7: prior_charge,  # charge
+                }
+            ) 
+        }
+
+    # sampler treats periodic variables by wrapping them properly
+    periodic = {
+        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
+    }
+    
+    if intrinsic_only:
+        periodic = {"emri": {5: 2 * np.pi, 6: 2 * np.pi}}
+    
+    ############################## plots ########################################################
     if use_gpu:
         ffth = xp.fft.rfft(data_channels[0])*dt
         fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
@@ -436,15 +493,14 @@ def run_emri_pe(
         plt.xlabel('Charge')
         plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
         # plt.savefig("mismatch_evolution.pdf")
-        
-        
-        
+    
     else:
         plt.figure()
         plt.plot(data_channels[0])
         plt.show()
         plt.savefig(fp[:-3] + "injection.pdf")
 
+    ############################## likelihood ########################################################
     # this is a parent likelihood class that manages the parameter transforms
     like = Likelihood(
         wave_gen,
@@ -457,32 +513,52 @@ def run_emri_pe(
         subset=8,  # may need this subset
     )
 
+    def get_noise_injection(N, dt,sens_fn="noisepsd_AE"):
+        if N%2==0:
+            N += 1
+        freqs = xp.fft.rfftfreq(N, dt)
+        df_full = xp.diff(freqs)[0]
+        freqs[0] = freqs[1]
+        psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
+        # normalize by the factors:
+        # 1/dt because when you take the FFT of the noise in time domain
+        # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
+        noise_to_add = [xp.fft.irfft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ) for psd_temp in psd]
+
+        return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0][:len(data_channels[0])],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1][:len(data_channels[0])]]
+
+    full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="noisepsd_AE")
     nchannels = 2
     like.inject_signal(
-        data_stream=[data_channels[0], data_channels[1]],
+        data_stream=[data_channels[0]+full_noise[0], data_channels[1]+full_noise[1]],
         noise_fn=get_sensitivity,
         noise_kwargs=[{"sens_fn": "noisepsd_AE"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
     )
 
     ndim = 13
-
+    if intrinsic_only:
+        ndim = 8
+    
     #####################################################################
     # generate starting points
     try:
         file  = HDFBackend(fp)
-        burn = int(file.iteration*0.25)
+        burn = int(file.iteration*0.8)
         thin = 1
         
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][file.get_inds(discard=burn, thin=thin)['emri']]
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,2][file.get_inds(discard=burn, thin=thin)['emri'][:,2]]
         cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim        
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = 1e-10 * np.eye(ndim)
+        cov = np.cov(np.load("samples.npy"),rowvar=False)
+        if intrinsic_only:
+            filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
+            cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
 
         # draw
         fact = 1.0
@@ -490,18 +566,18 @@ def run_emri_pe(
         max_iter = 50
         start_like = np.zeros((nwalkers * ntemps))-1e30
 
-        while np.min(start_like) < -1e3:
+        while np.min(start_like+N_obs) < -2e5:
 
             logp = np.full_like(start_like, -np.inf)
             tmp = np.zeros((ntemps * nwalkers, ndim))
             fix = np.ones((ntemps * nwalkers), dtype=bool)
             while np.any(fix):
-                tmp[fix] = draw_initial_points(emri_injection_params_in, cov*fact, nwalkers*ntemps)[fix]
+                tmp[fix] = draw_initial_points(emri_injection_params_in, cov*fact, nwalkers*ntemps, intrinsic_only=intrinsic_only)[fix]
                 if charge == 0.0:
                     if logprior:
                         tmp[fix,-1] = np.random.uniform(prior_charge.min_val, np.log(1e-5),nwalkers*ntemps)[fix]
-                    else:
-                        tmp[fix,-1] = np.random.uniform(prior_charge.min_val, 1e-5,nwalkers*ntemps)[fix]
+                    # else:
+                    #     tmp[fix,-1] = np.random.uniform(prior_charge.min_val, 1e-5,nwalkers*ntemps)[fix]
                 logp = priors["emri"].logpdf(tmp)
                 fix = np.isinf(logp)
 
@@ -510,7 +586,7 @@ def run_emri_pe(
             iter_check += 1
             fact /= 10.0
 
-            print("min starting likelihood",np.min(start_like))
+            print("min starting likelihood",np.min(start_like+N_obs))
             print("std",np.std(tmp,axis=0))
 
             if iter_check > max_iter:
@@ -520,7 +596,7 @@ def run_emri_pe(
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
         
-        cov = np.cov(tmp,rowvar=False) * 2.38**2 / ndim        
+        cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
     #########################################################################
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
@@ -560,27 +636,39 @@ def run_emri_pe(
     #     list_comb.append(subset)
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
-    indx_list.append(get_True_vec([0,1,2,3,4,12]))
-    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
+    if intrinsic_only:
+        sky_periodic = None
+        gibbs_setup = None
+        indx_list.append(get_True_vec([0,1]))
+        indx_list.append(get_True_vec([2,7]))
+        indx_list.append(get_True_vec([3,4]))
+        indx_list.append(get_True_vec([5,6]))
+    else:
+        indx_list.append(get_True_vec([0,1,2,3,4,12]))
+        indx_list.append(get_True_vec([5,6,7]))
+        indx_list.append(get_True_vec([8,9]))
+        indx_list.append(get_True_vec([10,11]))
+        indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
 
-    gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
-    sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
+        gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
+        sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.7),
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, indx_list=gibbs_setup, swap_walkers=None,sky_periodic=sky_periodic),0.3),
+        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic),0.9),
+        (GaussianMove({"emri": cov}, mode="AM", factor=1000, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.1),
+        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic),0.3),
     ]
 
     def get_time(i, res, samp):
-        discard = int(samp.iteration*0.25)
+        discard = int(samp.iteration*0.8)
         current_it = samp.iteration
-        check_it = 100
+        check_it = 10
         
         if (current_it>check_it)and(current_it % check_it == 0):
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
+            print("Temperatures", 1/samp.temperature_control.betas)
             # get samples
             samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
             # plot
@@ -625,13 +713,20 @@ def run_emri_pe(
         resume = False
         print("file not found")
 
+    def new_like(params, **kargs):
+
+        like_val = np.zeros(len(params))-1e300
+        like_val = like(params,**kargs)
+        like_val[np.isnan(like_val)] = np.zeros(like_val[np.isnan(like_val)].shape)-1e300
+        return like_val
+    
     # prepare sampler
     sampler = EnsembleSampler(
         nwalkers,
         [ndim],  # assumes ndim_max
-        like,
+        new_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "Tmax": 10.0, "adaptive": True},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -649,7 +744,7 @@ def run_emri_pe(
         start_state = State(coords, log_like=log_like, log_prior=log_prior, inds=inds)
 
 
-    out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=0)
+    out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=20)
 
     # get samples
     samples = sampler.get_chain(discard=0, thin=1)["emri"][:, 0].reshape(-1, ndim)
@@ -703,12 +798,12 @@ if __name__ == "__main__":
     print("new p0 fixed by Tobs, p0=", p0)
     print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
 
-    logprior = True
-    folder = "./final_results"
+    logprior = False
+    folder = "./results_intrinsic/"
     if logprior:
-        fp = folder+ f"/MCMC_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = folder + f"/MCMC_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     emri_injection_params = np.array([
         M,  
@@ -745,4 +840,5 @@ if __name__ == "__main__":
         emri_kwargs=waveform_kwargs,
         log_prior=logprior,
         source_SNR=source_SNR,
+        intrinsic_only=True,
     )
