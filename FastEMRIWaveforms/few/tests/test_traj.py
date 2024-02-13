@@ -127,10 +127,4 @@ class ModuleTest(unittest.TestCase):
             tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, 0.0, p0, e0, 1.0, T=4.0, new_t=t, upsample=True, max_init_len=int(1e5))
             mask = (Phi_rS!=0.0)
             diff =  np.abs(Phi_phi[mask] - Phi_phiS[mask])
-
-            dv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p[mask], e[mask], np.ones_like(p[mask])*x0)])
-            dvS = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(pS[mask], eS[mask], np.ones_like(pS[mask])*x0)])
-            
-            # print(np.max(np.abs(1-dv[:,:2]/dvS[:,:2])))
-            # print(p0, e0, np.max(diff))
             self.assertLess(np.max(diff),2.0)

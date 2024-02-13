@@ -586,7 +586,6 @@ class Pn5AAK(ABC):
                 "Y0 is greater than 1 or less than -1. Must be between -1 and 1."
             )
 
-
 class TrajectoryBase(ABC):
     """Base class used for trajectory modules.
 
@@ -711,7 +710,6 @@ class TrajectoryBase(ABC):
 
         # convert to dimensionless time
         if in_coordinate_time is False:
-
             # M must be the first argument
             M = args[0]
             Msec = M * MTSUN_SI
@@ -743,6 +741,7 @@ class TrajectoryBase(ABC):
         # upsample everything
         out = tuple([spl(new_t) * (new_t < t[-1]) for spl in splines])
         return (new_t,) + out
+
 
 
 class SummationBase(ABC):
