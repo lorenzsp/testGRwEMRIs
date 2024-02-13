@@ -22,16 +22,19 @@ import os
 import warnings
 
 import numpy as np
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import CubicSpline, make_interp_spline
+from scipy.integrate import cumulative_simpson
 
 # Cython/C++ imports
 from pyInspiral import pyInspiralGenerator, pyDerivative
 
 # Python imports
 from few.utils.baseclasses import TrajectoryBase
-from few.utils.utility import check_for_file_download, get_ode_function_options
+from few.utils.utility import check_for_file_download, get_ode_function_options, ELQ_to_pex, get_kerr_geo_constants_of_motion, get_fundamental_frequencies
 from few.utils.constants import *
 from few.utils.citations import *
+
+from .integrate import APEXIntegrate, AELQIntegrate, get_integrator
 
 
 # get path to this file
@@ -105,8 +108,16 @@ class EMRIInspiral(TrajectoryBase):
         ValueError: File necessary for ODE not found.
     """
 
-    def __init__(self, *args, func=None, enforce_schwarz_sep=False, **kwargs):
-
+    def __init__(
+        self,
+        *args,
+        func=None,
+        enforce_schwarz_sep=False,
+        test_new_version=True,
+        convert_to_pex=True,
+        numerically_integrate_phases=True,
+        **kwargs,
+    ):
         few_dir = dir_path + "/../../"
 
         if func is None:
@@ -114,37 +125,12 @@ class EMRIInspiral(TrajectoryBase):
 
         TrajectoryBase.__init__(self, *args, **kwargs)
 
-        ode_info = get_ode_function_options()
-
-        if func not in ode_info:
-            raise ValueError(
-                f"func not available. Options are {list(ode_info.keys())}."
-            )
-
         self.enforce_schwarz_sep = enforce_schwarz_sep
+        
+        nparams = 6
+        self.inspiral_generator = get_integrator(func, nparams, few_dir, num_add_args=0)
 
-        # set defaults from the ODE function specifically
-        for key, item in ode_info[func].items():
-            setattr(self, key, item)
-
-        # make sure all files needed for the ode specifically are downloaded
-        for fp in self.files:
-            try:
-                check_for_file_download(fp, few_dir)
-            except FileNotFoundError:
-                raise ValueError(
-                    f"File required for this ODE ({fp}) was not found in the proper folder ({few_dir + 'few/files/'}) or on zenodo."
-                )
-
-        self.inspiral_generator = pyInspiralGenerator(
-            func,
-            enforce_schwarz_sep,
-            self.num_add_args,
-            self.convert_Y,
-            few_dir.encode(),
-        )
-
-        self.func = func
+        self.func = self.inspiral_generator.func
 
         self.specific_kwarg_keys = [
             "T",
@@ -155,7 +141,12 @@ class EMRIInspiral(TrajectoryBase):
             "use_rk4",
         ]
 
-        self.get_derivative = pyDerivative(self.func, few_dir.encode())
+        self.get_derivative = pyDerivative(self.func[0], few_dir.encode())
+
+        self.integrate_constants_of_motion = self.inspiral_generator.integrate_constants_of_motion
+        self.integrate_ODE_phases = self.inspiral_generator.integrate_ODE_phases
+        self.convert_to_pex = convert_to_pex
+        self.numerically_integrate_phases = numerically_integrate_phases
 
     def attributes_EMRIInspiral(self):
         """
@@ -185,9 +176,9 @@ class EMRIInspiral(TrajectoryBase):
         M,
         mu,
         a,
-        p0,
-        e0,
-        x0,
+        y1,
+        y2,
+        y3,
         *args,
         Phi_phi0=0.0,
         Phi_theta0=0.0,
@@ -219,7 +210,7 @@ class EMRIInspiral(TrajectoryBase):
             Phi_r0 (double, optional): Initial phase for :math:`\Phi_r`.
                 Default is 0.0.
             **kwargs (dict, optional): kwargs passed from parent.
-            
+
         Returns:
             tuple: Tuple of (t, p, e, x, Phi_phi, Phi_theta, Phi_r).
 
@@ -228,22 +219,35 @@ class EMRIInspiral(TrajectoryBase):
         fill_value = 1e-6
 
         # fix for specific requirements of different odes
+        background = self.inspiral_generator.backgrounds[0]
+        equatorial = self.inspiral_generator.equatorial[0]
+        circular = self.inspiral_generator.circular[0]
 
-        if self.background == "Schwarzschild":
+        p0 = y1
+        e0 = y2
+        x0 = y3
+
+        if background == "Schwarzschild":
             a = 0.0
         elif a < fill_value:
-            warnings.warn(
-                "Our model with spin breaks near a = 0. Adjusting to a = 1e-6.".format(
-                    fill_value
+            if background == "Kerr" and not equatorial:
+                warnings.warn(
+                    "Our model with spin breaks near a = 0. Adjusting to a = 1e-6.".format(
+                        fill_value
+                    )
                 )
-            )
-            a = fill_value
+                a = fill_value
 
-        # if self.equatorial:
-        #     x0 = 1.0
+        if equatorial:
+            if abs(x0) != 1:
+                raise RuntimeError("Magnitude of orbital inclination cosine x0 needs to be one for equatorial inspiral.")
 
-        if self.circular:
+        if circular:
             e0 = 0.0
+
+        # if integrating constants of motion, convert from pex to ELQ now
+        if self.integrate_constants_of_motion:
+            y1, y2, y3 = get_kerr_geo_constants_of_motion(a, p0, e0, x0)
 
         # transfer kwargs from parent class
         temp_kwargs = {key: kwargs[key] for key in self.specific_kwarg_keys}
@@ -254,74 +258,51 @@ class EMRIInspiral(TrajectoryBase):
         if len(args_in) == 0:
             args_in = np.array([0.0])
 
+        if self.integrate_ODE_phases:
+            y0 = np.array([y1, y2, y3, Phi_phi0, Phi_theta0, Phi_r0])
+        else:
+            y0 = np.array([y1, y2, y3])
+   
         # this will return in coordinate time
-        t, p, e, x, Phi_phi, Phi_theta, Phi_r = self.inspiral_generator(
-            M, mu, a, p0, e0, x0, Phi_phi0, Phi_theta0, Phi_r0, args_in, **temp_kwargs
-        )
-        return (t, p, e, x, Phi_phi, Phi_theta, Phi_r)
+        out = self.inspiral_generator.run_inspiral(M, mu, a, y0, args_in, **temp_kwargs)
+        if self.integrate_constants_of_motion and self.convert_to_pex:
+            pex = ELQ_to_pex(a, out[:,1].copy(), out[:,2].copy(), out[:,3].copy())
+            out[:,1] = pex[0]
+            out[:,2] = pex[1]
+            out[:,3] = pex[2]
 
+        # handle no phase integration in ODE
+        if not self.integrate_ODE_phases:
+        # if performing phase integration numerically, perform it here
+            if self.numerically_integrate_phases:
+                # todo: make tuneable with kwargs. pass integral function?
+                if out.shape[0] > 20: # guard against short trajectories
+                    interp_num = 5
+                    k_spl=5
+                    # print("Not triggered. out shape was", out.shape[0])
+                else:
+                    # print("Triggered! out shape was", out.shape[0])
+                    interp_num = 5
+                    k_spl=3
+                t = out[:,0]
+                t_spline = np.interp(np.arange((len(t) - 1) * interp_num + 1), np.arange(0, interp_num*len(t), interp_num), t)
 
+                if self.inspiral_generator.equatorial:
+                    ups_p, ups_e = make_interp_spline(t, out[:,1:3].T, k=k_spl, axis=-1, check_finite=True)(t_spline)
+                    ups_x = np.zeros(len(ups_p)) + x0
+                else:
+                    ups_p, ups_e, ups_x = make_interp_spline(t, out[:,1:4].T, k=k_spl, axis=-1, check_finite=True)(t_spline)
 
-    def get_rhs_ode(
-        self,
-        M,
-        mu,
-        a,
-        p,
-        e,
-        x,
-        *args,
-    ):
-        """Evaluate the right hand side of the ode.
+                frequencies = np.array(get_fundamental_frequencies(a, ups_p.copy(), ups_e.copy(), ups_x.copy()))/(M*MTSUN_SI)
+                
+                phase_array = cumulative_simpson(frequencies, x=t_spline, axis=-1, initial=0)  # initial = 0 sets the zero phase
+                # then we add on the initial phases to all phase values
+                phase_array += np.array([Phi_phi0, Phi_theta0, Phi_r0])[:,None]
 
-        This is the function for calling the creation of the trajectory.
-        Inputs define the output time spacing.
+                out = np.vstack((t_spline, ups_p, ups_e, ups_x, phase_array)).T
+            # otherwise just return empty arrays for the phases
+            else:
+                phase_array = np.zeros((out.shape[0],3))
+                out = np.hstack((out, phase_array))
 
-        This class can be used on its own. However, it is generally accessed
-        through the __call__ method associated with its base class:
-        (:class:`few.utils.baseclasses.TrajectoryBase`).
-
-        args:
-            M (double): Mass of massive black hole in solar masses.
-            mu (double): Mass of compact object in solar masses.
-            a (double): Dimensionless spin of massive black hole.
-            p (double): semi-latus rectum in terms units of M (p/M).
-            e (double): eccentricity (dimensionless).
-            x (double): :math:`\cos{\iota}`. **Note**: This value is different from :math:`x_I`
-            used in the relativistic waveforms.
-            *args (list, placeholder): Added for flexibility.
-
-        Returns:
-            tuple: Tuple of (t, p, e, x, Phi_phi, Phi_theta, Phi_r).
-
-        """
-
-        fill_value = 1e-6
-
-        # fix for specific requirements of different odes
-
-        if self.background == "Schwarzschild":
-            a = 0.0
-        elif a < fill_value:
-            warnings.warn(
-                "Our model with spin breaks near a = 0. Adjusting to a = 1e-6.".format(
-                    fill_value
-                )
-            )
-            a = fill_value
-
-        # if self.equatorial:
-        #     x = 1.0
-
-        if self.circular:
-            e = 0.0
-
-        args_in = np.asarray(args)
-
-        # correct for issue in Cython pass
-        if len(args_in) == 0:
-            args_in = np.array([0.0])
-
-        # this will return in coordinate time
-        
-        return self.get_derivative(mu/M, a, p, e, x, args_in)
+        return tuple(out.T.copy())
