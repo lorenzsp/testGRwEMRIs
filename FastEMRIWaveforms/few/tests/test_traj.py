@@ -99,9 +99,12 @@ class ModuleTest(unittest.TestCase):
         # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
 
         for i in range(100):
-            p0 = np.random.uniform(9.0,17.0)
+            
+            p0 = np.random.uniform(10.0,17.0)
             e0 = np.random.uniform(0.1, 0.5)
             a = np.random.uniform(-0.987, 0.987)
+            # a,p0,e0 = 0.9671683218828037, 11.24418671637702, 0.13061740917949632
+            print(a,p0,e0)
             
             # run trajectory
             tic = time.perf_counter()
