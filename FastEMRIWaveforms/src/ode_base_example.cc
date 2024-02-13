@@ -239,9 +239,9 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
         ydot[0] = 0.0;
         ydot[1] = 0.0;
         ydot[2] = 0.0;
-        ydot[3] = 0.0;
-        ydot[4] = 0.0;
-        ydot[5] = 0.0;
+        // ydot[3] = 0.0;
+        // ydot[4] = 0.0;
+        // ydot[5] = 0.0;
         return;
     }
     double Omega_phi, Omega_theta, Omega_r;
@@ -331,9 +331,9 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     ydot[0] = pdot;
     ydot[1] = edot;
     ydot[2] = xdot;
-    ydot[3] = Omega_phi;
-    ydot[4] = Omega_theta;
-    ydot[5] = Omega_r;
+    // ydot[3] = Omega_phi;
+    // ydot[4] = Omega_theta;
+    // ydot[5] = Omega_r;
     // delete GKR;
     return;
 }
