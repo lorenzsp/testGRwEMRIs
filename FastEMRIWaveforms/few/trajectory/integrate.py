@@ -410,7 +410,7 @@ class APEXIntegrate(Integrate):
 class AELQIntegrate(Integrate):
     def get_p_sep(self, y: np.ndarray) -> float:
         p, e, x = ELQ_to_pex(self.a, y[0], y[1], y[2])
-        # print(p,e,x)
+        
         if self.a == 0.0:
             p_sep = 6.0 + 2.0 * e
 
@@ -430,7 +430,12 @@ class AELQIntegrate(Integrate):
         # estimate the step to the breaking point and multiply by PERCENT_STEP
         p_sep, (p, e, x) = self.get_p_sep(y)
         Edot = ydot[0]
-        E_sep = get_kerr_geo_constants_of_motion(self.a, p_sep + DIST_TO_SEPARATRIX, e, x)[0]
+        if e==0: 
+            p_shit = p_sep + DIST_TO_SEPARATRIX*0.5
+            E_sep = (1 - 2./p_shit + self.a/p_shit**(3/2))/np.sqrt(1. - 3./p_shit + 2. * self.a/p_shit**(3/2) )
+        else:
+            E_sep = get_kerr_geo_constants_of_motion(self.a, p_sep + DIST_TO_SEPARATRIX, e, x)[0]
+        
         step_size = PERCENT_STEP / factor * ((E_sep - y[0]) / Edot)
 
         # copy current values
@@ -458,19 +463,22 @@ class AELQIntegrate(Integrate):
             factor = 1.0
             iteration = 0
             # breakpoint()
-
-            while p - p_sep > DIST_TO_SEPARATRIX + INNER_THRESHOLD:
+            while (p - p_sep > DIST_TO_SEPARATRIX + INNER_THRESHOLD):
                 # Same function in the integrator
                 ydot = self.integrator.get_derivatives(y)
                 t_temp, y_temp, temp_stop = self.end_stepper(t, y, ydot, factor)
+
                 if temp_stop > 0:
                     # update points
-                    t = t_temp
-                    y[:] = y_temp[:]
-                    p_sep, (p,e,x) = self.get_p_sep(y)
+                    p_sep_temp, (p_temp,etemp,xtemp) = self.get_p_sep(y_temp)
+                    if (p_temp - p_sep_temp < DIST_TO_SEPARATRIX):
+                        factor *=2
+                    else:
+                        t = t_temp
+                        y[:] = y_temp[:]
+                        p_sep, (p,e,x) = p_sep_temp, (p_temp,etemp,xtemp)
                 else:
                     # all variables stay the same
-
                     # decrease step
                     factor *= 2.0
 
@@ -480,5 +488,5 @@ class AELQIntegrate(Integrate):
                     raise ValueError(
                         "Could not find workable step size in finishing function."
                     )
-
+            # print(p - p_sep , DIST_TO_SEPARATRIX + INNER_THRESHOLD, temp_stop)
             self.save_point(t*self.Msec,y)

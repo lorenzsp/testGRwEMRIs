@@ -101,9 +101,8 @@ class ModuleTest(unittest.TestCase):
         for i in range(1000):
             # beginning E =0.875343   L=2.36959       Q=0
             p0 = np.random.uniform(9.0,17.0)
-            e0 = np.random.uniform(0.1, 0.45)
+            e0 = np.random.uniform(0.00, 0.45)
             a = np.random.uniform(-0.0, 0.987)
-            # a,p0,e0 = 0.9671683218828037, 11.24418671637702, 0.13061740917949632
             print(a,p0,e0)
             
             # run trajectory
