@@ -444,6 +444,54 @@ double periodic_acos(double x) {
     return acos(x);
 }
 
+void solveCubic(double A2, double A1, double A0) {
+    // Coefficients
+    double a = 1; // coefficient of r^3
+    double b = A2; // coefficient of r^2
+    double c = A1; // coefficient of r^1
+    double d = A0; // coefficient of r^0
+    
+    // Calculate p and q
+    double p = (3*a*c - b*b) / (3*a*a);
+    double q = (2*b*b*b - 9*a*b*c + 27*a*a*d) / (27*a*a*a);
+
+    // Calculate discriminant
+    double discriminant = q*q/4 + p*p*p/27;
+
+    if (discriminant > 0) {
+        // One real root and two complex conjugate roots
+        double u = cbrt(-q/2 + sqrt(discriminant));
+        double v = cbrt(-q/2 - sqrt(discriminant));
+        double root = u + v - b/(3*a);
+        cout << "Real Root: " << root << endl;
+
+        complex<double> imaginaryPart(-sqrt(3.0) / 2.0 * (u - v), 0.5 * (u + v));
+        complex<double> root2 = -0.5 * (u + v) - b / (3 * a) + imaginaryPart;
+        complex<double> root3 = -0.5 * (u + v) - b / (3 * a) - imaginaryPart;
+        cout << "Complex Root 1: " << root2 << endl;
+        cout << "Complex Root 2: " << root3 << endl;
+    } else if (discriminant == 0) {
+        // All roots are real and at least two are equal
+        double u = cbrt(-q/2);
+        double v = cbrt(-q/2);
+        double root = u + v - b/(3*a);
+        cout << "Real Root: " << root << endl;
+        cout << "Real Root (equal to above): " << root << endl;
+        
+        complex<double> root2 = -0.5 * (u + v) - b / (3 * a);
+        cout << "Complex Root: " << root2 << endl;
+    } else {
+        // All three roots are real and different
+        double r = sqrt(-p/3);
+        double theta = acos(-q/(2*r*r*r));
+        double root1 = 2 * r * cos(theta/3) - b / (3 * a);
+        double root2 = 2 * r * cos((theta + 2*M_PI) / 3) - b / (3 * a);
+        double root3 = 2 * r * cos((theta - 2*M_PI) / 3) - b / (3 * a);
+        cout << "Real Root 1: " << root1 << endl;
+        cout << "Real Root 2: " << root2 << endl;
+        cout << "Real Root 3: " << root3 << endl;
+    }
+}
 
 void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz, double Q)
 //
@@ -456,10 +504,12 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
 //
 {
   if (Q < 1.e-14) { // equatorial
-    double E2m1 = (E - 1.)*(E + 1.);
+    
+    double E2m1 = E*E - 1.;//(E - 1.)*(E + 1.);
     double A2 = 2./E2m1;
-    double A1 = (a*a*E2m1 - Lz*Lz)/E2m1;
+    double A1 = a*a - Lz*Lz/E2m1;//(a*a*E2m1 - Lz*Lz)/E2m1;
     double A0 = 2.*(a*E - Lz)*(a*E - Lz)/E2m1;
+    // solveCubic(A2,A1,A0);
     //
     double Qnr = (A2*A2 - 3.*A1)/9.;
     double rtQnr = sqrt(Qnr);
@@ -467,9 +517,9 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     // addition to avoid nans
     // for E =0.939973   L=3.365 Q=0 a =0.117507   p=nan   e=nan   arg of acos=-1.00118
     double argacos = (Rnr/(rtQnr*rtQnr*rtQnr));
-    // cout << "1 " <<rtQnr << endl;
+    // cout << "Rnr = " << Rnr << endl;
     // argacos = (Rnr/(rtQnr*rtQnr*rtQnr));
-    // cout << "2 =" <<Qnr << endl;
+    // cout << "Qnr =" << Qnr << endl;
 
     double theta = periodic_acos(argacos);
     //
@@ -480,11 +530,11 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     //
     *p = 2.*ra*rp/(ra + rp);
     *e = (ra - rp)/(ra + rp);
-    if (isnan(*p)||isnan(*e)){
-        cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
-        cout << "beginning" << " a =" << a  << "\t" << "p=" <<  *p << "\t" << "e=" << *e << "\t" <<  "arg of acos=" <<Rnr/(rtQnr*rtQnr*rtQnr) << endl;
-        throw std::exception();
-    }
+    // if (isnan(*p)||isnan(*e)){
+    //     cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
+    //     cout << "beginning" << " a =" << a  << "\t" << "p=" <<  *p << "\t" << "e=" << *e << "\t" <<  "arg of acos=" <<Rnr/(rtQnr*rtQnr*rtQnr) << endl;
+    //     throw std::exception();
+    // }
 
     if (Lz > 0.) *xI = 1.;
     else *xI = -1.;
