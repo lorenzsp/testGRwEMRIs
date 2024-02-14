@@ -51,16 +51,18 @@ MAX_ITER = 1000
 KERR = 1
 SCHWARZSCHILD = 2
 
-def get_integrator(func, nparams, few_dir, num_add_args=0):
+def get_integrator(func, nparams, few_dir):
+
+    ode_info = get_ode_function_options()
+    
+    if isinstance(func, str):
+        num_add_args = ode_info[func]['num_add_args']
+        func = [func]
+
     integrator = pyInspiralGenerator(
         nparams,
         num_add_args,
     )
-
-    ode_info = get_ode_function_options()
-
-    if isinstance(func, str):
-        func = [func]
 
     for func_i in func:
         assert isinstance(func_i, str)
@@ -70,6 +72,7 @@ def get_integrator(func, nparams, few_dir, num_add_args=0):
             )
         integrator.add_ode(func_i.encode(), few_dir.encode())
 
+    
     if not integrator.integrate_phases[0]:
         nparams -= 3
     if integrator.integrate_constants_of_motion[0]:
