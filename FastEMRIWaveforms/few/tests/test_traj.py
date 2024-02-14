@@ -98,11 +98,11 @@ class ModuleTest(unittest.TestCase):
         # traj.get_derivative(mu/M, 0.876000 , 8.241867 , 0.272429 , 1.000000, np.asarray([charge]) )
         # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
 
-        for i in range(1000):
+        for i in range(100):
             # beginning E =0.875343   L=2.36959       Q=0
             p0 = np.random.uniform(9.0,17.0)
             e0 = np.random.uniform(0.00, 0.45)
-            a = np.random.uniform(-0.0, 0.987)
+            a = np.random.uniform(-0.987, 0.987)
             print(a,p0,e0)
             
             # run trajectory

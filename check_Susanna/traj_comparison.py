@@ -10,7 +10,7 @@ from few.utils.constants import *
 
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
 # run trajectory
-err = 1e-15
+err = 1e-10
 insp_kw = {
     "err": err,
     "DENSE_STEPPING": 0,
