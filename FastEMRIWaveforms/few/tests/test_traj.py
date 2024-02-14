@@ -26,7 +26,7 @@ except (ModuleNotFoundError, ImportError) as e:
     )
     gpu_available = False
 
-T = 5.0
+T = 100.0
 dt = 10.0
 
 insp_kw = {
@@ -63,7 +63,7 @@ class ModuleTest(unittest.TestCase):
 
             # run trajectory
             #print("start", a, p0, e0, Y0)
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, Y0, **insp_kw)
+            # t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, Y0, **insp_kw)
 
     def test_trajectory_SchwarzEccFlux(self):
         # initialize trajectory class
@@ -98,11 +98,11 @@ class ModuleTest(unittest.TestCase):
         # traj.get_derivative(mu/M, 0.876000 , 8.241867 , 0.272429 , 1.000000, np.asarray([charge]) )
         # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
 
-        for i in range(100):
+        for i in range(1000):
             # beginning E =0.875343   L=2.36959       Q=0
-            p0 = np.random.uniform(10.0,17.0)
+            p0 = np.random.uniform(9.0,17.0)
             e0 = np.random.uniform(0.1, 0.45)
-            a = np.random.uniform(-0.987, 0.987)
+            a = np.random.uniform(-0.0, 0.987)
             # a,p0,e0 = 0.9671683218828037, 11.24418671637702, 0.13061740917949632
             print(a,p0,e0)
             
@@ -110,10 +110,10 @@ class ModuleTest(unittest.TestCase):
             tic = time.perf_counter()
             t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
             toc = time.perf_counter()
-            if (toc-tic)>1.0:
-                print("a=",a,"p0=",p0,"e0=",e0)
-                # import matplotlib.pyplot as plt
-                # plt.figure(); plt.plot(p,e,'.',alpha=0.4); plt.show()
+            # if (toc-tic)>1.0:
+            #     print("a=",a,"p0=",p0,"e0=",e0)
+            #     # import matplotlib.pyplot as plt
+            #     # plt.figure(); plt.plot(p,e,'.',alpha=0.4); plt.show()
             print('elapsed time', toc-tic, ' number of points', len(t) )
         
         # test against Schwarz

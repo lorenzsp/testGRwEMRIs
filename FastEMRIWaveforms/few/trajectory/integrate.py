@@ -43,7 +43,7 @@ dir_path = os.path.dirname(os.path.realpath(__file__))
 from ..utils.utility import get_separatrix
 
 
-DIST_TO_SEPARATRIX = 0.2
+DIST_TO_SEPARATRIX = 0.1
 INNER_THRESHOLD = 1e-8
 PERCENT_STEP = 0.25
 MAX_ITER = 1000

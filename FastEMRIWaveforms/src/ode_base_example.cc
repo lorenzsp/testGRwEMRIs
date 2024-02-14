@@ -243,19 +243,28 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     double p, e, x;
 
     ELQ_to_pex(&p, &e, &x, a, E, Lz, Q);
-
-    double signed_a = a*x; // signed a for interpolants
-    double w = sqrt(e);
-    double ymin = pow(1.-0.998,1./3.);
-    double ymax = pow(1.+0.998,1./3.);
-    double chi2 = (pow(1.-signed_a,1./3.) - ymin) / (ymax - ymin);
+    if (isnan(p)||isnan(e))
+    {
+        ydot[0] = 0.0;
+        ydot[1] = 0.0;
+        ydot[2] = 0.0;
+        // ydot[3] = 0.0;
+        // ydot[4] = 0.0;
+        // ydot[5] = 0.0;
+        return;
+    }
+    // double signed_a = a*x; // signed a for interpolants
+    // double w = sqrt(e);
+    // double ymin = pow(1.-0.998,1./3.);
+    // double ymax = pow(1.+0.998,1./3.);
+    // double chi2 = (pow(1.-signed_a,1./3.) - ymin) / (ymax - ymin);
+    // double p_sep = Sep_interp->eval(chi2, w) * (6. + 2.*e);
 
     // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e << "\t" << "x=" << x << endl;
     // cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
     double p_sep = get_separatrix(a, e, x);
     // cout <<" p_sep =" <<p_sep << endl;
     
-    // double p_sep = Sep_interp->eval(chi2, w) * (6. + 2.*e);
 
     // make sure we do not step into separatrix
     if ((e < 0.0) || (p - 0.1 < p_sep))
