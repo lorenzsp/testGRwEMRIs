@@ -267,7 +267,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     
 
     // make sure we do not step into separatrix
-    if ((e < 0.0) || (p - 0.1 < p_sep))
+    if ((e < 0.0) || (p < p_sep))
     {
         ydot[0] = 0.0;
         ydot[1] = 0.0;
@@ -284,8 +284,13 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     
     // auto start = std::chrono::high_resolution_clock::now();
     // the frequency variables are pointers!
-
-    KerrGeoEquatorialCoordinateFrequencies(&Omega_phi, &Omega_theta, &Omega_r, a, p, e, x); // shift to avoid problem in fundamental frequencies
+    if (e==0.0){
+        Omega_phi = 1.0/ (a*copysign(1.0,x) + pow(p, 1.5) );
+    }
+    else{
+        KerrGeoEquatorialCoordinateFrequencies(&Omega_phi, &Omega_theta, &Omega_r, a, p, e, x); // shift to avoid problem in fundamental frequencies
+    }
+    
     // KerrScott(Omega_phi, Omega_theta, Omega_r, a, p, e, x);
     // auto end = std::chrono::high_resolution_clock::now();
     // std::chrono::duration<double>  msec = end-start;
@@ -328,9 +333,9 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // sign of function
     double factor = additional_args[0]*additional_args[0]/4.0;
     // cout << factor << endl;
-    
     Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
     Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
+    
     Qdot = 0.0;
     // cout << 'Edot \t' << Edot << endl;
     // cout << 'Ldot \t' << Ldot << endl;
@@ -362,7 +367,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // }
 
     // xdot = 0.0;
-    
+    // cout << "end" << endl;
     // ydot[0] = pdot;
     // ydot[1] = edot;
     // ydot[2] = xdot;
