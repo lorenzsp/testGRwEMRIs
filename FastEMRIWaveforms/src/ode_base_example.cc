@@ -236,19 +236,20 @@ KerrEccentricEquatorial::KerrEccentricEquatorial(std::string few_dir)
 __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y[], double epsilon, double a, double *additional_args)
 {
 
-    double E = y[0];
-    double Lz = y[1];
-    double Q = y[2];
+    // double E = y[0];
+    // double Lz = y[1];
+    // double Q = y[2];
+    // double p, e, x;
+    double p = y[0];
+    double e = y[1];
+    double x = y[2];
+    // ELQ_to_pex(&p, &e, &x, a, E, Lz, Q);
 
-    double p, e, x;
-
-    ELQ_to_pex(&p, &e, &x, a, E, Lz, Q);
-
-    double signed_a = a*x; // signed a for interpolants
-    double w = sqrt(e);
-    double ymin = pow(1.-0.998,1./3.);
-    double ymax = pow(1.+0.998,1./3.);
-    double chi2 = (pow(1.-signed_a,1./3.) - ymin) / (ymax - ymin);
+    // double signed_a = a*x; // signed a for interpolants
+    // double w = sqrt(e);
+    // double ymin = pow(1.-0.998,1./3.);
+    // double ymax = pow(1.+0.998,1./3.);
+    // double chi2 = (pow(1.-signed_a,1./3.) - ymin) / (ymax - ymin);
 
     // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e << "\t" << "x=" << x << endl;
     // cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
@@ -308,7 +309,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // edot_cheb = edot_Cheby_full(a*copysign(1.0,x), e, r) * ((pow(one_minus_e2,1.5)*(304. + 121.*pow(e,2)))/(15.*pow(p,2)*(pow(p - risco,2) - pow(-risco + p_sep,2))));
 
     double Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here, E_here, L_here, Q_here;
-    // KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
+    KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
     
     // Transform to pdot, edot for the scalar fluxes
     
@@ -325,6 +326,8 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     Qdot = 0.0;
     // cout << 'Edot \t' << Edot << endl;
     // cout << 'Ldot \t' << Ldot << endl;
+    Jac(a, p, e, x, E_here, L_here, Q_here, -Edot, -Ldot, -Qdot, pdot_here, edot_here, xdot_here);
+    
     // Jac(a, p, e, x, E, Lz, Q, -Edot, -Ldot, -Qdot, pdot_out, edot_out, xdot_out);
     // pdot_edot_from_fluxes(pdot_out, edot_out, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), a, e, p);
 
@@ -335,32 +338,34 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // cout << "Edot, pdot " <<  Edot << "\t" << pdot_out << endl;
     // cout << "Ldot, edot " <<  Ldot << "\t" << edot_out << endl;
 
-    ydot[0] = -Edot;
-    ydot[1] = -Ldot;
-    ydot[2] = Qdot;
-    // // needs adjustment for validity
-    // if (e > 1e-8)
-    // {
-    //     // the scalar flux is d^2 /4
-    //     pdot = epsilon * pdot_out;
-    //     edot = epsilon * edot_out;
-    // }
-    // else{
-        
-    //     edot = 0.0;
-    //     pdot = epsilon * pdot_out;
-    //     // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
-    // }
-
-    // xdot = 0.0;
     
-    // ydot[0] = pdot;
-    // ydot[1] = edot;
-    // ydot[2] = xdot;
+    // needs adjustment for validity
+    if (e > 1e-8)
+    {
+        // the scalar flux is d^2 /4
+        pdot = epsilon * pdot_out;
+        edot = epsilon * edot_out;
+    }
+    else{
+        
+        edot = 0.0;
+        pdot = epsilon * pdot_out;
+        // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
+    }
+
+    xdot = 0.0;
+    
+    ydot[0] = pdot;
+    ydot[1] = edot;
+    ydot[2] = xdot;
     // ydot[3] = Omega_phi;
     // ydot[4] = Omega_theta;
     // ydot[5] = Omega_r;
-    // delete GKR;
+
+
+    // ydot[0] = -Edot;
+    // ydot[1] = -Ldot;
+    // ydot[2] = Qdot;
     return;
 }
 

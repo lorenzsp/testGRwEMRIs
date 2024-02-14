@@ -63,7 +63,7 @@ class ModuleTest(unittest.TestCase):
 
             # run trajectory
             #print("start", a, p0, e0, Y0)
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, Y0, **insp_kw)
+            # t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, Y0, **insp_kw)
 
     def test_trajectory_SchwarzEccFlux(self):
         # initialize trajectory class
@@ -108,6 +108,7 @@ class ModuleTest(unittest.TestCase):
             
             # run trajectory
             tic = time.perf_counter()
+            breakpoint()
             t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
             toc = time.perf_counter()
             if (toc-tic)>1.0:
@@ -130,4 +131,4 @@ class ModuleTest(unittest.TestCase):
             tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, 0.0, p0, e0, 1.0, T=4.0, new_t=t, upsample=True, max_init_len=int(1e5))
             mask = (Phi_rS!=0.0)
             diff =  np.abs(Phi_phi[mask] - Phi_phiS[mask])
-            # self.assertLess(np.max(diff),2.0)
+            self.assertLess(np.max(diff),2.0)

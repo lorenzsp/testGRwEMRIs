@@ -33,7 +33,7 @@ public:
     bool equatorial = true;
     int background = KERR;
     bool circular = false;
-    bool integrate_constants_of_motion = true;
+    bool integrate_constants_of_motion = false;
     bool integrate_phases = false;
     TensorInterpolant2d *Sep_interp;
 
