@@ -90,7 +90,11 @@ for filename in files:
     p0, e0 = p_S[0], e_S[0]
 
     # run trajectory
+    print("p0,e0",p0,e0)
+    tic = time.time()
     t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=3.0, dt=10.0, **insp_kw)
+    toc = time.time()
+    print("time",toc-tic)
     out_deriv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p_S, e_S, np.ones_like(p_S)*x0)])
 
     print( np.abs(1-out_deriv[:,3]/Om1).max(), np.abs(1-out_deriv[:,5]/Om2).max() )
