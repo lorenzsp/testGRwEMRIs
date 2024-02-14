@@ -433,6 +433,18 @@ void KerrGeoCoordinateFrequenciesVectorized(double *OmegaPhi_, double *OmegaThet
     }
 }
 
+double periodic_acos(double x) {
+    // Ensure x is within the range [-1, 1]
+    x = fmod(x, 2.0);
+    if (x < -1.0)
+        x += 2.0;
+    else if (x > 1.0)
+        x -= 2.0;
+
+    return acos(x);
+}
+
+
 void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz, double Q)
 //
 // pexI_of_aELzQ.cc: implements the mapping from orbit integrals
@@ -452,8 +464,14 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     double Qnr = (A2*A2 - 3.*A1)/9.;
     double rtQnr = sqrt(Qnr);
     double Rnr = (A2*(2.*A2*A2 - 9.*A1) + 27.*A0)/54.;
-    //
-    double theta = acos(Rnr/(rtQnr*rtQnr*rtQnr));
+    // addition to avoid nans
+    // for E =0.939973   L=3.365 Q=0 a =0.117507   p=nan   e=nan   arg of acos=-1.00118
+    double argacos = (Rnr/(rtQnr*rtQnr*rtQnr));
+    // cout << "1 " <<rtQnr << endl;
+    // argacos = (Rnr/(rtQnr*rtQnr*rtQnr));
+    // cout << "2 =" <<Qnr << endl;
+
+    double theta = periodic_acos(argacos);
     //
     double ra = -2.*rtQnr*cos((theta + 2.*M_PI)/3.) - A2/3.;
     double rp = -2.*rtQnr*cos((theta - 2.*M_PI)/3.) - A2/3.;
@@ -462,6 +480,12 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     //
     *p = 2.*ra*rp/(ra + rp);
     *e = (ra - rp)/(ra + rp);
+    if (isnan(*p)||isnan(*e)){
+        cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
+        cout << "beginning" << " a =" << a  << "\t" << "p=" <<  *p << "\t" << "e=" << *e << "\t" <<  "arg of acos=" <<Rnr/(rtQnr*rtQnr*rtQnr) << endl;
+        throw std::exception();
+    }
+
     if (Lz > 0.) *xI = 1.;
     else *xI = -1.;
   } else { // non-equatorial
@@ -519,6 +543,7 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     double denomsqr = QpLz2ma2omE2 + sqrt(QpLz2ma2omE2*QpLz2ma2omE2 - 4.*Lz*Lz*a2*E2m1);
     *xI = sqrt(2.)*Lz/sqrt(denomsqr);
   }
+    
 }
 
 void ELQ_to_pexVectorised(double *p, double *e, double *x, double *a, double *E, double *Lz, double *Q, int length)
@@ -636,6 +661,7 @@ double solver(struct params_holder *params, double (*func)(double, void *), doub
         // warning if it did not converge otherwise throw error
         if (iter == max_iter)
         {
+            printf("a, p, e, Y = %f %f %f %f\n", params->a, params->p, params->e, params->Y);
             printf("WARNING: Maximum iteration reached in Utility.cc in Brent root solver.\n");
             printf("Result=%f, x_low=%f, x_high=%f \n", r, x_lo, x_hi);
             printf("a, p, e, Y, sep = %f %f %f %f %f\n", params->a, params->p, params->e, params->Y, get_separatrix(params->a, params->e, r));
@@ -708,7 +734,7 @@ double get_separatrix(double a, double e, double x)
         p_sep = 6.0 + 2.0 * e;
         return p_sep;
     }
-    else if ((e == 0.0) & (abs(x) == 1.0))
+    else if ((e < 0.0) & (abs(x) == 1.0))
     {
         z1 = 1. + pow((1. - pow(a, 2)), 1. / 3.) * (pow((1. + a), 1. / 3.) + pow((1. - a), 1. / 3.));
 

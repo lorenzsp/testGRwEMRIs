@@ -220,6 +220,14 @@ Vector fill_vector(std::string fp){
 KerrEccentricEquatorial::KerrEccentricEquatorial(std::string few_dir)
 {
     std::string fp;
+
+    fp = few_dir + "few/files/sep_x0.dat";
+    Vector sep_x1 = fill_vector(fp);
+    fp = few_dir + "few/files/sep_x1.dat";
+    Vector sep_x2 = fill_vector(fp);
+    fp = few_dir + "few/files/coeff_sep.dat";
+    Vector coeffSep = fill_vector(fp);
+    Sep_interp = new TensorInterpolant2d(sep_x1, sep_x2, coeffSep);    
 }
 
 // #define KerrEccentricEquatorial_Y
@@ -228,13 +236,29 @@ KerrEccentricEquatorial::KerrEccentricEquatorial(std::string few_dir)
 __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y[], double epsilon, double a, double *additional_args)
 {
 
-    double p = y[0];
-    double e = y[1];
-    double x = y[2];
+    double E = y[0];
+    double Lz = y[1];
+    double Q = y[2];
 
+    double p, e, x;
+
+    ELQ_to_pex(&p, &e, &x, a, E, Lz, Q);
+
+    double signed_a = a*x; // signed a for interpolants
+    double w = sqrt(e);
+    double ymin = pow(1.-0.998,1./3.);
+    double ymax = pow(1.+0.998,1./3.);
+    double chi2 = (pow(1.-signed_a,1./3.) - ymin) / (ymax - ymin);
+
+    // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e << "\t" << "x=" << x << endl;
+    // cout << "beginning" << " E =" << E  << "\t" << "L=" <<  Lz << "\t" << "Q=" << Q << endl;
     double p_sep = get_separatrix(a, e, x);
+    // cout <<" p_sep =" <<p_sep << endl;
+    
+    // double p_sep = Sep_interp->eval(chi2, w) * (6. + 2.*e);
+
     // make sure we do not step into separatrix
-    if ((e < 0.0) || (p < p_sep))
+    if ((e < 0.0) || (p - 0.1 < p_sep))
     {
         ydot[0] = 0.0;
         ydot[1] = 0.0;
@@ -248,7 +272,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     double pdot, edot, xdot;
 
     // evaluate ODEs
-    // cout << "beginning" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e << "\t" << "x=" << x << endl;
+    
     // auto start = std::chrono::high_resolution_clock::now();
     // the frequency variables are pointers!
 
@@ -284,7 +308,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // edot_cheb = edot_Cheby_full(a*copysign(1.0,x), e, r) * ((pow(one_minus_e2,1.5)*(304. + 121.*pow(e,2)))/(15.*pow(p,2)*(pow(p - risco,2) - pow(-risco + p_sep,2))));
 
     double Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here, E_here, L_here, Q_here;
-    KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
+    // KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
     
     // Transform to pdot, edot for the scalar fluxes
     
@@ -301,7 +325,7 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     Qdot = 0.0;
     // cout << 'Edot \t' << Edot << endl;
     // cout << 'Ldot \t' << Ldot << endl;
-    Jac(a, p, e, x, E_here, L_here, Q_here, -Edot, -Ldot, Qdot, pdot_out, edot_out, xdot_out);
+    // Jac(a, p, e, x, E, Lz, Q, -Edot, -Ldot, -Qdot, pdot_out, edot_out, xdot_out);
     // pdot_edot_from_fluxes(pdot_out, edot_out, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), a, e, p);
 
     // check Jacobiam
@@ -311,29 +335,38 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // cout << "Edot, pdot " <<  Edot << "\t" << pdot_out << endl;
     // cout << "Ldot, edot " <<  Ldot << "\t" << edot_out << endl;
 
-    
-    // needs adjustment for validity
-    if (e > 1e-8)
-    {
-        // the scalar flux is d^2 /4
-        pdot = epsilon * pdot_out;
-        edot = epsilon * edot_out;
-    }
-    else{
+    ydot[0] = -Edot;
+    ydot[1] = -Ldot;
+    ydot[2] = Qdot;
+    // // needs adjustment for validity
+    // if (e > 1e-8)
+    // {
+    //     // the scalar flux is d^2 /4
+    //     pdot = epsilon * pdot_out;
+    //     edot = epsilon * edot_out;
+    // }
+    // else{
         
-        edot = 0.0;
-        pdot = epsilon * pdot_out;
-        // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
-    }
+    //     edot = 0.0;
+    //     pdot = epsilon * pdot_out;
+    //     // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
+    // }
 
-    xdot = 0.0;
+    // xdot = 0.0;
     
-    ydot[0] = pdot;
-    ydot[1] = edot;
-    ydot[2] = xdot;
+    // ydot[0] = pdot;
+    // ydot[1] = edot;
+    // ydot[2] = xdot;
     // ydot[3] = Omega_phi;
     // ydot[4] = Omega_theta;
     // ydot[5] = Omega_r;
     // delete GKR;
     return;
+}
+
+// destructor
+KerrEccentricEquatorial::~KerrEccentricEquatorial()
+{
+
+    delete Sep_interp;
 }
