@@ -95,6 +95,7 @@ for filename in files:
     # out_deriv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p_S, e_S, np.ones_like(p_S)*x0)])
     # print( np.abs(1-out_deriv[:,3]/Om1).max(), np.abs(1-out_deriv[:,5]/Om2).max() )
     print('length', len(t) )
+
     # interpolate to compare
     interp = CubicSplineInterpolant(t, Phi_phi)
     interp2 = CubicSplineInterpolant(t, Phi_r)

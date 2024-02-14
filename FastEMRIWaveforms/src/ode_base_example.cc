@@ -221,13 +221,13 @@ KerrEccentricEquatorial::KerrEccentricEquatorial(std::string few_dir)
 {
     std::string fp;
 
-    fp = few_dir + "few/files/sep_x0.dat";
-    Vector sep_x1 = fill_vector(fp);
-    fp = few_dir + "few/files/sep_x1.dat";
-    Vector sep_x2 = fill_vector(fp);
-    fp = few_dir + "few/files/coeff_sep.dat";
-    Vector coeffSep = fill_vector(fp);
-    Sep_interp = new TensorInterpolant2d(sep_x1, sep_x2, coeffSep);    
+    // fp = few_dir + "few/files/sep_x0.dat";
+    // Vector sep_x1 = fill_vector(fp);
+    // fp = few_dir + "few/files/sep_x1.dat";
+    // Vector sep_x2 = fill_vector(fp);
+    // fp = few_dir + "few/files/coeff_sep.dat";
+    // Vector coeffSep = fill_vector(fp);
+    // Sep_interp = new TensorInterpolant2d(sep_x1, sep_x2, coeffSep);    
 }
 
 // #define KerrEccentricEquatorial_Y
@@ -335,9 +335,9 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // cout << "Edot, pdot " <<  Edot << "\t" << pdot_out << endl;
     // cout << "Ldot, edot " <<  Ldot << "\t" << edot_out << endl;
 
-    ydot[0] = -Edot;
-    ydot[1] = -Ldot;
-    ydot[2] = Qdot;
+    ydot[0] = -epsilon*Edot;
+    ydot[1] = -epsilon*Ldot;
+    ydot[2] = -epsilon*Qdot;
     // // needs adjustment for validity
     // if (e > 1e-8)
     // {
@@ -368,5 +368,5 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
 KerrEccentricEquatorial::~KerrEccentricEquatorial()
 {
 
-    delete Sep_interp;
+    // delete Sep_interp;
 }

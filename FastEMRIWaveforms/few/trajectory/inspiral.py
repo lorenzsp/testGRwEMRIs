@@ -128,7 +128,7 @@ class EMRIInspiral(TrajectoryBase):
         self.enforce_schwarz_sep = enforce_schwarz_sep
         
         nparams = 6
-        self.inspiral_generator = get_integrator(func, nparams, few_dir, num_add_args=0)
+        self.inspiral_generator = get_integrator(func, nparams, few_dir)
 
         self.func = self.inspiral_generator.func
 

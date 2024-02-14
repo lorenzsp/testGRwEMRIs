@@ -99,7 +99,7 @@ class ModuleTest(unittest.TestCase):
         # print("finalt ",traj(M, mu, 0.876, 8.24187, 0.272429, x0, charge)[0][-1])
 
         for i in range(100):
-            
+            # beginning E =0.875343   L=2.36959       Q=0
             p0 = np.random.uniform(10.0,17.0)
             e0 = np.random.uniform(0.1, 0.45)
             a = np.random.uniform(-0.987, 0.987)
