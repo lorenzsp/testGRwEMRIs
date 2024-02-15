@@ -34,8 +34,8 @@ insp_kw = {
 "dt": dt,
 "err": 1e-10,
 "DENSE_STEPPING": 0,
-"max_init_len": int(1e6),
-"use_rk4": False,
+"max_init_len": int(1e4),
+"use_rk4": True,
 "upsample": False,
 }
 
@@ -103,17 +103,25 @@ class ModuleTest(unittest.TestCase):
             p0 = np.random.uniform(9.0,17.0)
             e0 = np.random.uniform(0.00, 0.45)
             a = np.random.uniform(-0.987, 0.987)
+            print('-----------------------------------------------')
             print(a,p0,e0)
             
             # run trajectory
             tic = time.perf_counter()
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, **insp_kw)
+            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=True)
             toc = time.perf_counter()
+            print('rk 4 elapsed time', toc-tic, ' number of points', len(t) )
+            
+            tic = time.perf_counter()
+            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=False)
+            toc = time.perf_counter()
+            print('elapsed time', toc-tic, ' number of points', len(t) )
             # if (toc-tic)>1.0:
             #     print("a=",a,"p0=",p0,"e0=",e0)
             #     # import matplotlib.pyplot as plt
             #     # plt.figure(); plt.plot(p,e,'.',alpha=0.4); plt.show()
             print('elapsed time', toc-tic, ' number of points', len(t) )
+            breakpoint()
         
         # test against Schwarz
         traj_Schw = EMRIInspiral(func="SchwarzEccFlux")

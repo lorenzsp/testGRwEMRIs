@@ -95,9 +95,11 @@ int InspiralCarrier::get_number_of_odes()
     return params_holder->odes.size();
 }
 
-void InspiralCarrier::set_error_tolerance(double err_set)
+void InspiralCarrier::set_integrator_kwargs(double err_set, bool DENSE_STEP_SET, bool RK8_SET)
 {
     err = err_set;
+    USE_DENSE_STEPPING = DENSE_STEP_SET;
+    USE_RK8 = RK8_SET;
 }
 
 void InspiralCarrier::add_parameters_to_holder(double M, double mu, double a, double *additional_args)
@@ -112,11 +114,15 @@ void InspiralCarrier::initialize_integrator()
 {
 
     const gsl_odeiv2_step_type *T;
-    if (USE_RK8)
+    if (USE_RK8){
+        cout << "RK8" <<endl;
         T = gsl_odeiv2_step_rk8pd;
-    else
+    }
+    else{
+        cout << "RK4" <<endl;
         T = gsl_odeiv2_step_rk4;
-
+    }
+        
     // Initialize the ODE solver
     // gsl_odeiv2_system sys_temp = {func_ode_wrap, NULL, static_cast<size_t>(nparams), params_holder};
 

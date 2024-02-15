@@ -121,6 +121,7 @@ class Integrate:
             num_add_args,
         )
         self.ode_info = ode_info = get_ode_function_options()
+        self.few_dir = few_dir
 
         if isinstance(func, str):
             func = [func]
@@ -154,9 +155,9 @@ class Integrate:
     def num_add_args(self) -> int:
         return self.integrator.num_add_args
 
-    @property
-    def few_dir(self) -> str:
-        return str(self.integrator.few_dir)
+    # @property
+    # def few_dir(self) -> str:
+    #     return str(self.integrator.few_dir)
 
     @property
     def backgrounds(self):
@@ -181,6 +182,29 @@ class Integrate:
     # @property
     # def func(self) -> str:
     #     return str(self.integrator.func_name)
+
+    def __setstate__(self, d):
+        self.__dict__ = d
+
+        ode_info = get_ode_function_options()
+
+        for func_i in self.func:
+            assert isinstance(func_i, str)
+            if func_i not in ode_info:
+                raise ValueError(
+                    f"func not available. Options are {list(ode_info.keys())}."
+                )
+            self.integrator.add_ode(func_i.encode(), self.few_dir.encode())
+
+            # make sure all files needed for the ode specifically are downloaded
+            for fp in ode_info[func_i]["files"]:
+                try:
+                    check_for_file_download(fp, self.few_dir)
+                except FileNotFoundError:
+                    raise ValueError(
+                        f"File required for this ODE ({fp}) was not found in the proper folder ({self.few_dir + 'few/files/'}) or on zenodo."
+                    )
+
 
     def take_step(
         self, t: float, h: float, y: np.ndarray
@@ -274,8 +298,8 @@ class Integrate:
         if hasattr(self, "finishing_function"):
             self.finishing_function(t, y)
 
-    def initialize_integrator(self, err):
-        self.integrator.set_error_tolerance(err)
+    def initialize_integrator(self, err=1e-10, DENSE_STEPPING=False, use_rk4=False, **kwargs):
+        self.integrator.set_integrator_kwargs(err, DENSE_STEPPING, ~use_rk4)
 
         self.integrator.initialize_integrator()
         self.trajectory_arr = np.zeros((self.buffer_length, self.nparams + 1))
@@ -297,9 +321,9 @@ class Integrate:
             )
             self.buffer_length = self.trajectory_arr.shape[0]
 
-    def run_inspiral(self, M, mu, a, y0, additional_args, T=1., dt=10., err=1e-11, **kwargs):
+    def run_inspiral(self, M, mu, a, y0, additional_args, T=1., dt=10., **kwargs):
         self.moves_check = 0
-        self.initialize_integrator(err)
+        self.initialize_integrator(**kwargs)
 
         # Compute the adimensionalized time steps and max time
         self.tmax_dimensionless = T*YRSID_SI / (M * MTSUN_SI)
