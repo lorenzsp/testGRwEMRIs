@@ -209,7 +209,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'new_prior_results/MCMC_*'
+init_name = 'results_paper/mcmc_*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -222,22 +222,24 @@ for filename,el in zip(datasets,pars_inj):
     print('-------------------------------------')
     file  = HDFBackend(filename)
     print(filename)
-    print(file.get_move_info())
+    print("acceptance:")
+    print(file.get_move_info()['GaussianMove_0']['acceptance_fraction'][0])
+    print(file.get_move_info()['GaussianMove_1']['acceptance_fraction'][0])
     
-    burn = int(file.iteration*0.25)
-    thin = 2
-    autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
-    print("iteration ", file.iteration)
-    print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
+    # burn = int(file.iteration*0.25)
+    # thin = 2
+    # print("iteration ", file.iteration)
+    # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
+    # print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     # print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
-    print("max last loglike", file.get_log_like()[-1])
-
+    # print("max last loglike", file.get_log_like()[-1][0])
     # print(file.get_betas()[-1])
-    # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
+    # # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
+    
     # mask = np.arange(file.nwalkers)
     
-    # # create directory
-    # repo_name = el.split('new_prior_results/')[-1].split('rndStart_')[-1].split('_seed')[0]
+    # # # create directory
+    # repo_name = el.split('results_intrinsic/')[-1].split('rndStart_')[-1].split('_seed')[0]
     # create_folder(repo_name)
     
     # # loglike
