@@ -299,11 +299,11 @@ class EMRIInspiral(TrajectoryBase):
                 
                 frequencies = np.array(get_fundamental_frequencies(a, ups_p.copy(), ups_e.copy(), ups_x.copy()))/(M*MTSUN_SI)
                 # CUBIC
-                cs = CubicSpline(t_spline, frequencies.T)
-                phase_array = cs.antiderivative()(t).T
+                # cs = CubicSpline(t_spline, frequencies.T)
+                # phase_array = cs.antiderivative()(t).T
                 
                 # CUMULATIVE SIMPS
-                # phase_array = cumulative_simpson(frequencies, x=t_spline, axis=-1, initial=0)  # initial = 0 sets the zero phase
+                phase_array = cumulative_simpson(frequencies, x=t_spline, axis=-1, initial=0)  # initial = 0 sets the zero phase
                                 
                 # import matplotlib.pyplot as plt
                 # plt.figure(); plt.plot(out[:,1],out[:,2],'.'); plt.axvline(self.inspiral_generator.get_p_sep(out[-1])[0]+0.1); plt.show()

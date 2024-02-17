@@ -102,7 +102,7 @@ class ModuleTest(unittest.TestCase):
         err = 1e-10
         for i in range(100):
             # beginning E =0.875343   L=2.36959       Q=0
-            p0 = np.random.uniform(9.0,17.0)
+            p0 = np.random.uniform(9.5,17.0)
             e0 = np.random.uniform(0.0, 0.45)
             a = np.random.uniform(-0.99, 0.99)
             print('-----------------------------------------------')
@@ -110,12 +110,12 @@ class ModuleTest(unittest.TestCase):
             
             # run trajectory
             tic = time.perf_counter()
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=True, err=err)
+            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=True, err=err, T=100.0)
             toc = time.perf_counter()
             print('rk 4 elapsed time', toc-tic, ' number of points', len(t) )
             elapsed_time.append([toc-tic,len(t)])
             tic = time.perf_counter()
-            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=False, err=err)
+            t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, np.abs(a), p0, e0, np.sign(a)*1.0, charge, use_rk4=False, err=err, T=100.0)
             toc = time.perf_counter()
             print('elapsed time', toc-tic, ' number of points', len(t) )
             elapsed_time_rk8.append([toc-tic,len(t)])
@@ -134,7 +134,7 @@ class ModuleTest(unittest.TestCase):
             length = [row[1] for row in data]
 
             # Plotting
-            plt.plot(length,duration,lab[ii][1],label=lab[ii][0],alpha=0.8)
+            plt.loglog(length,duration,lab[ii][1],label=lab[ii][0],alpha=0.8)
         plt.legend()
         plt.xlabel('Number of trajectory points')
         plt.ylabel('Timing of trajectory [s]')
