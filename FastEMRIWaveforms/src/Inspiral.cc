@@ -115,11 +115,11 @@ void InspiralCarrier::initialize_integrator()
 
     const gsl_odeiv2_step_type *T;
     if (USE_RK8){
-        cout << "RK8" <<endl;
+        // cout << "RK8" <<endl;
         T = gsl_odeiv2_step_rk8pd;
     }
     else{
-        cout << "RK4" <<endl;
+        // cout << "RK4" <<endl;
         T = gsl_odeiv2_step_rk4;
     }
         
