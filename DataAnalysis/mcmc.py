@@ -581,13 +581,14 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        file  = HDFBackend(fp)
-        burn = int(file.iteration*0.25)
-        thin = 1
+        # file  = HDFBackend(fp)
+        # burn = int(file.iteration*0.25)
+        # thin = 1
         
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
-        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim /100000   
+        toplot = np.load(fp.split('.h5')[0] + '/samples.npy')
+        # file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
+        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
@@ -700,9 +701,8 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic),0.9),
-        (GaussianMove({"emri": cov}, mode="AM", factor=1000, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.1),
-        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic),0.3),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.95),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.05),
     ]
 
     def stopping_fn(i, res, samp):
@@ -760,7 +760,7 @@ def run_emri_pe(
                 samp.moves[0].all_proposal['emri'].svd = svd
         
         # if (i==0)and(current_it>1) we are starting the mcmc again
-        if (current_it==1000)or((i==0)and(current_it>1)):
+        if (current_it==2000)or((i==0)and(current_it>1)):
             print("resuming run calculate covariance from chain")
             chain = samp.get_chain(discard=discard)['emri'][:,0]
             inds = samp.get_inds(discard=discard)['emri'][:,0]
@@ -869,18 +869,32 @@ if __name__ == "__main__":
         traj_kwargs={"dt":dt}
     )
     print("new p0 fixed by Tobs, p0=", p0)
-    tic = time.time()
-    tvec = traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0]/YRSID_SI
-    print("finalt ",tvec[-1],len(tvec))
-    toc = time.time()
-    print("traj timing",toc - tic)
-
+    
     logprior = False
     folder = "./results_paper/"
     if logprior:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+
+    tic = time.time()
+    tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0)
+    print("finalt ",tvec[-1]/YRSID_SI,len(tvec))
+    toc = time.time()
+    print("traj timing",toc - tic)
+    fig, axes = plt.subplots(2, 3)
+    plt.subplots_adjust(wspace=0.3)
+    fig.set_size_inches(14, 8)
+    axes = axes.ravel()
+    ylabels = [r'$e$', r'$p$', r'$e$', r'$\Phi_\phi$', r'$\Phi_r$', r'Flux']
+    xlabels = [r'$p$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$']
+    ys = [e_tmp, p_tmp, e_tmp, Phi_phi_tmp, Phi_r_tmp]
+    xs = [p_tmp, tvec, tvec, tvec, tvec]
+    for i, (ax, x, y, xlab, ylab) in enumerate(zip(axes, xs, ys, xlabels, ylabels)):
+        ax.plot(x, y)
+        ax.set_xlabel(xlab, fontsize=16)
+        ax.set_ylabel(ylab, fontsize=16)
+    plt.savefig(fp[:-3] + "_trajectory.pdf")
 
     emri_injection_params = np.array([
         M,  
