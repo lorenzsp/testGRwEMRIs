@@ -52,6 +52,7 @@ from scipy import signal
 from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
+from powerlaw import powerlaw_dist
 
 def draw_initial_points(mu, cov, size, intrinsic_only=False):    
     
@@ -139,6 +140,8 @@ insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
     "max_init_len": int(1e4),
+    "use_rk4": False,
+
     "func":"KerrEccentricEquatorial",
     }
 
@@ -316,7 +319,7 @@ def run_emri_pe(
     if intrinsic_only:        
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
 
@@ -412,7 +415,7 @@ def run_emri_pe(
     if intrinsic_only:
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
         transform_fn = TransformContainer(
@@ -427,6 +430,7 @@ def run_emri_pe(
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     
     # get AE
+    data_channels = wave_gen(*injection_in, **emri_kwargs)
     tic = time.perf_counter()
     data_channels = wave_gen(*injection_in, **emri_kwargs)
     toc = time.perf_counter()
@@ -455,7 +459,7 @@ def run_emri_pe(
                 2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
                 3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
                 4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
-                5: uniform_dist(0.01,10.0),  # dist in Gpc
+                5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
                 8: uniform_dist(-0.99999, 0.99999),  # qK
@@ -545,7 +549,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=8,  # may need this subset
+        subset=6,  # may need this subset
     )
 
     def get_noise_injection(N, dt,sens_fn="noisepsd_AE"):
@@ -578,12 +582,12 @@ def run_emri_pe(
     # generate starting points
     try:
         file  = HDFBackend(fp)
-        burn = int(file.iteration*0.8)
+        burn = int(file.iteration*0.25)
         thin = 1
         
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,2][file.get_inds(discard=burn, thin=thin)['emri'][:,2]]
-        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim        
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
+        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim /100000   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
@@ -683,6 +687,9 @@ def run_emri_pe(
         indx_list.append(get_True_vec([5,6]))
     else:
         indx_list.append(get_True_vec([0,1,2,3,4,12]))
+        indx_list.append(get_True_vec([2,12]))
+        indx_list.append(get_True_vec([1,12]))
+        indx_list.append(get_True_vec([0,12]))
         indx_list.append(get_True_vec([5,6,7]))
         indx_list.append(get_True_vec([8,9]))
         indx_list.append(get_True_vec([10,11]))
@@ -701,7 +708,7 @@ def run_emri_pe(
     def stopping_fn(i, res, samp):
         discard = int(samp.iteration*0.8)
         current_it = samp.iteration
-        check_it = 10
+        check_it = 500
         
         if (current_it>check_it)and(current_it % check_it == 0):
             print("max last loglike", samp.get_log_like()[-1])
@@ -754,10 +761,9 @@ def run_emri_pe(
         
         # if (i==0)and(current_it>1) we are starting the mcmc again
         if (current_it==1000)or((i==0)and(current_it>1)):
-            if (i==0)and(current_it>1):
-                print("resuming run calculate covariance from chain")
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
+            print("resuming run calculate covariance from chain")
+            chain = samp.get_chain(discard=discard)['emri'][:,0]
+            inds = samp.get_inds(discard=discard)['emri'][:,0]
             to_cov = chain[inds]
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
@@ -829,15 +835,15 @@ if __name__ == "__main__":
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
-    qK = np.pi/12  # polar spin angle
-    phiK = np.pi  # azimuthal viewing angle
-    qS = np.pi/3 # polar sky angle
-    phiS = 3*np.pi/4 # azimuthal viewing angle
+    qK = np.pi/6  # polar spin angle
+    phiK = np.pi/5  # azimuthal viewing angle
+    qS = np.pi/4 # polar sky angle
+    phiS = np.pi/3 # azimuthal viewing angle
     get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
-    Phi_phi0 = np.pi # changed
+    Phi_phi0 = np.pi/3 # changed
     Phi_theta0 = 0.0
-    Phi_r0 = np.pi  # changed
+    Phi_r0 = 3*np.pi/4  # changed
     # LVK bound from paper sqrt(alpha) = 1.1 km 
     # bound in our scaling sqrt(alpha) = 1.1*np.sqrt(16*np.pi**0.5)
     # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
@@ -864,12 +870,13 @@ if __name__ == "__main__":
     )
     print("new p0 fixed by Tobs, p0=", p0)
     tic = time.time()
-    print("finalt ",traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0][-1]/YRSID_SI)
+    tvec = traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0]/YRSID_SI
+    print("finalt ",tvec[-1],len(tvec))
     toc = time.time()
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results_intrinsic/"
+    folder = "./results_paper/"
     if logprior:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
