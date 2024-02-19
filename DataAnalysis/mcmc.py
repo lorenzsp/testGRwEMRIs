@@ -319,7 +319,7 @@ def run_emri_pe(
     if intrinsic_only:        
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
 
@@ -415,7 +415,7 @@ def run_emri_pe(
     if intrinsic_only:
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[5:11],0.0), # spin and inclination and Phi_theta
+       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
         transform_fn = TransformContainer(
@@ -586,8 +586,8 @@ def run_emri_pe(
         thin = 1
         
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,1][file.get_inds(discard=burn, thin=thin)['emri'][:,1]]
-        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim        
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
+        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim /100000   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
@@ -761,10 +761,9 @@ def run_emri_pe(
         
         # if (i==0)and(current_it>1) we are starting the mcmc again
         if (current_it==1000)or((i==0)and(current_it>1)):
-            if (i==0)and(current_it>1):
-                print("resuming run calculate covariance from chain")
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
+            print("resuming run calculate covariance from chain")
+            chain = samp.get_chain(discard=discard)['emri'][:,0]
+            inds = samp.get_inds(discard=discard)['emri'][:,0]
             to_cov = chain[inds]
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
