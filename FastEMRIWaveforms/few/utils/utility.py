@@ -29,10 +29,10 @@ from pyUtility import (
     pyKerrGeoCoordinateFrequencies,
     pyGetSeparatrix,
     pyKerrGeoConstantsOfMotionVectorized,
+    pyELQ_to_pex,
     pyY_to_xI_vector,
+    pyKerrEqSpinFrequenciesCorr,
     set_threads_wrap,
-    get_threads_wrap,
-    pyKerrEqSpinFrequenciesCorr
 )
 
 # check to see if cupy is available for gpus
@@ -167,6 +167,86 @@ def p_to_y(p, e, use_gpu=False):
         return np.log(-(21 / 10) - 2 * e + p)
 
 
+def kerr_p_to_u(a, p, e, xI, use_gpu=False):
+    """Convert from separation :math:`p` to :math:`y` coordinate
+
+    Conversion from the semilatus rectum or separation :math:`p` to :math:`y`.
+
+    arguments:
+        p (double scalar or 1D double xp.ndarray): Values of separation,
+            :math:`p`, to convert.
+        e (double scalar or 1D double xp.ndarray): Associated eccentricity values
+            of :math:`p` necessary for conversion.
+        use_gpu (bool, optional): If True, use Cupy/GPUs. Default is False.
+
+    """
+    xp = cp if use_gpu else np
+
+    scalar = False
+    if isinstance(a, float):
+        scalar = True
+
+    delta_p = 0.05
+    alpha = 4.0
+
+    pLSO = get_separatrix(a, e, xI)
+    beta = alpha - delta_p
+    u = xp.log((p + beta - pLSO) / alpha)
+
+    if xp.any(u < -1e9):
+        raise ValueError("u values are too far below zero.")
+
+    # numerical errors
+    if scalar:
+        u = max(u, 0)
+    else:
+        u[u < 0.0] = 0.0
+
+    return u
+
+def ELQ_to_pex(a, E, Lz, Q):
+    """Convert from separation :math:`p` to :math:`y` coordinate
+
+    Conversion from the semilatus rectum or separation :math:`p` to :math:`y`.
+
+    arguments:
+        p (double scalar or 1D double xp.ndarray): Values of separation,
+            :math:`p`, to convert.
+        e (double scalar or 1D double xp.ndarray): Associated eccentricity values
+            of :math:`p` necessary for conversion.
+        use_gpu (bool, optional): If True, use Cupy/GPUs. Default is False.
+    """
+    # check if inputs are scalar or array
+    if isinstance(E, float):
+        scalar = True
+
+    else:
+        scalar = False
+
+    E_in = np.atleast_1d(E)
+    Lz_in = np.atleast_1d(Lz)
+    Q_in = np.atleast_1d(Q)
+
+    # cast the spin to the same size array as p
+    if isinstance(a, float):
+        a_in = np.full_like(E_in, a)
+    else:
+        a_in = np.atleast_1d(a)
+
+    assert len(a_in) == len(E_in)
+
+    # get frequencies
+    p, e, x = pyELQ_to_pex(
+        a_in, E_in, Lz_in, Q_in
+    )
+
+    # set output to shape of input
+    if scalar:
+        return (p[0], e[0], x[0])
+
+    else:
+        return (p, e, x)
+
 def get_fundamental_frequencies(a, p, e, x):
     """Get dimensionless fundamental frequencies.
 
@@ -267,9 +347,7 @@ def get_fundamental_frequencies_spin_corrections(a, p, e, x):
     assert len(a_in) == len(p_in)
 
     # get frequencies
-    OmegaPhi, OmegaTheta, OmegaR = pyKerrEqSpinFrequenciesCorr(
-        a_in, p_in, e_in, x_in
-    )
+    OmegaPhi, OmegaTheta, OmegaR = pyKerrEqSpinFrequenciesCorr(a_in, p_in, e_in, x_in)
 
     # set output to shape of input
     if scalar:
@@ -277,7 +355,6 @@ def get_fundamental_frequencies_spin_corrections(a, p, e, x):
 
     else:
         return (OmegaPhi, OmegaTheta, OmegaR)
-
 
 
 def get_kerr_geo_constants_of_motion(a, p, e, x):
@@ -360,7 +437,7 @@ def xI_to_Y(a, p, e, x):
     # get constants of motion
     E, L, Q = get_kerr_geo_constants_of_motion(a, p, e, x)
 
-    Y = L / np.sqrt(L ** 2 + Q)
+    Y = L / np.sqrt(L**2 + Q)
     return Y
 
 
@@ -389,6 +466,7 @@ def Y_to_xI(a, p, e, Y):
 
     """
 
+    # TODO: check error for not c-contiguous
     # determines shape of input
     if isinstance(e, float):
         scalar = True
@@ -457,6 +535,11 @@ def get_separatrix(a, e, x):
         a_in = np.full_like(e_in, a)
     else:
         a_in = np.atleast_1d(a)
+
+    if isinstance(x, float):
+        x_in = np.full_like(e_in, x)
+    else:
+        x_in = np.atleast_1d(x)
 
     assert len(a_in) == len(e_in) == len(x_in)
 
@@ -533,7 +616,6 @@ def get_mu_at_t(
     t_end = np.zeros_like(mu_new)
 
     for i, mu in enumerate(mu_new):
-
         # insert mu into args list
         args_new = traj_args.copy()
         args_new.insert(index_of_mu, mu)
@@ -617,7 +699,10 @@ def get_at_t(
         inputs.insert(ind_interest, val)
         traj_kwargs["T"] = t_out * 2.0
         out = traj(*inputs, **traj_kwargs)
-        return out[0][-1] - t_out * YRSID_SI
+        try:
+            return out[0][-1] - t_out * YRSID_SI
+        except IndexError:  # trajectory must have started at p_sep
+            return - t_out * YRSID_SI
 
     root = brentq(
         get_time_root,
@@ -696,7 +781,7 @@ def get_p_at_t(
             )  # should be fairly close.
         else:
             p_sep = 6 + 2 * traj_args[index_of_e]
-        bounds = [p_sep + 0.1, 16.0 + 2 * traj_args[index_of_e]]
+        bounds = [p_sep + 0.2, 16.0 + 2 * traj_args[index_of_e]]
 
     elif bounds[0] is None:
         if not enforce_schwarz_sep:
@@ -705,7 +790,7 @@ def get_p_at_t(
             )  # should be fairly close.
         else:
             p_sep = 6 + 2 * traj_args[index_of_e]
-        bounds[0] = p_sep + 0.1
+        bounds[0] = p_sep + 0.2
 
     elif bounds[1] is None:
         bounds[1] = 16.0 + 2 * traj_args[index_of_e]
@@ -715,7 +800,12 @@ def get_p_at_t(
 
 
 def get_mu_at_t(
-    traj_module, t_out, traj_args, index_of_mu=1, bounds=None, **kwargs,
+    traj_module,
+    t_out,
+    traj_args,
+    index_of_mu=1,
+    bounds=None,
+    **kwargs,
 ):
     """Find the value of mu that will give a specific length inspiral using Brent's method.
 
@@ -762,38 +852,40 @@ def get_mu_at_t(
 
 
 # data history is saved here nased on version nunber
-record_by_version = {
-    "1.0.0": 3981654,
-    "1.1.0": 3981654,
-    "1.1.1": 3981654,
-    "1.1.2": 3981654,
-    "1.1.3": 3981654,
-    "1.1.4": 3981654,
-    "1.1.5": 3981654,
-    "1.2.0": 3981654,
-    "1.2.1": 3981654,
-    "1.2.2": 3981654,
-    "1.3.0": 3981654,
-    "1.3.1": 3981654,
-    "1.3.2": 3981654,
-    "1.3.3": 3981654,
-    "1.3.4": 3981654,
-    "1.3.5": 3981654,
-    "1.3.6": 3981654,
-    "1.3.7": 3981654,
-    "1.4.0": 3981654,
-    "1.4.1": 3981654,
-    "1.4.2": 3981654,
-    "1.4.3": 3981654,
-    "1.4.4": 3981654,
-    "1.4.5": 3981654,
-    "1.4.6": 3981654,
-    "1.4.7": 3981654,
-    "1.4.8": 3981654,
-    "1.4.9": 3981654,
-    "1.4.10": 3981654,
-    "1.4.11": 3981654,
-}
+# record_by_version = {
+#     "1.0.0": 3981654,
+#     "1.1.0": 3981654,
+#     "1.1.1": 3981654,
+#     "1.1.2": 3981654,
+#     "1.1.3": 3981654,
+#     "1.1.4": 3981654,
+#     "1.1.5": 3981654,
+#     "1.2.0": 3981654,
+#     "1.2.1": 3981654,
+#     "1.2.2": 3981654,
+#     "1.3.0": 3981654,
+#     "1.3.1": 3981654,
+#     "1.3.2": 3981654,
+#     "1.3.3": 3981654,
+#     "1.3.4": 3981654,
+#     "1.3.5": 3981654,
+#     "1.3.6": 3981654,
+#     "1.3.7": 3981654,
+#     "1.4.0": 3981654,
+#     "1.4.1": 3981654,
+#     "1.4.2": 3981654,
+#     "1.4.3": 3981654,
+#     "1.4.4": 3981654,
+#     "1.4.5": 3981654,
+#     "1.4.6": 3981654,
+#     "1.4.7": 3981654,
+#     "1.4.8": 3981654,
+#     "1.4.9": 3981654,
+#     "1.4.10": 3981654,
+#     "1.4.11": 3981654,
+#     "1.5.0": 3981654,
+#     "1.5.1": 3981654,
+# }
 
 
 def check_for_file_download(fp, few_dir, version_string=None):
@@ -817,23 +909,23 @@ def check_for_file_download(fp, few_dir, version_string=None):
     """
 
     # make sure version_string is available
-    if version_string is not None:
-        if version_string not in record_by_version:
-            raise ValueError(
-                "The version_string provided ({}) does not exist.".format(
-                    version_string
-                )
-            )
-    else:
-        version_string = few.__version__
+    # if version_string is not None:
+    #     if version_string not in record_by_version:
+    #         raise ValueError(
+    #             "The version_string provided ({}) does not exist.".format(
+    #                 version_string
+    #             )
+    #         )
+    # else:
+    #     version_string = few.__version__
 
-    # check if the files directory exists
-    try:
-        os.listdir(few_dir + "few/files/")
+    # # check if the files directory exists
+    # try:
+    #     os.listdir(few_dir + "few/files/")
 
-    # if not, create it
-    except OSError:
-        os.mkdir(few_dir + "few/files/")
+    # # if not, create it
+    # except OSError:
+    #     os.mkdir(few_dir + "few/files/")
 
     # check if the file is in the files filder
     # if not, download it from zenodo
@@ -845,7 +937,10 @@ def check_for_file_download(fp, few_dir, version_string=None):
         )
 
         # get record number based on version
-        record = record_by_version.get(version_string)
+        # record = record_by_version.get(version_string)
+
+        # temporary fix
+        record = 3981654
 
         # url to zenodo API
         url = "https://zenodo.org/record/" + str(record) + "/files/" + fp
@@ -952,24 +1047,6 @@ def pointer_adjust(func):
     return func_wrapper
 
 
-def omp_set_num_threads(num_threads=1):
-    """Globally sets OMP_NUM_THREADS
-
-    Args:
-        num_threads (int, optional):
-        Number of parallel threads to use in OpenMP.
-            Default is 1.
-
-    """
-    set_threads_wrap(num_threads)
-
-
-def omp_get_num_threads():
-    """Get global variable OMP_NUM_THREADS"""
-    num_threads = get_threads_wrap()
-    return num_threads
-
-
 def cuda_set_device(dev):
     """Globally sets CUDA device
 
@@ -1002,3 +1079,15 @@ def get_ode_function_options():
         raise ValueError("ODE files not built yet.")
 
     return ode_options
+
+
+def omp_set_num_threads(num_threads=1):
+    """Globally sets OMP_NUM_THREADS
+
+    Args:
+        num_threads (int, optional):
+        Number of parallel threads to use in OpenMP.
+            Default is 1.
+
+    """
+    set_threads_wrap(num_threads)

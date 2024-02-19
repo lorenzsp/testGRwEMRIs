@@ -1,8 +1,6 @@
 #ifndef __FUND_FREQS__
 #define __FUND_FREQS__
 
-void throw_python_error(char* str_in, int status);
-
 int sanity_check(double a, double p, double e, double Y);
 
 void KerrGeoMinoFrequencies(double* CapitalGamma_, double* CapitalUpsilonPhi_, double* CapitalUpsilonTheta_, double* CapitalUpsilonr_,
@@ -33,6 +31,9 @@ void get_separatrix_vector(double* separatrix, double* a, double* e, double* x, 
 
 void KerrGeoConstantsOfMotionVectorized(double* E_out, double* L_out, double* Q_out, double* a, double* p, double* e, double* x, int n);
 void KerrGeoConstantsOfMotion(double* E_out, double* L_out, double* Q_out, double a, double p, double e, double x);
+
+void ELQ_to_pexVectorised(double* p, double* e, double* x, double* a, double* E, double* Lz, double* Q, int length);
+void ELQ_to_pex(double* p, double* e, double* x, double a, double E, double Lz, double Q);
 
 double Y_to_xI(double a, double p, double e, double Y);
 void Y_to_xI_vector(double* x, double* a, double* p, double* e, double* Y, int length);
