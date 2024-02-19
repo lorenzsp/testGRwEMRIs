@@ -312,14 +312,14 @@ def run_emri_pe(
     # (you need to remove them from the other parts of initialization)
     fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.array([ emri_injection_params[5], 0.0]), # spin and inclination and Phi_theta
+       "fill_values": emri_injection_params[np.array([ 5, 12])], # spin and inclination and Phi_theta
        "fill_inds": np.array([ 5, 12]),
     }
     
     if intrinsic_only:        
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
+       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12])], # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
 
@@ -360,10 +360,7 @@ def run_emri_pe(
         
         prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
-        prior_charge = uniform_dist(-0.05, 0.05)
-
-    # remove three we are not sampling from (need to change if you go to adding spin)
-    emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
+        prior_charge = uniform_dist(-0.1, 0.1)
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -394,6 +391,8 @@ def run_emri_pe(
         fill_dict=fill_dict,
     )
     
+    # remove three we are not sampling from (need to change if you go to adding spin)
+    emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     
@@ -415,7 +414,7 @@ def run_emri_pe(
     if intrinsic_only:
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": np.append(emri_injection_params[np.array([5,6,7,8,9,10,12])],0.0), # spin and inclination and Phi_theta
+       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12])], # spin and inclination and Phi_theta
        "fill_inds": np.array([5,6,7,8,9,10,12]),
         }
         transform_fn = TransformContainer(
@@ -709,6 +708,7 @@ def run_emri_pe(
         discard = int(samp.iteration*0.8)
         current_it = samp.iteration
         check_it = 500
+        max_it_update = 2000
         
         if (current_it>check_it)and(current_it % check_it == 0):
             print("max last loglike", samp.get_log_like()[-1])
@@ -721,7 +721,7 @@ def run_emri_pe(
             # plot
             fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
             
-            if (current_it<2000):
+            if (current_it<max_it_update):
                 num = 10
                 # beginning
                 start_ind = int(N_obs/4)
@@ -760,7 +760,7 @@ def run_emri_pe(
                 samp.moves[0].all_proposal['emri'].svd = svd
         
         # if (i==0)and(current_it>1) we are starting the mcmc again
-        if (current_it==2000)or((i==0)and(current_it>1)):
+        if (current_it==max_it_update)or((i==0)and(current_it>1)):
             print("resuming run calculate covariance from chain")
             chain = samp.get_chain(discard=discard)['emri'][:,0]
             inds = samp.get_inds(discard=discard)['emri'][:,0]
@@ -882,11 +882,7 @@ if __name__ == "__main__":
     else:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
-    tic = time.time()
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0)
-    print("finalt ",tvec[-1]/YRSID_SI,len(tvec))
-    toc = time.time()
-    print("traj timing",toc - tic)
     fig, axes = plt.subplots(2, 3)
     plt.subplots_adjust(wspace=0.3)
     fig.set_size_inches(14, 8)
