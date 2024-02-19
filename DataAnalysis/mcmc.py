@@ -459,7 +459,7 @@ def run_emri_pe(
                 2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
                 3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
                 4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
-                5: powerlaw_dist(0.01,10.0),  # dist in Gpc
+                5: uniform_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
                 8: uniform_dist(-0.99999, 0.99999),  # qK
@@ -652,7 +652,7 @@ def run_emri_pe(
     print("start like",start_like, "in ", timelike," seconds")
     start_prior = priors["emri"].logpdf(start_params)
     # true likelihood
-    true_like = start_like[0]
+    true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
 
     # start state
     start_state = State(
