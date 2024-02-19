@@ -14,7 +14,7 @@ err = 1e-10
 insp_kw = {
     "err": err,
     "DENSE_STEPPING": 0,
-    "use_rk4": False,
+    "use_rk4": True,
     }
 
 

@@ -139,8 +139,8 @@ if use_gpu and not gpu_available:
 insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
-    "max_init_len": int(1e4),
-    "use_rk4": False,
+    # "max_init_len": int(1e4),
+    "use_rk4": True,
 
     "func":"KerrEccentricEquatorial",
     }
@@ -459,7 +459,7 @@ def run_emri_pe(
                 2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
                 3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
                 4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
-                5: uniform_dist(0.01,10.0),  # dist in Gpc
+                5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
                 8: uniform_dist(-0.99999, 0.99999),  # qK
@@ -869,7 +869,12 @@ if __name__ == "__main__":
         traj_kwargs={"dt":dt}
     )
     print("new p0 fixed by Tobs, p0=", p0)
-    
+    tic = time.time()
+    tvec = traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0]/YRSID_SI
+    print("finalt ",tvec[-1],len(tvec))
+    toc = time.time()
+    print("traj timing",toc - tic)
+
     logprior = False
     folder = "./results_paper/"
     if logprior:
