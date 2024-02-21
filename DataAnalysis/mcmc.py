@@ -1,3 +1,4 @@
+#!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 import argparse
 import os
@@ -580,13 +581,12 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        # file  = HDFBackend(fp)
-        # burn = int(file.iteration*0.25)
-        # thin = 1
+        file  = HDFBackend(fp)
+        burn = int(file.iteration*0.25)
+        thin = 1
         
         # # get samples
-        toplot = np.load(fp.split('.h5')[0] + '/samples.npy')
-        # file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy')
         cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")

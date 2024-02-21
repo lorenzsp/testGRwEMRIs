@@ -239,11 +239,7 @@ for filename,el in zip(datasets,pars_inj):
     # mask = np.arange(file.nwalkers)
     
     # # # create directory
-<<<<<<< HEAD
     # repo_name = el.split('_injected_pars.npy')[0]
-=======
-    # repo_name = el.split('results_intrinsic/')[-1].split('rndStart_')[-1].split('_seed')[0]
->>>>>>> update2
     # create_folder(repo_name)
     
     # # loglike
