@@ -15,13 +15,13 @@ nwalkers=16
 ntemps=3
 nsteps=500000
 
-# ---------------------------------------------------------
-dev=3
-# Create a dynamic output filename
-output_filename="output_intr_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
+# # ---------------------------------------------------------
+# dev=3
+# # Create a dynamic output filename
+# output_filename="output_intr_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
-# Execute the Python command and redirect output to the dynamic filename
-condor_submit -a "Tobs=$Tobs" -a "dt=$dt" -a "M=$M" -a "mu=$mu" -a "a=$a" -a "p0=$p0" -a "e0=$e0" -a "x0=$x0" -a "charge=$charge" -a "nwalkers=$nwalkers" -a "ntemps=$ntemps" -a "nsteps=$nsteps" -a "dev=$dev" -a "output_filename=$output_filename" submit_file.submit
+# # Execute the Python command and redirect output to the dynamic filename
+# condor_submit -a "Tobs=$Tobs" -a "dt=$dt" -a "M=$M" -a "mu=$mu" -a "a=$a" -a "p0=$p0" -a "e0=$e0" -a "x0=$x0" -a "charge=$charge" -a "nwalkers=$nwalkers" -a "ntemps=$ntemps" -a "nsteps=$nsteps" -a "dev=$dev" -a "output_filename=$output_filename" submit_file.submit
 
 # ---------------------------------------------------------
 dev=4
