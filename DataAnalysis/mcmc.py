@@ -700,8 +700,8 @@ def run_emri_pe(
     
     # MCMC moves (move, percentage of draws)
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.95),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.05),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.99),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.01),
     ]
 
     def stopping_fn(i, res, samp):
@@ -808,6 +808,7 @@ def run_emri_pe(
         stopping_fn=stopping_fn,
         stopping_iterations=1,
         branch_names=["emri"],
+        # track_moves=False,
     )
     
     if resume:
