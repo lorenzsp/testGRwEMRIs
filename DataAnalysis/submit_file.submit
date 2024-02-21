@@ -1,0 +1,16 @@
+# Condor submit file for job submission
+universe = vanilla
+executable = /data/lsperi/testGRwEMRIs/DataAnalysis/mcmc.py
+arguments = -Tobs $(Tobs) -dt $(dt) -M $(M) -mu $(mu) -a $(a) -p0 $(p0) -e0 $(e0) -x0 $(x0) -charge $(charge) -dev $(dev) -nwalkers $(nwalkers) -ntemps $(ntemps) -nsteps $(nsteps) -outname mcmc_intr
+output = $(output_filename).out
+error = $(output_filename).err
+log = $(output_filename).log
+
+request_memory = 5.0GB
+request_disk = 0.5GB
+request_cpus = 2
+notification = Never
+requirements = TARGET.CUDAGlobalMemoryMb>20000
+request_gpus = 1
+
+queue
