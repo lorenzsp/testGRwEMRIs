@@ -111,7 +111,7 @@ def get_spectrogram(h,dt,name):
     plt.savefig(name)
  
 SEED = 26011996
-np.random.seed(SEED)
+
 
 try:
     import cupy as xp
@@ -565,6 +565,8 @@ def run_emri_pe(
         return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1]]
 
     full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="noisepsd_AE")
+    np.save(fp[:-3] + "_noise",xp.asarray(full_noise).get())
+    
     print("noise check ", inner_product(full_noise,full_noise, dt=dt,PSD="noisepsd_AE",PSD_args=(),PSD_kwargs={},use_gpu=True)/len(data_channels[0]) )
     nchannels = 2
     like.inject_signal(
@@ -581,12 +583,12 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        file  = HDFBackend(fp)
-        burn = int(file.iteration*0.25)
-        thin = 1
+        # file  = HDFBackend(fp)
+        # burn = int(file.iteration*0.25)
+        # thin = 1
         
         # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy')
+        toplot =  np.load(fp.split('.h5')[0] + '/samples.npy') # file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] #
         cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
@@ -799,7 +801,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         new_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 1/0.564538},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -867,7 +869,8 @@ if __name__ == "__main__":
         Tobs * 0.999,
         [M, mu, a, e0, x0, 0.0],
         bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
-        traj_kwargs={"dt":dt}
+        traj_kwargs={"dt":dt},
+        
     )
     print("new p0 fixed by Tobs, p0=", p0)
     tic = time.time()
@@ -921,7 +924,7 @@ if __name__ == "__main__":
         "dt": dt,
         "mich": False
     }
-
+    np.random.seed(SEED)
     run_emri_pe(
         emri_injection_params, 
         Tobs,
