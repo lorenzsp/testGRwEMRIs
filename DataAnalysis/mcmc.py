@@ -248,7 +248,11 @@ def run_emri_pe(
     source_SNR=50.0,
     intrinsic_only=False,
 ):
-
+    # fix seed for reproducibility and noise injection
+    np.random.seed(SEED)
+    xp.random.seed(SEED)
+    
+    # FEW waveform with specified AAK summation and inspiral
     few_gen = GenerateEMRIWaveform(
     AAKWaveformBase, 
     EMRIInspiral,
@@ -562,12 +566,14 @@ def run_emri_pe(
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.irfft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ) for psd_temp in psd]
 
-        return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1]]
+        return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0][:N],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1][:N]]
 
     full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="noisepsd_AE")
-    np.save(fp[:-3] + "_noise",xp.asarray(full_noise).get())
-    
-    print("noise check ", inner_product(full_noise,full_noise, dt=dt,PSD="noisepsd_AE",PSD_args=(),PSD_kwargs={},use_gpu=True)/len(data_channels[0]) )
+    print("check nosie value",full_noise[0][0],full_noise[1][0])
+    inner_kw = dict(dt=dt,PSD="noisepsd_AE",PSD_args=(),PSD_kwargs={},use_gpu=True)
+    print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
+    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 )
+
     nchannels = 2
     like.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
@@ -583,12 +589,12 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        # file  = HDFBackend(fp)
-        # burn = int(file.iteration*0.25)
-        # thin = 1
+        file  = HDFBackend(fp)
+        burn = int(file.iteration*0.25)
+        thin = 1
         
         # # get samples
-        toplot =  np.load(fp.split('.h5')[0] + '/samples.npy') # file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] #
+        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
         cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim   
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
@@ -654,7 +660,9 @@ def run_emri_pe(
     start_prior = priors["emri"].logpdf(start_params)
     # true likelihood
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
+    print(true_like)
 
+    
     # start state
     start_state = State(
         {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
@@ -924,7 +932,7 @@ if __name__ == "__main__":
         "dt": dt,
         "mich": False
     }
-    np.random.seed(SEED)
+    
     run_emri_pe(
         emri_injection_params, 
         Tobs,

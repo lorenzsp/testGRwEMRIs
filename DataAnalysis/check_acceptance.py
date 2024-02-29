@@ -225,39 +225,40 @@ for filename,el in zip(datasets,pars_inj):
     print("acceptance:")
     print(file.get_move_info()['GaussianMove_0']['acceptance_fraction'][0])
     print(file.get_move_info()['GaussianMove_1']['acceptance_fraction'][0])
-    
-    # print("max last loglike", file.get_log_like()[-1][0])
+    print("iteration", file.iteration/1e5, " *10^5")
+    # # print("max last loglike", file.get_log_like()[-100:][0])
     # burn = int(file.iteration*0.25)
     # thin = 2
+    # minus_burn = -1000
     # print("iteration ", file.iteration)
     # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     # print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     # print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
     
-    # print(file.get_betas()[-1])
-    # # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
+    # # print(file.get_betas()[-1])
+    # # # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     
     # mask = np.arange(file.nwalkers)
     
-    # # # create directory
+    # # # # create directory
     # repo_name = el.split('_injected_pars.npy')[0]
     # create_folder(repo_name)
     
-    # # loglike
+    # # # loglike
     # ll = file.get_log_like(discard=burn, thin=thin)[:]
     # plt.figure()
-    # [plt.plot(ll[:,temp,walker],'-',label=f'{walker}') for walker in mask]
+    # [plt.plot(ll[:minus_burn,temp,walker],'-',label=f'{walker}') for walker in mask]
     # plt.tight_layout()
     # plt.savefig(repo_name+f'/traceplot_loglike.png', bbox_inches='tight')
     
     # # chains
-    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...]
-    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]
+    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:minus_burn,temp,mask,...]
+    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:minus_burn,temp,mask,...]
     # toplot = samp[inds]
     # truths = np.load(el)
 
     # # check autocorrelation plot
-    # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
+    # get_autocorr_plot(samp[:minus_burn,:,0,:],repo_name+'/autocorrelation')
     
     # # check chains
     
@@ -304,3 +305,4 @@ for filename,el in zip(datasets,pars_inj):
     # # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
     
     # plt.close()
+    # breakpoint()
