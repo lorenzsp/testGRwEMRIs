@@ -595,7 +595,7 @@ def run_emri_pe(
         
         # # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
-        cov = np.cov(toplot,rowvar=False) * 2.38**2 / ndim   
+        cov = np.load(fp[:-3] + "_covariance.npy")
         tmp = toplot[:nwalkers*ntemps]
         print("covariance imported")
     except:
@@ -711,7 +711,7 @@ def run_emri_pe(
     # MCMC moves (move, percentage of draws)
     moves = [
         (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.99),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, indx_list=gibbs_setup, sky_periodic=sky_periodic),0.01),
+        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic),0.01),
     ]
 
     def stopping_fn(i, res, samp):
@@ -768,14 +768,11 @@ def run_emri_pe(
                 svd = np.linalg.svd(samp_cov)
                 samp.moves[1].all_proposal['emri'].svd = svd
                 samp.moves[0].all_proposal['emri'].svd = svd
-        
-        # if (i==0)and(current_it>1) we are starting the mcmc again
-        if (current_it==max_it_update)or((i==0)and(current_it>1)):
-            print("resuming run calculate covariance from chain")
-            chain = samp.get_chain(discard=discard)['emri'][:,0]
-            inds = samp.get_inds(discard=discard)['emri'][:,0]
-            to_cov = chain[inds]
-            samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
+                np.save(fp[:-3] + "_covariance",samp_cov)    
+            
+        if (i==0)and(current_it>1):
+            print("resuming run calculate covariance from chain")            
+            samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
             samp.moves[1].all_proposal['emri'].svd = svd
             samp.moves[0].all_proposal['emri'].svd = svd

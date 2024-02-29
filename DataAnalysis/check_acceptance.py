@@ -225,18 +225,18 @@ for filename,el in zip(datasets,pars_inj):
     print("acceptance:")
     print(file.get_move_info()['GaussianMove_0']['acceptance_fraction'][0])
     print(file.get_move_info()['GaussianMove_1']['acceptance_fraction'][0])
-    print("iteration", file.iteration/1e5, " *10^5")
+    # print("iteration", file.iteration/1e5, " *10^5")
     # # print("max last loglike", file.get_log_like()[-100:][0])
     # burn = int(file.iteration*0.25)
-    # thin = 2
-    # minus_burn = -1000
+    # thin = 1
+    # minus_burn = -1
     # print("iteration ", file.iteration)
     # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     # print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     # print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
     
     # # print(file.get_betas()[-1])
-    # # # print(file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
+    # # print("Gel Rub stat",file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     
     # mask = np.arange(file.nwalkers)
     
@@ -305,4 +305,3 @@ for filename,el in zip(datasets,pars_inj):
     # # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
     
     # plt.close()
-    # breakpoint()
