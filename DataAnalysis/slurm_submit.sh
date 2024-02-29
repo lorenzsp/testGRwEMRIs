@@ -1,17 +1,14 @@
 # Define different sets of (M, mu, a, e0)
 parameter_sets=(
-    "1e6 1e1 0.95 0.4"
-    "2e6 2e1 0.90 0.5"
-    "3e6 3e1 0.85 0.6"
+    "1e5 1e1 0.95 0.4 2.0"
 )
 
 # Loop through each parameter set
 for parameters in "${parameter_sets[@]}"; do
     # Split parameters into individual variables
-    IFS=' ' read -r M mu a e0 <<< "$parameters"
+    IFS=' ' read -r M mu a e0 Tobs<<< "$parameters"
 
     # Set other variables here
-    Tobs=2
     dt=10.0
     p0=13.0
     x0=1.0
@@ -24,9 +21,9 @@ for parameters in "${parameter_sets[@]}"; do
     # Submit Slurm job for this combination of variables
     sbatch <<EOF
 #!/bin/bash -l
-#SBATCH -o ./job_M_${M}_mu_${mu}_a_${a}_e0_${e0}.out.%j
-#SBATCH -e ./job_M_${M}_mu_${mu}_a_${a}_e0_${e0}.err.%j
-#SBATCH -J test_gpu_M_${M}_mu_${mu}_a_${a}_e0_${e0}
+#SBATCH -o ./job_M_${M}_mu_${mu}_a_${a}_e0_${e0}_Tobs_${Tobs}.out.%j
+#SBATCH -e ./job_M_${M}_mu_${mu}_a_${a}_e0_${e0}_Tobs_${Tobs}.err.%j
+#SBATCH -J M_${M}_mu_${mu}_a_${a}_e0_${e0}_Tobs_${Tobs}
 #SBATCH --ntasks=1
 #SBATCH --constraint="gpu"
 #SBATCH --gres=gpu:a100:1
