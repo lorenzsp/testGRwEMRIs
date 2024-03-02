@@ -44,9 +44,9 @@ class ModuleTest(unittest.TestCase):
         # set initial parameters
         # set parameters
         M = 1e6
-        a = 0.9
-        mu = 10.0
-        p0 = 12.76546704472149
+        a = 0.0
+        mu = 50.0
+        p0 = 10.0
         e0 = 0.4
         x0 = 1.0
         qK = np.pi/5  # polar spin angle
@@ -81,14 +81,32 @@ class ModuleTest(unittest.TestCase):
             sum_kwargs=sum_kwargs,
             use_gpu=gpu_available,
         )
+        
+        few_gen_Schw = GenerateEMRIWaveform("FastSchwarzschildEccentricFlux",
+            return_list=False,
+            use_gpu=gpu_available,
+        )
 
         Tobs = 2.0
         dt = 15.0
 
         charge = 0.0
         h_p_c = few_gen(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
-        charge = 0.1
-        h_p_c_bgr = few_gen(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
+        charge = 0.0
+        h_p_c_bgr = few_gen_Schw(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
+        
+        traj = EMRIInspiral(func="KerrEccentricEquatorial")
+        t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=T, max_init_len=int(1e5),rk4=True)
+        traj_Schw = EMRIInspiral(func="SchwarzEccFlux")
+        tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, a, p0, e0, 1.0, T=T, new_t=t, upsample=True, max_init_len=int(1e5))
+        mask = (Phi_rS!=0.0)
+
+        import matplotlib.pyplot as plt
+        plt.figure(); plt.plot(p,e,label='AAK'); plt.plot(pS,eS,'--',label='Schw'); plt.legend(); plt.savefig('test_traj')
+        plt.figure(); plt.semilogy(t[mask],np.abs(Phi_phiS[mask] - Phi_phi[mask])); plt.savefig('test_phase')
+        plt.figure(); plt.plot(-h_p_c.get()[:500].real,label='AAK'); plt.plot(h_p_c_bgr.get()[:500].real,label='Schw'); plt.legend(); plt.savefig('test_real')
+        plt.figure(); plt.plot(-h_p_c.get()[-500:].real,label='AAK'); plt.plot(h_p_c_bgr.get()[-500:].real,label='Schw'); plt.legend(); plt.savefig('test_real')
+        plt.figure(); plt.plot(-h_p_c.get()[:500].imag,label='AAK'); plt.plot(h_p_c_bgr.get()[:500].imag,label='Schw'); plt.legend(); plt.savefig('test_imag')
         
         if gpu_available:
             for i in range(100):
