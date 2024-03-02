@@ -25,9 +25,9 @@ parser.add_argument("-outname", "--outname", help="output name", required=False,
 
 args = vars(parser.parse_args())
 
-os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
-os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
-os.system("echo $CUDA_VISIBLE_DEVICES")
+# os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
+# os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
+# os.system("echo $CUDA_VISIBLE_DEVICES")
 import sys
 sys.path.append('/data/lsperi/lisa-on-gpu/')
 sys.path.append('/data/lsperi/Eryn/')
