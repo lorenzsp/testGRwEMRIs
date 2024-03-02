@@ -63,7 +63,7 @@ class ModuleTest(unittest.TestCase):
             "err": 1e-10,
             "DENSE_STEPPING": 0,
             "max_init_len": int(1e4),
-            "func":"KerrEccentricEquatorial"
+            "func":"KerrEccentricEquatorialAPEX"
             }
 
         # keyword arguments for summation generator (AAKSummation)
@@ -95,18 +95,22 @@ class ModuleTest(unittest.TestCase):
         charge = 0.0
         h_p_c_bgr = few_gen_Schw(M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, charge, T=Tobs, dt=dt)
         
-        traj = EMRIInspiral(func="KerrEccentricEquatorial")
-        t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=T, max_init_len=int(1e5),rk4=True)
         traj_Schw = EMRIInspiral(func="SchwarzEccFlux")
-        tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, a, p0, e0, 1.0, T=T, new_t=t, upsample=True, max_init_len=int(1e5))
+        tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, a, p0, e0, 1.0)
         mask = (Phi_rS!=0.0)
-
-        import matplotlib.pyplot as plt
-        plt.figure(); plt.plot(p,e,label='AAK'); plt.plot(pS,eS,'--',label='Schw'); plt.legend(); plt.savefig('test_traj')
-        plt.figure(); plt.semilogy(t[mask],np.abs(Phi_phiS[mask] - Phi_phi[mask])); plt.savefig('test_phase')
-        plt.figure(); plt.plot(-h_p_c.get()[:500].real,label='AAK'); plt.plot(h_p_c_bgr.get()[:500].real,label='Schw'); plt.legend(); plt.savefig('test_real')
-        plt.figure(); plt.plot(-h_p_c.get()[-500:].real,label='AAK'); plt.plot(h_p_c_bgr.get()[-500:].real,label='Schw'); plt.legend(); plt.savefig('test_real')
-        plt.figure(); plt.plot(-h_p_c.get()[:500].imag,label='AAK'); plt.plot(h_p_c_bgr.get()[:500].imag,label='Schw'); plt.legend(); plt.savefig('test_imag')
+        traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
+        t, p, e, x, Phi_phiAPEX, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=T, new_t=tS, upsample=True, rk4=True)
+        traj = EMRIInspiral(func="KerrEccentricEquatorial")
+        t, p, e, x, Phi_phiELQ, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=T, new_t=tS, upsample=True, rk4=True)
+        
+        # import matplotlib.pyplot as plt
+        # plt.figure(); plt.plot(p,e,label='AAK'); plt.plot(pS,eS,'--',label='Schw'); plt.legend(); plt.savefig('test_traj')
+        # plt.figure(); plt.ylim(1e-3,10.0); plt.semilogy(tS[mask],np.abs(Phi_phiS[mask] - Phi_phiELQ[mask]),label='ELQ');plt.semilogy(tS[mask],np.abs(Phi_phiS[mask] - Phi_phiAPEX[mask]),label='APEX');plt.legend(); plt.savefig('test_phase')
+        # t_ax = np.arange(len(h_p_c.get()))
+        # for ii in range(0,574669,10000):
+        #     plt.figure(); plt.plot(t_ax[ii:ii+500], -h_p_c.get()[ii:ii+500].real,label='AAK'); plt.plot(t_ax[ii:ii+500],h_p_c_bgr.get()[ii:ii+500].real,label='Schw'); plt.legend(); plt.savefig(f'test_real_{ii}')
+        # plt.figure(); plt.plot(-h_p_c.get()[-500:].real,label='AAK'); plt.plot(h_p_c_bgr.get()[-500:].real,label='Schw'); plt.legend(); plt.savefig('test_real')
+        # plt.figure(); plt.plot(-h_p_c.get()[:500].imag,label='AAK'); plt.plot(h_p_c_bgr.get()[:500].imag,label='Schw'); plt.legend(); plt.savefig('test_imag')
         
         if gpu_available:
             for i in range(100):
