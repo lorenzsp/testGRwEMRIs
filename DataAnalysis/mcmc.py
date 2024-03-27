@@ -1,5 +1,7 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# select the plunge time
+Tplunge = 2.0
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(2)
@@ -25,14 +27,20 @@ parser.add_argument("-outname", "--outname", help="output name", required=False,
 
 args = vars(parser.parse_args())
 
-# os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
-# os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
-# os.system("echo $CUDA_VISIBLE_DEVICES")
+os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
+os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
+os.system("echo $CUDA_VISIBLE_DEVICES")
 import sys
 sys.path.append('/data/lsperi/lisa-on-gpu/')
 sys.path.append('/data/lsperi/Eryn/')
 import matplotlib.pyplot as plt
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.patches import FancyArrowPatch
+from mpl_toolkits.mplot3d import proj3d
+
 import numpy as np
+
 from eryn.state import State
 from eryn.ensemble import EnsembleSampler
 from eryn.prior import ProbDistContainer, uniform_dist
@@ -54,6 +62,42 @@ from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
 from powerlaw import powerlaw_dist
+ 
+ 
+from few.waveform import AAKWaveformBase, Pn5AAKWaveform
+from few.trajectory.inspiral import EMRIInspiral
+from few.summation.aakwave import AAKSummation
+from few.waveform import GenerateEMRIWaveform
+from few.utils.constants import *
+from few.utils.utility import get_p_at_t, get_separatrix
+from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
+
+SEED = 26011996
+
+try:
+    import cupy as xp
+    # set GPU device
+    gpu_available = True
+    print("using gpus")
+
+except (ImportError, ModuleNotFoundError) as e:
+    import numpy as xp
+    gpu_available = False
+
+# whether you are using 
+use_gpu = True
+
+if use_gpu and not gpu_available:
+    raise ValueError("Requesting gpu with no GPU available or cupy issue.")
+
+
+import warnings
+
+warnings.filterwarnings("ignore")
+
+
+# if use_gpu is True:
+#     xp = np
 
 def draw_initial_points(mu, cov, size, intrinsic_only=False):    
     
@@ -73,6 +117,11 @@ def draw_initial_points(mu, cov, size, intrinsic_only=False):
         
         tmp[:,6],tmp[:,7] = reflect_cosines_array(tmp[:,6],tmp[:,7])
         tmp[:,8],tmp[:,9] = reflect_cosines_array(tmp[:,8],tmp[:,9])
+        
+        # tmp[:,6] = np.cos(np.random.uniform(0.,2*np.pi,size=len(tmp[:,6])))
+        # tmp[:,7] = np.random.uniform(0.,2*np.pi,size=len(tmp[:,7]))
+        # tmp[:,8] = np.cos(np.random.uniform(0.,2*np.pi,size=len(tmp[:,8])))
+        # tmp[:,9] = np.random.uniform(0.,2*np.pi,size=len(tmp[:,9]))
     
     return tmp
 
@@ -109,41 +158,14 @@ def get_spectrogram(h,dt,name):
     plt.colorbar(label='Magnitude (dB)')
     plt.title('Spectrogram')
     plt.savefig(name)
- 
-SEED = 26011996
 
-
-try:
-    import cupy as xp
-    # set GPU device
-    gpu_available = True
-    print("using gpus")
-
-except (ImportError, ModuleNotFoundError) as e:
-    import numpy as xp
-    gpu_available = False
-
-import warnings
-
-warnings.filterwarnings("ignore")
-
-# whether you are using 
-use_gpu = True
-
-# if use_gpu is True:
-#     xp = np
-
-if use_gpu and not gpu_available:
-    raise ValueError("Requesting gpu with no GPU available or cupy issue.")
-
-
+func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
     "err": 1e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": True,
-
-    "func":"KerrEccentricEquatorial",
+    "func":func,
     }
 
 # keyword arguments for summation generator (AAKSummation)
@@ -151,13 +173,6 @@ sum_kwargs = {
     "use_gpu": use_gpu,  # GPU is availabel for this type of summation
     "pad_output": True,
 }
-
-from few.waveform import AAKWaveformBase, Pn5AAKWaveform
-from few.trajectory.inspiral import EMRIInspiral
-from few.summation.aakwave import AAKSummation
-from few.waveform import GenerateEMRIWaveform
-from few.utils.constants import *
-from few.utils.utility import get_p_at_t, get_separatrix
 
 def pad_to_next_power_of_2(arr):
     original_length = len(arr)
@@ -170,10 +185,6 @@ def pad_to_next_power_of_2(arr):
     padded_arr = xp.pad(arr, (0, pad_length), mode='constant')
 
     return padded_arr
-
-from mpl_toolkits.mplot3d import Axes3D
-from matplotlib.patches import FancyArrowPatch
-from mpl_toolkits.mplot3d import proj3d
 
 class Arrow3D(FancyArrowPatch):
     def __init__(self, xs, ys, zs, *args, **kwargs):
@@ -258,11 +269,11 @@ def run_emri_pe(
     EMRIInspiral,
     AAKSummation,
     # when using intrinsic only , we return a list
-    return_list=False,
+    return_list=True,
     inspiral_kwargs=insp_kwargs,
     sum_kwargs=sum_kwargs,
     use_gpu=use_gpu,
-    frame="detector"
+    frame=None
     )
     
     # sets the proper number of points and what not
@@ -274,8 +285,8 @@ def run_emri_pe(
     # frequencies
     freqs = xp.fft.rfftfreq(N_obs, dt)
 
-    orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5" 
-    # orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/equalarmlength-trailing-fit.h5"
+    # orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5" 
+    orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/equalarmlength-trailing-fit.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
 
     tdi_gen ="1st generation"# "2nd generation"#
@@ -305,10 +316,12 @@ def run_emri_pe(
         **tdi_kwargs_esa,
     )
     
-    len_tot = len(resp_gen(*emri_injection_params)[0])
+    h_plus = few_gen(*emri_injection_params,**emri_kwargs)[0]
+
+    len_tot = len(h_plus)
     window = xp.asarray(tukey(len_tot,alpha=0.005))
     def wave_gen(*args, **kwargs):
-        temp_data_channels = resp_gen(*args, **kwargs)
+        temp_data_channels = few_gen(*args, **kwargs)
         return [el*window for el in temp_data_channels]
 
     # for transforms
@@ -402,12 +415,15 @@ def run_emri_pe(
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     
     # get AE
-    data_channels = wave_gen(*injection_in, **emri_kwargs)
+    temp_emri_kwargs = emri_kwargs.copy()
+    temp_emri_kwargs['T'] = Tplunge
+    temp_data_channels = few_gen(*injection_in, **temp_emri_kwargs)
+    temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
 
     ############################## distance based on SNR ########################################################
-    check_snr = snr([data_channels[0], data_channels[1]],
+    check_snr = snr([temp_data_channels[0], temp_data_channels[1]],
         dt=dt,
-        PSD="noisepsd_AE",
+        PSD="lisasens",
         PSD_args=(),
         PSD_kwargs={},
         use_gpu=use_gpu,
@@ -436,13 +452,13 @@ def run_emri_pe(
     # get AE
     data_channels = wave_gen(*injection_in, **emri_kwargs)
     tic = time.perf_counter()
-    data_channels = wave_gen(*injection_in, **emri_kwargs)
+    [wave_gen(*injection_in, **emri_kwargs) for _ in range(10)]
     toc = time.perf_counter()
-    print("timing",toc-tic, "len vec", len(data_channels[0]))
+    print("timing",(toc-tic)/10, "len vec", len(data_channels[0]))
     
     check_snr = snr([data_channels[0], data_channels[1]],
         dt=dt,
-        PSD="noisepsd_AE",
+        PSD="lisasens",
         PSD_args=(),
         PSD_kwargs={},
         use_gpu=use_gpu,
@@ -505,11 +521,16 @@ def run_emri_pe(
 
         ffth = xp.fft.rfft(data_channels[0])*dt
         fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
-        PSD_arr = get_sensitivity(fft_freq, sens_fn="noisepsd_AE")
+        
 
         plt.figure()
         plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
-        plt.loglog(fft_freq.get(), PSD_arr.get())
+        for el in ["cornish_lisa_psd", "noisepsd_X","lisasens", "noisepsd_AE"]:
+            PSD_arr = get_sensitivity(fft_freq, sens_fn=el)
+            plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
+        plt.legend()
+        plt.xlim(1e-4,1e-1)
+        plt.ylim(1e-46,1e-31)
         plt.savefig(fp[:-3] + "injection_fd.pdf")
         # plt.savefig("injection_fd.pdf")
 
@@ -525,7 +546,7 @@ def run_emri_pe(
             
             Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],
                 dt=dt,
-                PSD="noisepsd_AE",
+                PSD="lisasens",
                 PSD_args=(),
                 PSD_kwargs={},
                 use_gpu=use_gpu,
@@ -556,7 +577,7 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt,sens_fn="noisepsd_AE"):
+    def get_noise_injection(N, dt,sens_fn="lisasens"):
         freqs = xp.fft.rfftfreq(N+1, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
@@ -568,9 +589,9 @@ def run_emri_pe(
 
         return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0][:N],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1][:N]]
 
-    full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="noisepsd_AE")
+    full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
     print("check nosie value",full_noise[0][0],full_noise[1][0])
-    inner_kw = dict(dt=dt,PSD="noisepsd_AE",PSD_args=(),PSD_kwargs={},use_gpu=True)
+    inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=True)
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 )
 
@@ -578,7 +599,7 @@ def run_emri_pe(
     like.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
         noise_fn=get_sensitivity,
-        noise_kwargs=[{"sens_fn": "noisepsd_AE"} for _ in range(nchannels)],
+        noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
     )
 
@@ -589,14 +610,15 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        file  = HDFBackend(fp)
+        file  = HDFBackend(fp.replace('T2.0','T0.5')) # fp
         burn = int(file.iteration*0.25)
         thin = 1
         
         # # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
-        cov = np.load(fp[:-3] + "_covariance.npy")
+        cov = np.load(fp.replace('T2.0','T0.5')[:-3] + "_covariance.npy")
         tmp = toplot[:nwalkers*ntemps]
+        tmp[0] = emri_injection_params_in.copy()
         print("covariance imported")
     except:
         print("find starting points")
@@ -709,15 +731,21 @@ def run_emri_pe(
         sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
+    indx_list_intr,indx_list_extr = [],[]
+    indx_list_intr.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list_extr.append(get_True_vec([0,1,2,3,4,12]))
+    
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.99),
-        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic),0.01),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.25),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.25),
     ]
 
     def stopping_fn(i, res, samp):
-        discard = int(samp.iteration*0.8)
+        discard = int(samp.iteration*0.5)
         current_it = samp.iteration
-        check_it = 500
+        check_it = 200
         max_it_update = 2000
         
         if (current_it>check_it)and(current_it % check_it == 0):
@@ -766,16 +794,27 @@ def run_emri_pe(
                 # prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
                 # learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
                 svd = np.linalg.svd(samp_cov)
-                samp.moves[1].all_proposal['emri'].svd = svd
-                samp.moves[0].all_proposal['emri'].svd = svd
+                for num_i in range(3):
+                    samp.moves[num_i].all_proposal['emri'].svd = svd
+                samp.moves[3].chain = to_cov.copy()
+                # for num_i in range(3):
+                #     samp.moves[num_i].all_proposal['emri'].scale = samp_cov
                 np.save(fp[:-3] + "_covariance",samp_cov)    
             
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
-            samp.moves[1].all_proposal['emri'].svd = svd
-            samp.moves[0].all_proposal['emri'].svd = svd
+            for num_i in range(3):
+                    samp.moves[num_i].all_proposal['emri'].svd = svd
+            chain = samp.get_chain(discard=discard)['emri']
+            inds = samp.get_inds(discard=discard)['emri']
+            to_cov = chain[inds]
+            samp.moves[3].chain = to_cov.copy()
+            # samp.weights[0] = 0.3
+            # samp.weights[1] = 0.3
+            # samp.weights[2] = 0.4
+            # samp.weights[3] = 0.0
         
         return False
     
@@ -815,7 +854,7 @@ def run_emri_pe(
         stopping_fn=stopping_fn,
         stopping_iterations=1,
         branch_names=["emri"],
-        # track_moves=False,
+        track_moves=False,
     )
     
     if resume:
@@ -867,11 +906,11 @@ if __name__ == "__main__":
     ntemps = args["ntemps"]
     nwalkers = args["nwalkers"]
 
-    traj = EMRIInspiral(func="KerrEccentricEquatorial")
+    traj = EMRIInspiral(func=func)
     # fix p0 given T
     p0 = get_p_at_t(
         traj,
-        Tobs * 0.999,
+        Tplunge * 0.999,
         [M, mu, a, e0, x0, 0.0],
         bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
         traj_kwargs={"dt":dt},
@@ -885,7 +924,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results_paper/"
+    folder = "./new_sens_results/"
     if logprior:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
@@ -927,7 +966,7 @@ if __name__ == "__main__":
     waveform_kwargs = {
         "T": Tobs,
         "dt": dt,
-        "mich": False
+        "mich": True
     }
     
     run_emri_pe(
