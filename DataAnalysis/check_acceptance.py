@@ -209,7 +209,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'results_paper/mcmc_*'
+init_name = 'new_sens_results//mcmc_*T2.0*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -223,18 +223,18 @@ for filename,el in zip(datasets,pars_inj):
     file  = HDFBackend(filename)
     print(filename)
     print("acceptance:")
-    print(file.get_move_info()['GaussianMove_0']['acceptance_fraction'][0])
-    print(file.get_move_info()['GaussianMove_1']['acceptance_fraction'][0])
-    # print("iteration", file.iteration/1e5, " *10^5")
-    # # print("max last loglike", file.get_log_like()[-100:][0])
-    # burn = int(file.iteration*0.25)
-    # thin = 1
+    print(file.get_move_info())
+    print("iteration", file.iteration/1e5, " *10^5")
+    # print("max last loglike", file.get_log_like()[-100:][0])
+    # burn = int(file.iteration*0.1)
+    # thin = 3
+    # burn,thin = file.get_autocorr_thin_burn()
     # minus_burn = -1
-    # print("iteration ", file.iteration)
+    # # print("iteration ", file.iteration)
     # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     # print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
     # print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
-    
+
     # # print(file.get_betas()[-1])
     # # print("Gel Rub stat",file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     
@@ -259,7 +259,6 @@ for filename,el in zip(datasets,pars_inj):
 
     # # check autocorrelation plot
     # get_autocorr_plot(samp[:minus_burn,:,0,:],repo_name+'/autocorrelation')
-    
     # # check chains
     
     # for ii in range(13):
