@@ -8,7 +8,7 @@ from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fun
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
-traj = EMRIInspiral(func="KerrEccentricEquatorial")
+traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 # run trajectory
 err = 1e-10
 insp_kw = {

@@ -322,7 +322,7 @@ def run_emri_pe(
     window = xp.asarray(tukey(len_tot,alpha=0.005))
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
-        return [el*window for el in temp_data_channels]
+        return temp_data_channels#[el*window for el in temp_data_channels]
 
     # for transforms
     # this is an example of how you would fill parameters 
@@ -811,10 +811,10 @@ def run_emri_pe(
             inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds]
             samp.moves[3].chain = to_cov.copy()
-            # samp.weights[0] = 0.3
-            # samp.weights[1] = 0.3
-            # samp.weights[2] = 0.4
-            # samp.weights[3] = 0.0
+            samp.weights[0] = 0.3
+            samp.weights[1] = 0.3
+            samp.weights[2] = 0.4
+            samp.weights[3] = 0.0
         
         return False
     
@@ -845,7 +845,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         new_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 1/0.564538},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 2.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
