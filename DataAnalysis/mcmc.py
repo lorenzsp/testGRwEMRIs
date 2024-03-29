@@ -162,7 +162,7 @@ def get_spectrogram(h,dt,name):
 
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-11,
+    "err": 1e-12,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": True,
