@@ -690,10 +690,10 @@ def run_emri_pe(
     indx_list_extr.append(get_True_vec([0,1,2,3,4,12]))
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.25),
-        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.25),
+        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
+        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
@@ -707,14 +707,14 @@ def run_emri_pe(
             chain = samp.get_chain(discard=discard)['emri']
             inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds]
-            samp.moves[3].chain = to_cov.copy()
+            samp.moves[-1].chain = to_cov.copy()
 
         if current_it<100: 
             # optimization active
-            samp.moves[3].use_current_state = False
+            samp.moves[-1].use_current_state = False
         else:
             # optimization inactive
-            samp.moves[3].use_current_state = True
+            samp.moves[-1].use_current_state = True
         
         
         if (current_it>=check_it)and(current_it % check_it == 0):
@@ -722,6 +722,7 @@ def run_emri_pe(
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
             print("Temperatures", 1/samp.temperature_control.betas)
+            current_acceptance_rate = np.mean(samp.acceptance_fraction)
             
             # get samples
             samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
@@ -766,26 +767,39 @@ def run_emri_pe(
                 inds = samp.get_inds(discard=discard)['emri']
                 to_cov = chain[inds]
                 # update DE chain
-                samp.moves[3].chain = to_cov.copy()
+                samp.moves[1].chain = to_cov.copy()
                 # update cov and svd
                 samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
                 svd = np.linalg.svd(samp_cov)
-                for num_i in range(3):
-                    samp.moves[num_i].all_proposal['emri'].svd = svd
+                samp.moves[0].all_proposal['emri'].scale = samp_cov
                 # save cov
-                np.save(fp[:-3] + "_covariance",samp_cov)    
+                np.save(fp[:-3] + "_covariance",samp_cov)   
+            else:
+                # adapt covariance depending on the acceptance rate
+                target_acceptance_rate = 0.23  # Target acceptance rate
+                if current_it<max_it_update*2:
+                    if current_acceptance_rate > 0.4:
+                        samp.moves[0].all_proposal['emri'].scale *= 1.1  # Increase covariance for higher acceptance rate
+                    elif current_acceptance_rate < 0.2:
+                        samp.moves[0].all_proposal['emri'].scale *= 0.9  # Decrease covariance for lower acceptance rate
+                    
+                    np.save(fp[:-3] + "_covariance", samp.moves[0].all_proposal['emri'].scale)   
 
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
-            for num_i in range(3):
-                    samp.moves[num_i].all_proposal['emri'].svd = svd
+            samp.moves[0].all_proposal['emri'].scale = samp_cov
             # get DE chain
             chain = samp.get_chain(discard=discard)['emri']
             inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds]
-            samp.moves[3].chain = to_cov.copy()
+            samp.moves[1].chain = to_cov.copy()
+            # samp.weights[0]=0.0
+            # samp.weights[1]=0.0
+            # samp.weights[2]=0.5
+            # samp.weights[3]=0.5
+            
         
         return False
     

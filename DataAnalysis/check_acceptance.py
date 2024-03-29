@@ -223,7 +223,7 @@ for filename,el in zip(datasets,pars_inj):
     file  = HDFBackend(filename)
     print(filename)
     print("acceptance:")
-    for nummove in range(4):
+    for nummove in range(2):
         print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
     # print("iteration", file.iteration/1e5, " *10^5")
     # print("max last loglike", file.get_log_like()[-1])
