@@ -225,7 +225,7 @@ for filename,el in zip(datasets,pars_inj):
     print("acceptance:")
     print(file.get_move_info())
     print("iteration", file.iteration/1e5, " *10^5")
-    print("max last loglike", file.get_log_like()[-100:][0])
+    print("max last loglike", file.get_log_like()[-1])
     # burn = int(file.iteration*0.1)
     # thin = 3
     # burn,thin = file.get_autocorr_thin_burn()
