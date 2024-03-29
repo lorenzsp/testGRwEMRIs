@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # select the plunge time
 Tplunge = 2.0
 import argparse
@@ -161,11 +161,11 @@ def get_spectrogram(h,dt,name):
 
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-10,
+    "err": 1e-11,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": True,
-    "func":func,
+    "func": func,
     }
 
 # keyword arguments for summation generator (AAKSummation)
@@ -418,7 +418,7 @@ def run_emri_pe(
     temp_emri_kwargs = emri_kwargs.copy()
     temp_emri_kwargs['T'] = Tplunge
     temp_data_channels = few_gen(*injection_in, **temp_emri_kwargs)
-    temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
+    # temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
 
     ############################## distance based on SNR ########################################################
     check_snr = snr([temp_data_channels[0], temp_data_channels[1]],
@@ -465,7 +465,6 @@ def run_emri_pe(
         )
     
     print("SNR",check_snr)
-    
     ############################## priors ########################################################
     
     delta = 0.05
@@ -478,7 +477,7 @@ def run_emri_pe(
                 1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
                 2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
                 3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                4: uniform_dist(np.max([emri_injection_params_in[4] - delta,0.0]), emri_injection_params_in[4] + delta),  # e0
                 5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -610,58 +609,25 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        file  = HDFBackend(fp.replace('T2.0','T0.5')) # fp
+        file  = HDFBackend(fp) # fp.replace('T2.0','T0.5')
         burn = int(file.iteration*0.25)
         thin = 1
         
         # # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
-        cov = np.load(fp.replace('T2.0','T0.5')[:-3] + "_covariance.npy")
+        cov = np.load(fp[:-3] + "_covariance.npy")
         tmp = toplot[:nwalkers*ntemps]
         tmp[0] = emri_injection_params_in.copy()
         print("covariance imported")
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
+        cov = np.load("covariance.npy")/1000 # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         if intrinsic_only:
             filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
             cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
 
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
-        
-        # # draw
-        # fact = 1.0
-        # iter_check = 0
-        # max_iter = 50
-        # start_like = np.zeros((nwalkers * ntemps))-1e30
-
-        # while np.min(start_like+N_obs) < -2e3:
-
-        #     logp = np.full_like(start_like, -np.inf)
-        #     tmp = np.zeros((ntemps * nwalkers, ndim))
-        #     fix = np.ones((ntemps * nwalkers), dtype=bool)
-        #     while np.any(fix):
-        #         tmp[fix] = draw_initial_points(emri_injection_params_in, cov*fact, nwalkers*ntemps, intrinsic_only=intrinsic_only)[fix]
-        #         if charge == 0.0:
-        #             if logprior:
-        #                 tmp[fix,-1] = np.random.uniform(prior_charge.min_val, np.log(1e-5),nwalkers*ntemps)[fix]
-        #             # else:
-        #             #     tmp[fix,-1] = np.random.uniform(prior_charge.min_val, 1e-5,nwalkers*ntemps)[fix]
-        #         logp = priors["emri"].logpdf(tmp)
-        #         fix = np.isinf(logp)
-
-        #     start_like = like(tmp, **emri_kwargs)
-        
-        #     iter_check += 1
-        #     fact /= 10.0
-
-        #     print("min starting likelihood",np.min(start_like+N_obs))
-        #     print("std",np.std(tmp,axis=0))
-
-        #     if iter_check > max_iter:
-        #         print("Unable to find starting parameters.")
-        #         break
 
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
@@ -683,7 +649,6 @@ def run_emri_pe(
     # true likelihood
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
     print(true_like)
-
     
     # start state
     start_state = State(
@@ -739,19 +704,36 @@ def run_emri_pe(
         (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
         (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
         (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic),0.25),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.25),
+        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.25),
     ]
 
     def stopping_fn(i, res, samp):
-        discard = int(samp.iteration*0.5)
         current_it = samp.iteration
+        discard = int(current_it*0.25)
         check_it = 200
         max_it_update = 2000
         
-        if (current_it>check_it)and(current_it % check_it == 0):
+        # update DE evolution chain at 100 steps
+        if current_it==100:
+            chain = samp.get_chain(discard=discard)['emri']
+            inds = samp.get_inds(discard=discard)['emri']
+            to_cov = chain[inds]
+            samp.moves[3].chain = to_cov.copy()
+
+        if current_it<100: 
+            # optimization active
+            samp.moves[3].use_current_state = False
+        else:
+            # optimization inactive
+            samp.moves[3].use_current_state = True
+        
+        
+        if (current_it>=check_it)and(current_it % check_it == 0):
+            # check acceptance and max loglike
             print("max last loglike", samp.get_log_like()[-1])
             print("acceptance", samp.acceptance_fraction )
             print("Temperatures", 1/samp.temperature_control.betas)
+            
             # get samples
             samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
@@ -785,36 +767,31 @@ def run_emri_pe(
                 plt.legend()
                 plt.savefig(fp[:-3] + "_td_3over4.pdf")
                 
-                # update cov
+                # update moves from chain
                 chain = samp.get_chain(discard=discard)['emri']
                 inds = samp.get_inds(discard=discard)['emri']
                 to_cov = chain[inds]
-                
+                # update DE chain
+                samp.moves[3].chain = to_cov.copy()
+                # update cov and svd
                 samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-                # prev_cov = samp.moves[1].all_proposal['emri'].scale.copy() 
-                # learning_reate = (1e3 - i)/1e3 # it goes from 1 to zero
                 svd = np.linalg.svd(samp_cov)
                 for num_i in range(3):
                     samp.moves[num_i].all_proposal['emri'].svd = svd
-                samp.moves[3].chain = to_cov.copy()
-                # for num_i in range(3):
-                #     samp.moves[num_i].all_proposal['emri'].scale = samp_cov
+                # save cov
                 np.save(fp[:-3] + "_covariance",samp_cov)    
-            
+
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
             for num_i in range(3):
                     samp.moves[num_i].all_proposal['emri'].svd = svd
+            # get DE chain
             chain = samp.get_chain(discard=discard)['emri']
             inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds]
             samp.moves[3].chain = to_cov.copy()
-            samp.weights[0] = 0.3
-            samp.weights[1] = 0.3
-            samp.weights[2] = 0.4
-            samp.weights[3] = 0.0
         
         return False
     
@@ -833,7 +810,7 @@ def run_emri_pe(
         print("file not found")
 
     def new_like(params, **kargs):
-
+        # to avoid nans
         like_val = np.zeros(len(params))-1e300
         like_val = like(params,**kargs)
         like_val[np.isnan(like_val)] = np.zeros(like_val[np.isnan(like_val)].shape)-1e300
@@ -845,7 +822,7 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         new_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 2.0},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 5.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -854,7 +831,7 @@ def run_emri_pe(
         stopping_fn=stopping_fn,
         stopping_iterations=1,
         branch_names=["emri"],
-        track_moves=False,
+        track_moves=True,
     )
     
     if resume:
@@ -862,7 +839,6 @@ def run_emri_pe(
         log_like = sampler.compute_log_like(coords, inds=inds, logp=log_prior)[0]
         print("initial loglike", log_like)
         start_state = State(coords, log_like=log_like, log_prior=log_prior, inds=inds)
-
 
     out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=0)
 
@@ -882,15 +858,15 @@ if __name__ == "__main__":
     p0 = args["p0"]  # 12.0
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
-    qK = np.pi/6  # polar spin angle
-    phiK = np.pi/5  # azimuthal viewing angle
-    qS = np.pi/4 # polar sky angle
-    phiS = np.pi/3 # azimuthal viewing angle
+    qK = np.pi/4  # polar spin angle
+    phiK = 2*np.pi/4 # azimuthal viewing angle
+    qS = 3*np.pi/4 # polar sky angle
+    phiS = np.pi # azimuthal viewing angle
     get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
-    Phi_phi0 = np.pi/3 # changed
+    Phi_phi0 = 1.0 # changed
     Phi_theta0 = 0.0
-    Phi_r0 = 3*np.pi/4  # changed
+    Phi_r0 = 2.0  # changed
     # LVK bound from paper sqrt(alpha) = 1.1 km 
     # bound in our scaling sqrt(alpha) = 1.1*np.sqrt(16*np.pi**0.5)
     # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
@@ -924,13 +900,15 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./new_sens_results/"
+    folder = "./results_paper/"
     if logprior:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
-    tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0)
+    
+    tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
+    print("len", len(tvec))
     fig, axes = plt.subplots(2, 3)
     plt.subplots_adjust(wspace=0.3)
     fig.set_size_inches(14, 8)
