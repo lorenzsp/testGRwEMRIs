@@ -209,7 +209,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'new_sens_results//mcmc_*T2.0*'
+init_name = 'results_paper/mcmc_*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -225,7 +225,7 @@ for filename,el in zip(datasets,pars_inj):
     print("acceptance:")
     print(file.get_move_info())
     print("iteration", file.iteration/1e5, " *10^5")
-    # print("max last loglike", file.get_log_like()[-100:][0])
+    print("max last loglike", file.get_log_like()[-1])
     # burn = int(file.iteration*0.1)
     # thin = 3
     # burn,thin = file.get_autocorr_thin_burn()
