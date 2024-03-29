@@ -1,5 +1,7 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# test with zero likelihood
+# python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
 Tplunge = 2.0
 
@@ -25,6 +27,7 @@ parser.add_argument("-ntemps", "--ntemps", help="number of MCMC temperatures", r
 parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", required=False, type=int, default=1000)
 parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, default=50.0)
 parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
+parser.add_argument("-zerolike", "--zerolike", help="zero likelihood test", required=False, type=int, default=0)
 
 args = vars(parser.parse_args())
 
@@ -259,7 +262,9 @@ def run_emri_pe(
     log_prior=False,
     source_SNR=50.0,
     intrinsic_only=False,
+    zero_like=False
 ):
+
     # fix seed for reproducibility and noise injection
     np.random.seed(SEED)
     xp.random.seed(SEED)
@@ -723,34 +728,37 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
-            
-            if (current_it<max_it_update):
-                num = 10
-                # beginning
-                start_ind = int(N_obs/4)
-                end_ind = start_ind + 500
-                plt.figure()
-                for i in range(num):
-                    h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                plt.legend()
-                plt.savefig(fp[:-3] + "_td_1over4.pdf")
+            if not zero_like:
+                # fig = corner.corner(samples,truths=emri_injection_params_in); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                # else:
+                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
-                # end
-                start_ind = int(3*N_obs/4)
-                end_ind = start_ind + 500
-                plt.figure()
-                for i in range(num):
-                    h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                plt.legend()
-                plt.savefig(fp[:-3] + "_td_3over4.pdf")
-                
+                if (current_it<max_it_update):
+                    num = 10
+                    # beginning
+                    start_ind = int(N_obs/4)
+                    end_ind = start_ind + 500
+                    plt.figure()
+                    for i in range(num):
+                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
+                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
+                    plt.legend()
+                    plt.savefig(fp[:-3] + "_td_1over4.pdf")
+                    
+                    # end
+                    start_ind = int(3*N_obs/4)
+                    end_ind = start_ind + 500
+                    plt.figure()
+                    for i in range(num):
+                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
+                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
+                    plt.legend()
+                    plt.savefig(fp[:-3] + "_td_3over4.pdf")
+                    
 
             if (current_it<max_it_update):
                 # update moves from chain
@@ -796,6 +804,8 @@ def run_emri_pe(
         print("file not found")
 
     def new_like(params, **kargs):
+        if zero_like:
+            return np.zeros(len(params))
         # to avoid nans
         like_val = np.zeros(len(params))-1e300
         like_val = like(params,**kargs)
@@ -826,10 +836,18 @@ def run_emri_pe(
         print("initial loglike", log_like)
         start_state = State(coords, log_like=log_like, log_prior=log_prior, inds=inds)
 
+    if zero_like:
+        # start state
+        start_state = State(
+            {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
+            log_like=start_like.reshape(ntemps, nwalkers)*0.0, 
+            log_prior=start_prior.reshape(ntemps, nwalkers)
+        )
+
     out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=0)
 
     # get samples
-    samples = sampler.get_chain(discard=0, thin=1)["emri"][:, 0].reshape(-1, ndim)
+    samples = sampler.get_chain(discard=int(sampler.iteration*0.25), thin=1)["emri"][:, 0].reshape(-1, ndim)
     
     # plot
     fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
@@ -887,12 +905,15 @@ if __name__ == "__main__":
 
     logprior = False
     folder = "./results_paper/"
+    
+    if bool(args['zerolike']):
+        folder + "zerolike_"
+    
     if logprior:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
         fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
-    
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))
     fig, axes = plt.subplots(2, 3)
@@ -945,4 +966,5 @@ if __name__ == "__main__":
         log_prior=logprior,
         source_SNR=source_SNR,
         intrinsic_only=False,
+        zero_like=bool(args['zerolike'])
     )
