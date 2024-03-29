@@ -1,7 +1,8 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 5e5 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # select the plunge time
 Tplunge = 2.0
+
 import argparse
 import os
 os.environ["OMP_NUM_THREADS"] = str(2)
@@ -322,7 +323,7 @@ def run_emri_pe(
     window = xp.asarray(tukey(len_tot,alpha=0.005))
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
-        return temp_data_channels#[el*window for el in temp_data_channels]
+        return [el*window for el in temp_data_channels]
 
     # for transforms
     # this is an example of how you would fill parameters 
@@ -418,7 +419,7 @@ def run_emri_pe(
     temp_emri_kwargs = emri_kwargs.copy()
     temp_emri_kwargs['T'] = Tplunge
     temp_data_channels = few_gen(*injection_in, **temp_emri_kwargs)
-    # temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
+    temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
 
     ############################## distance based on SNR ########################################################
     check_snr = snr([temp_data_channels[0], temp_data_channels[1]],
@@ -477,7 +478,7 @@ def run_emri_pe(
                 1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
                 2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
                 3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                4: uniform_dist(np.max([emri_injection_params_in[4] - delta,0.0]), emri_injection_params_in[4] + delta),  # e0
+                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
                 5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -533,12 +534,12 @@ def run_emri_pe(
         plt.savefig(fp[:-3] + "injection_fd.pdf")
         # plt.savefig("injection_fd.pdf")
 
-        plt.figure()
-        plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
-        plt.savefig(fp[:-3] + "injection_td.pdf")
+        # plt.figure()
+        # plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
+        # plt.savefig(fp[:-3] + "injection_td.pdf")
 
         plt.figure()
-        for cc in 10**np.linspace(-5,-2):
+        for cc in 10**np.linspace(-5,-2,num=10):
             injection_temp = injection_in.copy()
             injection_temp[-1] = cc
             data_temp = wave_gen(*injection_temp, **emri_kwargs)
@@ -577,23 +578,22 @@ def run_emri_pe(
     )
 
     def get_noise_injection(N, dt,sens_fn="lisasens"):
-        freqs = xp.fft.rfftfreq(N+1, dt)
+        freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
         psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
         # normalize by the factors:
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
-        noise_to_add = [xp.fft.irfft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ) for psd_temp in psd]
-
-        return [1/(dt*np.sqrt(4*df_full)) * noise_to_add[0][:N],1/(dt*np.sqrt(4*df_full)) * noise_to_add[1][:N]]
+        noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
+        return [1/(dt*np.sqrt(2*df_full)) * noise_to_add[0],1/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
     full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
     print("check nosie value",full_noise[0][0],full_noise[1][0])
     inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=True)
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
-    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 )
-
+    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
+    
     nchannels = 2
     like.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
@@ -605,7 +605,6 @@ def run_emri_pe(
     ndim = 13
     if intrinsic_only:
         ndim = 8
-    
     #####################################################################
     # generate starting points
     try:
@@ -677,22 +676,7 @@ def run_emri_pe(
     
     if intrinsic_only:
         sky_periodic = None
-        gibbs_setup = None
-        indx_list.append(get_True_vec([0,2]))
-        indx_list.append(get_True_vec([1,7]))
-        indx_list.append(get_True_vec([3,4]))
-        indx_list.append(get_True_vec([5,6]))
     else:
-        indx_list.append(get_True_vec([0,1,2,3,4,12]))
-        indx_list.append(get_True_vec([2,12]))
-        indx_list.append(get_True_vec([1,12]))
-        indx_list.append(get_True_vec([0,12]))
-        indx_list.append(get_True_vec([5,6,7]))
-        indx_list.append(get_True_vec([8,9]))
-        indx_list.append(get_True_vec([10,11]))
-        indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
-
-        gibbs_setup = [("emri",el[None,:] ) for el in indx_list]
         sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
@@ -767,6 +751,8 @@ def run_emri_pe(
                 plt.legend()
                 plt.savefig(fp[:-3] + "_td_3over4.pdf")
                 
+
+            if (current_it<max_it_update):
                 # update moves from chain
                 chain = samp.get_chain(discard=discard)['emri']
                 inds = samp.get_inds(discard=discard)['emri']
