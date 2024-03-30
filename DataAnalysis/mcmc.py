@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # test with zero likelihood
 # python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
@@ -635,6 +635,13 @@ def run_emri_pe(
 
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
+        new_tmp = emri_injection_params_in.copy()
+        # intial periodic points
+        new_tmp[10] += np.pi
+        tmp[1] = new_tmp.copy()
+        new_tmp = emri_injection_params_in.copy()
+        new_tmp[9] += np.pi
+        tmp[2] = new_tmp.copy()
         
         cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
     #########################################################################
@@ -652,7 +659,7 @@ def run_emri_pe(
     start_prior = priors["emri"].logpdf(start_params)
     # true likelihood
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
-    print(true_like)
+    print("true log like",true_like)
     
     # start state
     start_state = State(
@@ -685,19 +692,18 @@ def run_emri_pe(
         sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
-    indx_list_intr,indx_list_extr = [],[]
-    indx_list_intr.append(get_True_vec([5,6,7,8,9,10,11]))
-    indx_list_extr.append(get_True_vec([0,1,2,3,4,12]))
-    # shift values
-    indx_list.append(get_True_vec([9]))
-    indx_list.append(get_True_vec([10]))
-    to_shift = [("emri",el[None,:] ) for el in indx_list_intr]
+    indx_list.append(get_True_vec(np.arange(ndim)))
+    indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list.append(get_True_vec([0,1,2,3,4,12]))
+    
+    # shift values move
+    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([9]), get_True_vec([10]), get_True_vec([7]), get_True_vec([6]), get_True_vec([8])]]
     # prob, index par to shift, value
-    shift_value = [0.1, to_shift, np.pi]
+    shift_value = [0.3, to_shift, np.pi]
+
     moves = [
-        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
-        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, shift_value=shift_value, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, 
+                      shift_value=shift_value, indx_list=[("emri",el[None,:] ) for el in indx_list]),0.5),
         (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
     ]
 
@@ -837,7 +843,8 @@ def run_emri_pe(
         [ndim],  # assumes ndim_max
         new_like,
         priors,
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 5.0},
+        # SNR is decreased by a factor of 1/sqrt(T)
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 30.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
