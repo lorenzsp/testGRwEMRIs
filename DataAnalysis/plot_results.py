@@ -114,7 +114,7 @@ labels = [r'$\Delta \ln (M/{\rm M}_\odot$)', r'$\Delta \ln (\mu / M_{\odot})$', 
         r'$\Delta \Phi_{\varphi 0}$', r'$\Delta \Phi_{r 0}$',
             r"$d$",
         ]
-for var in range(len(labels)):
+for var in range(5):
     plt.figure()
     for filename,el in zip(datasets,pars_inj):
         print('-------------------------------------')
@@ -155,3 +155,4 @@ for var in range(len(labels)):
     # plt.legend()
     plt.savefig(f'./plot_paper/variable_{var}.pdf', bbox_inches='tight')
 
+#####################################
