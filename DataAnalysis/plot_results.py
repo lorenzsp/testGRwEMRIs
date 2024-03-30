@@ -50,7 +50,7 @@ temp=0
 samp_final = []
 inj_pars = []
 
-
+# Alpha plot
 plt.figure()
 for filename,el in zip(datasets,pars_inj):
     print('-------------------------------------')
@@ -61,7 +61,7 @@ for filename,el in zip(datasets,pars_inj):
     toplot = np.load(repo_name + '/samples.npy')
     
     # Parse parameters from repo_name
-    params = repo_name.split('_')[4:]
+    params = repo_name.split('_')[3:]
     params_dict = {}
     
     for param in params:
@@ -71,6 +71,7 @@ for filename,el in zip(datasets,pars_inj):
 
     # labels
     label = '('
+
     # label += f"{params_dict.get('T')}"
     label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
     if int(params_dict.get('mu'))==5:
@@ -101,5 +102,56 @@ plt.axvline(vpos,color='r',linestyle='-.',label='Best bound from 3G', linewidth=
 plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
 # plt.legend()
 plt.xlim(-1.0,1.0)
-plt.savefig(f'./alpha_bound.png', bbox_inches='tight')
+plt.savefig(f'./plot_paper/alpha_bound.pdf', bbox_inches='tight')
+
+
+
+#####################################
+labels = [r'$\Delta \ln (M/{\rm M}_\odot$)', r'$\Delta \ln (\mu / M_{\odot})$', r'$\Delta a$', r'$\Delta p_0 \, [M]$', r'$\Delta e_0$', 
+            r'$\Delta D_L \, [{\rm Gpc}]$',
+            r"$\Delta \cos \theta_S$",r"$\Delta \phi_S$",
+            r"$\Delta \cos \theta_K$",r"$\Delta \phi_K$",
+        r'$\Delta \Phi_{\varphi 0}$', r'$\Delta \Phi_{r 0}$',
+            r"$d$",
+        ]
+for var in range(len(labels)):
+    plt.figure()
+    for filename,el in zip(datasets,pars_inj):
+        print('-------------------------------------')
+        # get_repo name
+        repo_name = el.split('_injected_pars.npy')[0]
+        repo_name
+        truths = np.load(el)
+        toplot = np.load(repo_name + '/samples.npy')
+        
+        # Parse parameters from repo_name
+        params = repo_name.split('_')[3:]
+        params_dict = {}
+        
+        for param in params:
+            name_to_split = re.match(r'([a-zA-Z]+)', param).groups()[0]
+            key, value = name_to_split, float(param.split(name_to_split)[1])
+            params_dict[key] = value
+
+        # labels
+        label = '('
+
+        # label += f"{params_dict.get('T')}"
+        label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
+        if int(params_dict.get('mu'))==5:
+            label += f", $\, \, \,${int(params_dict.get('mu'))}"
+        else:
+            label += f", {int(params_dict.get('mu'))}"
+        label += f", {params_dict.get('a'):.2f}"
+        label += f", {params_dict.get('e')}"
+        label += ')'
+        
+        plt.hist(toplot[:,var]-truths[var], bins=40, histtype='step', density=True, label=label, linewidth=2)
+
+    plt.tight_layout()
+    plt.xlabel(labels[var],size=22)
+    plt.ticklabel_format(style='sci')
+    plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
+    # plt.legend()
+    plt.savefig(f'./plot_paper/variable_{var}.pdf', bbox_inches='tight')
 

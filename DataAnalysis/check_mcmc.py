@@ -1,7 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 5 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
-# test with zero likelihood
-# python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
+# python check_mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # select the plunge time
 Tplunge = 2.0
 
@@ -163,7 +161,7 @@ def get_spectrogram(h,dt,name):
     plt.title('Spectrogram')
     plt.savefig(name)
 
-func = "KerrEccentricEquatorialAPEX"
+func = "KerrEccentricEquatorial"
 insp_kwargs = {
     "err": 1e-12,
     "DENSE_STEPPING": 0,
@@ -520,68 +518,8 @@ def run_emri_pe(
     if intrinsic_only:
         periodic = {"emri": {5: 2 * np.pi, 6: 2 * np.pi}}
     
-    ############################## plots ########################################################
-    if use_gpu:
-        get_spectrogram(data_channels[0],dt,fp[:-3] + "_spectrogram.pdf")
-
-        ffth = xp.fft.rfft(data_channels[0])*dt
-        fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
-        
-
-        plt.figure()
-        plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
-        for el in ["cornish_lisa_psd", "noisepsd_X","lisasens", "noisepsd_AE"]:
-            PSD_arr = get_sensitivity(fft_freq, sens_fn=el)
-            plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
-        plt.legend()
-        plt.xlim(1e-4,1e-1)
-        plt.ylim(1e-46,1e-31)
-        plt.savefig(fp[:-3] + "injection_fd.pdf")
-        # plt.savefig("injection_fd.pdf")
-
-        # plt.figure()
-        # plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
-        # plt.savefig(fp[:-3] + "injection_td.pdf")
-
-        plt.figure()
-        for cc in 10**np.linspace(-5,-2,num=10):
-            injection_temp = injection_in.copy()
-            injection_temp[-1] = cc
-            data_temp = wave_gen(*injection_temp, **emri_kwargs)
-            
-            Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],
-                dt=dt,
-                PSD="lisasens",
-                PSD_args=(),
-                PSD_kwargs={},
-                use_gpu=use_gpu,
-                normalize=True
-                )
-            plt.loglog(cc, 1-Overlap.get(),'ko')
-        plt.ylabel('Mismatch')
-        plt.xlabel('Charge')
-        plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
-        # plt.savefig("mismatch_evolution.pdf")
-    
-    else:
-        plt.figure()
-        plt.plot(data_channels[0])
-        plt.show()
-        plt.savefig(fp[:-3] + "injection.pdf")
-
     ############################## likelihood ########################################################
     # this is a parent likelihood class that manages the parameter transforms
-    like = Likelihood(
-        wave_gen,
-        2,  # channels (A,E)
-        dt=dt,
-        parameter_transforms={"emri": transform_fn},
-        use_gpu=use_gpu,
-        vectorized=False,
-        transpose_params=False,
-        subset=6,  # may need this subset
-    )
-
     def get_noise_injection(N, dt,sens_fn="lisasens"):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
@@ -600,277 +538,78 @@ def run_emri_pe(
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
     
     nchannels = 2
-    like.inject_signal(
+    like_noise = Likelihood(
+        wave_gen,
+        nchannels,  # channels (A,E)
+        dt=dt,
+        parameter_transforms={"emri": transform_fn},
+        use_gpu=use_gpu,
+        vectorized=False,
+        transpose_params=False,
+        subset=6,  # may need this subset
+    )
+    
+    like_noise.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
         noise_fn=get_sensitivity,
         noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
     )
-
-    ndim = 13
-    if intrinsic_only:
-        ndim = 8
-    #####################################################################
-    # generate starting points
-    try:
-        file  = HDFBackend(fp) # fp.replace('T2.0','T0.5')
-        burn = int(file.iteration*0.25)
-        thin = 1
-        
-        # # get samples
-        toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
-        cov = np.load(fp[:-3] + "_covariance.npy")
-        tmp = toplot[:nwalkers*ntemps]
-        tmp[0] = emri_injection_params_in.copy()
-        print("covariance imported")
-    except:
-        print("find starting points")
-        # precision of 1e-5
-        cov = np.load("covariance.npy")/1000 # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
-        if intrinsic_only:
-            filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
-            cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
-
-        tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
-
-        # set one to the true value
-        tmp[0] = emri_injection_params_in.copy()
-        
-        cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
-    #########################################################################
-    # save parameters
-    np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
     
-    logp = priors["emri"].logpdf(tmp)
-    print("logprior",logp)
-    tic = time.time()
-    start_like = like(tmp, **emri_kwargs)
-    toc = time.time()
-    timelike = (toc-tic)/np.prod(tmp.shape)
-    start_params = tmp.copy()
-    print("start like",start_like, "in ", timelike," seconds")
-    start_prior = priors["emri"].logpdf(start_params)
-    # true likelihood
-    true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
-    print(true_like)
-    
-    # start state
-    start_state = State(
-        {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
-        log_like=start_like.reshape(ntemps, nwalkers), 
-        log_prior=start_prior.reshape(ntemps, nwalkers)
-    )
-
-    # gibbs sampling
-    update_all = np.repeat(True,ndim)
-    update_none = np.repeat(False,ndim)
-    indx_list = []
-    
-    def get_True_vec(ind_in):
-        out = update_none.copy()
-        out[ind_in] = update_all[ind_in]
-        return out
-    
-    # gibbs variables
-    # import itertools
-    # stuff = np.asarray([0,1,2,3,4,12])
-    # list_comb = []
-    # for subset in itertools.combinations(stuff, 2):
-    #     list_comb.append(subset)
-    # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
-    
-    if intrinsic_only:
-        sky_periodic = None
-    else:
-        sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
-    
-    # MCMC moves (move, percentage of draws)
-    indx_list_intr,indx_list_extr = [],[]
-    indx_list_intr.append(get_True_vec([5,6,7,8,9,10,11]))
-    indx_list_extr.append(get_True_vec([0,1,2,3,4,12]))
-    # shift values
-    indx_list.append(get_True_vec([9]))
-    indx_list.append(get_True_vec([10]))
-    to_shift = [("emri",el[None,:] ) for el in indx_list_intr]
-    # prob, index par to shift, value
-    shift_value = [0.1, to_shift, np.pi]
-    moves = [
-        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_intr]),0.25),
-        # (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, sky_periodic=sky_periodic, gibbs_setup=[("emri",el[None,:] ) for el in indx_list_extr]),0.25),
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100, shift_value=shift_value, sky_periodic=sky_periodic),0.5),
-        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
-    ]
-
-    def stopping_fn(i, res, samp):
-        current_it = samp.iteration
-        discard = int(current_it*0.25)
-        check_it = 200
-        max_it_update = 1000
-        
-        # update DE evolution chain at 100 steps
-        if current_it==100:
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
-            to_cov = chain[inds]
-            samp.moves[-1].chain = to_cov.copy()
-
-        if current_it<100: 
-            # optimization active
-            samp.moves[-1].use_current_state = False
-        else:
-            # optimization inactive
-            samp.moves[-1].use_current_state = True
-        
-        
-        if (current_it>=check_it)and(current_it % check_it == 0):
-            # check acceptance and max loglike
-            print("max last loglike", samp.get_log_like()[-1])
-            print("acceptance", samp.acceptance_fraction )
-            print("Temperatures", 1/samp.temperature_control.betas)
-            current_acceptance_rate = np.mean(samp.acceptance_fraction)
-            
-            # get samples
-            samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
-            ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
-            
-            # plot
-            if not zero_like:
-                # fig = corner.corner(samples,truths=emri_injection_params_in); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
-                # else:
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
-                
-                if (current_it<max_it_update):
-                    num = 10
-                    # beginning
-                    start_ind = int(N_obs/4)
-                    end_ind = start_ind + 500
-                    plt.figure()
-                    for i in range(num):
-                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                    plt.legend()
-                    plt.savefig(fp[:-3] + "_td_1over4.pdf")
-                    
-                    # end
-                    start_ind = int(3*N_obs/4)
-                    end_ind = start_ind + 500
-                    plt.figure()
-                    for i in range(num):
-                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                    plt.legend()
-                    plt.savefig(fp[:-3] + "_td_3over4.pdf")
-                    
-
-            if (current_it<max_it_update):
-                # update moves from chain
-                chain = samp.get_chain(discard=discard)['emri']
-                inds = samp.get_inds(discard=discard)['emri']
-                to_cov = chain[inds]
-                # update DE chain
-                samp.moves[1].chain = to_cov.copy()
-                # update cov and svd
-                samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-                svd = np.linalg.svd(samp_cov)
-                samp.moves[0].all_proposal['emri'].scale = samp_cov
-                # save cov
-                np.save(fp[:-3] + "_covariance",samp_cov)   
-            else:
-                # adapt covariance depending on the acceptance rate
-                target_acceptance_rate = 0.23  # Target acceptance rate
-                if current_it<max_it_update*2:
-                    if current_acceptance_rate > 0.4:
-                        samp.moves[0].all_proposal['emri'].scale *= 1.1  # Increase covariance for higher acceptance rate
-                    elif current_acceptance_rate < 0.2:
-                        samp.moves[0].all_proposal['emri'].scale *= 0.9  # Decrease covariance for lower acceptance rate
-                    
-                    np.save(fp[:-3] + "_covariance", samp.moves[0].all_proposal['emri'].scale)   
-
-        if (i==0)and(current_it>1):
-            print("resuming run calculate covariance from chain")            
-            samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-            svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].scale = samp_cov
-            # get DE chain
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
-            to_cov = chain[inds]
-            samp.moves[1].chain = to_cov.copy()
-            # samp.weights[0]=0.0
-            # samp.weights[1]=0.0
-            # samp.weights[2]=0.5
-            # samp.weights[3]=0.5
-            
-        
-        return False
-    
-
-    # check for previous runs
-    try:
-        file_samp = HDFBackend(fp)
-        last_state = file_samp.get_last_sample()
-        inds = last_state.branches_inds.copy()
-        new_coords = last_state.branches_coords.copy()
-        coords = new_coords.copy()
-        resume = True
-        print("resuming")
-    except:
-        resume = False
-        print("file not found")
-
-    def new_like(params, **kargs):
-        if zero_like:
-            return np.zeros(len(params))
-        # to avoid nans
-        like_val = np.zeros(len(params))-1e300
-        like_val = like(params,**kargs)
-        like_val[np.isnan(like_val)] = np.zeros(like_val[np.isnan(like_val)].shape)-1e300
-        return like_val
-    
-    # prepare sampler
-    sampler = EnsembleSampler(
-        nwalkers,
-        [ndim],  # assumes ndim_max
-        new_like,
-        priors,
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 5.0},
-        moves=moves,
-        kwargs=emri_kwargs,
-        backend=fp,
-        vectorize=True,
-        periodic=periodic,  # TODO: add periodic to proposals
-        stopping_fn=stopping_fn,
-        stopping_iterations=1,
-        branch_names=["emri"],
-        track_moves=True,
+    like = Likelihood(
+        wave_gen,
+        nchannels,  # channels (A,E)
+        dt=dt,
+        parameter_transforms={"emri": transform_fn},
+        use_gpu=use_gpu,
+        vectorized=False,
+        transpose_params=False,
+        subset=6,  # may need this subset
     )
     
-    if resume:
-        log_prior = sampler.compute_log_prior(coords, inds=inds)
-        log_like = sampler.compute_log_like(coords, inds=inds, logp=log_prior)[0]
-        print("initial loglike", log_like)
-        start_state = State(coords, log_like=log_like, log_prior=log_prior, inds=inds)
-
-    if zero_like:
-        # start state
-        start_state = State(
-            {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
-            log_like=start_like.reshape(ntemps, nwalkers)*0.0, 
-            log_prior=start_prior.reshape(ntemps, nwalkers)
-        )
-
-    out = sampler.run_mcmc(start_state, nsteps, progress=True, thin_by=1, burn=0)
-
-    # get samples
-    samples = sampler.get_chain(discard=int(sampler.iteration*0.25), thin=1)["emri"][:, 0].reshape(-1, ndim)
+    like.inject_signal(
+        data_stream=[data_channels[0], data_channels[1]],
+        noise_fn=get_sensitivity,
+        noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
+        noise_args=[[] for _ in range(nchannels)],
+    )
     
-    # plot
-    fig = corner.corner(samples,truths=emri_injection_params_in, levels=1 - np.exp(-0.5 * np.array([1, 2, 3]) ** 2))
-    fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+    ###################################################
+    def get_wave(pars):
+        # get injected parameters after transformation
+        injection_in = transform_fn.both_transforms(pars[None, :])[0]
+        
+        # get AE
+        data_channels = wave_gen(*injection_in, **emri_kwargs)
+        return data_channels
+
+    # like_noise(chain[:1])
+    # chain = np.load(repo_name + '/samples.npy')
+    # bf = np.median(chain,axis=0)
+    
+    ind = 11
+    
+    def get_ll_plot(ind, likefun, var_vec, name='ll_plot.png', ):
+        # first
+        tmp = np.zeros((len(var_vec),len(emri_injection_params_in)))
+        tmp[:,:] = emri_injection_params_in[None,:].copy()
+        tmp[:,ind] = var_vec.copy()
+        ll_n_at_true = likefun(tmp, **emri_kwargs)        
+        plt.figure(); 
+        plt.plot(var_vec,ll_n_at_true,'-',label='at true'); 
+        plt.axvline(emri_injection_params_in[ind],label='true',color='k'); 
+        plt.legend(); 
+        plt.savefig(name)
+    
+    for vv in [7,9,10,11]:
+        var_vec = np.linspace(0.0, 2*np.pi, num=20)
+        get_ll_plot(vv, like, var_vec, name = f'll_{vv}.png', )
+    var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
+    get_ll_plot(8, like, var_vec, name = 'll_thethaK.png', )
+    var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
+    get_ll_plot(6, like, var_vec, name = 'll_thethaS.png', )
+    # var_vec = np.linspace(emri_injection_params_in[0]-1e-5,emri_injection_params_in[0]+1e-5, num=20)
+    # get_ll_plot(0, like, var_vec, name = 'll.png', )
     return
 
 if __name__ == "__main__":
@@ -887,9 +626,10 @@ if __name__ == "__main__":
     phiS = np.pi # azimuthal viewing angle
     get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
-    Phi_phi0 = np.pi/2
+    Phi_phi0 = np.pi/2 
     Phi_r0 = np.pi
-    Phi_theta0 = Phi_r0
+    Phi_theta0 = Phi_r0 # it must be always be the same
+    
     # LVK bound from paper sqrt(alpha) = 1.1 km 
     # bound in our scaling sqrt(alpha) = 1.1*np.sqrt(16*np.pi**0.5)
     # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
@@ -947,7 +687,7 @@ if __name__ == "__main__":
         ax.plot(x, y)
         ax.set_xlabel(xlab, fontsize=16)
         ax.set_ylabel(ylab, fontsize=16)
-    plt.savefig(fp[:-3] + "_trajectory.pdf")
+    # plt.savefig(fp[:-3] + "_trajectory.pdf")
 
     emri_injection_params = np.array([
         M,  
@@ -973,11 +713,13 @@ if __name__ == "__main__":
         "mich": True
     }
     
+    repo_name = (fp[:-3] + "_trajectory.pdf").split('_trajectory.pdf')[0]
+
     run_emri_pe(
         emri_injection_params, 
         Tobs,
         dt,
-        fp,
+        repo_name,
         ntemps,
         nwalkers,
         args['nsteps'],

@@ -226,10 +226,10 @@ for filename,el in zip(datasets,pars_inj):
     for nummove in range(2):
         print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
     # print("iteration", file.iteration/1e5, " *10^5")
-    # print("max last loglike", file.get_log_like()[-1])
+    print("max last loglike", file.get_log_like()[-1])
     # burn = int(file.iteration*0.25)
     # thin = 1
-    # burn,thin = file.get_autocorr_thin_burn()
+    # # burn,thin = file.get_autocorr_thin_burn()
     # minus_burn = -1
     # # print("iteration ", file.iteration)
     # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
