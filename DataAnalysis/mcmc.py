@@ -76,6 +76,8 @@ from few.waveform import GenerateEMRIWaveform
 from few.utils.constants import *
 from few.utils.utility import get_p_at_t, get_separatrix
 from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
+import warnings
+# warnings.filterwarnings("ignore")
 
 SEED = 26011996
 
@@ -95,75 +97,7 @@ use_gpu = True
 if use_gpu and not gpu_available:
     raise ValueError("Requesting gpu with no GPU available or cupy issue.")
 
-
-import warnings
-
-warnings.filterwarnings("ignore")
-
-
-# if use_gpu is True:
-#     xp = np
-
-def draw_initial_points(mu, cov, size, intrinsic_only=False):    
-    
-    tmp = np.random.multivariate_normal(mu, cov, size=size)
-    
-    # for ii in range(tmp.shape[0]):
-    #     Rot = special_ortho_group.rvs(tmp.shape[1])
-    #     tmp[ii] = np.random.multivariate_normal(mu, (Rot.T @ cov @ Rot))
-    
-    if intrinsic_only:
-        for el in [-2,-3]:
-            tmp[:,el] = tmp[:,el]%(2*np.pi)
-    else:
-        # ensure prior
-        for el in [10,11]:
-            tmp[:,el] = tmp[:,el]%(2*np.pi)
-        
-        tmp[:,6],tmp[:,7] = reflect_cosines_array(tmp[:,6],tmp[:,7])
-        tmp[:,8],tmp[:,9] = reflect_cosines_array(tmp[:,8],tmp[:,9])
-        
-        # tmp[:,6] = np.cos(np.random.uniform(0.,2*np.pi,size=len(tmp[:,6])))
-        # tmp[:,7] = np.random.uniform(0.,2*np.pi,size=len(tmp[:,7]))
-        # tmp[:,8] = np.cos(np.random.uniform(0.,2*np.pi,size=len(tmp[:,8])))
-        # tmp[:,9] = np.random.uniform(0.,2*np.pi,size=len(tmp[:,9]))
-    
-    return tmp
-
-def spectrogram(x, window_size=256, step_size=128, fs=1/10):
-    # Calculate number of time steps
-    n_timesteps = (len(x) - window_size) // step_size + 1
-    
-    # Initialize spectrogram array
-    spectrogram = xp.zeros((window_size // 2 + 1, n_timesteps))
-    
-    # Compute spectrogram
-    for t in range(n_timesteps):
-        # Extract windowed segment
-        segment = x[t * step_size:t * step_size + window_size]
-        
-        # Apply window function (Hann window)
-        windowed_segment = segment * xp.hanning(window_size)
-        
-        # Compute FFT
-        fft_result = xp.fft.fft(windowed_segment)
-        
-        # Store magnitude spectrum
-        spectrogram[:, t] = xp.abs(fft_result[:window_size // 2 + 1])
-    
-    return spectrogram.get()  # Transfer data from GPU to CPU
-
-def get_spectrogram(h,dt,name):
-    # Compute spectrogram
-    spec = spectrogram(h,fs=1/dt)
-
-    # Plot spectrogram
-    plt.figure(figsize=(10, 6))
-    plt.imshow(np.log10(spec), aspect='auto', origin='lower', cmap='inferno')
-    plt.colorbar(label='Magnitude (dB)')
-    plt.title('Spectrogram')
-    plt.savefig(name)
-
+# define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
     "err": 1e-12,
@@ -172,83 +106,13 @@ insp_kwargs = {
     "use_rk4": True,
     "func": func,
     }
-
 # keyword arguments for summation generator (AAKSummation)
 sum_kwargs = {
     "use_gpu": use_gpu,  # GPU is availabel for this type of summation
     "pad_output": True,
 }
 
-def pad_to_next_power_of_2(arr):
-    original_length = len(arr)
-    next_power_of_2 = int(2 ** xp.ceil(np.log2(original_length)))
-
-    # Calculate the amount of padding needed
-    pad_length = next_power_of_2 - original_length
-
-    # Pad the array with zeros
-    padded_arr = xp.pad(arr, (0, pad_length), mode='constant')
-
-    return padded_arr
-
-class Arrow3D(FancyArrowPatch):
-    def __init__(self, xs, ys, zs, *args, **kwargs):
-        super().__init__((0,0), (0,0), *args, **kwargs)
-        self._verts3d = xs, ys, zs
-
-    def do_3d_projection(self, renderer=None):
-        xs3d, ys3d, zs3d = self._verts3d
-        xs, ys, zs = proj3d.proj_transform(xs3d, ys3d, zs3d, self.axes.M)
-        self.set_positions((xs[0],ys[0]),(xs[1],ys[1]))
-
-        return np.min(zs)
-
-def get_plot_sky_location(qK,phiK,qS,phiS,name=None):
-    # draw the SSB frame
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    arrow_prop_dict = dict(mutation_scale=20, arrowstyle='->')
-
-    a = Arrow3D([0, 1], [0, 0], [0, 0], **arrow_prop_dict, color='k')
-    ax.add_artist(a)
-    a = Arrow3D([0, 0], [0, 1], [0, 0], **arrow_prop_dict, color='k')
-    ax.add_artist(a)
-    a = Arrow3D([0, 0], [0, 0], [0, 1], **arrow_prop_dict, color='k',label='SSB')
-    ax.add_artist(a)
-
-    ax.text(1.1, 0, 0, r'$x$')
-    ax.text(0, 1.1, 0, r'$y$')
-    ax.text(0, 0, 1.1, r'$z$')
-
-    # sky direction
-    th, ph, lab = qS, phiS, 'Sky location'
-    x_ = np.sin(th) * np.cos(ph)
-    y_ = np.sin(th) * np.sin(ph)
-    z_ = np.cos(th)
-    a = Arrow3D([0, x_], [0, y_], [0, z_], **arrow_prop_dict, color='blue', label=lab)
-    ax.add_artist(a)
-    ax.scatter(x_,y_,z_,s=40,label='source')
-
-    # sky spin
-    th, ph, lab = qK, phiK, 'MBH Spin'
-    x_s = np.sin(th) * np.cos(ph)
-    y_s = np.sin(th) * np.sin(ph)
-    z_s = np.cos(th)
-    a = Arrow3D([x_, x_+x_s], [y_, y_+y_s], [z_, z_+z_s], **arrow_prop_dict, color='red', label=lab)
-    ax.add_artist(a)
-
-    ax.view_init(azim=-70, elev=20)
-    ax.set_xlim([-1.5,1.5])
-    ax.set_ylim([-1.5,1.5])
-    ax.set_zlim([-1.5,1.5])
-    ax.set_xticks([])
-    ax.set_yticks([])
-    ax.set_zticks([])
-    plt.legend()
-    if name is None:
-        plt.savefig('skylocalization.pdf')
-    else:
-        plt.savefig(name)
+from utils import *
 
 # function call
 def run_emri_pe(
@@ -290,9 +154,9 @@ def run_emri_pe(
     Tobs = (N_obs * dt) / YRSID_SI
     t_arr = xp.arange(N_obs) * dt
 
-    # frequencies
-    freqs = xp.fft.rfftfreq(N_obs, dt)
-
+    # inner product
+    inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=use_gpu,)
+    
     # orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/esa-trailing-orbits.h5" 
     orbit_file_esa = "/data/lsperi/lisa-on-gpu/orbit_files/equalarmlength-trailing-fit.h5"
     orbit_kwargs_esa = dict(orbit_file=orbit_file_esa)
@@ -429,13 +293,7 @@ def run_emri_pe(
     temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
 
     ############################## distance based on SNR ########################################################
-    check_snr = snr([temp_data_channels[0], temp_data_channels[1]],
-        dt=dt,
-        PSD="lisasens",
-        PSD_args=(),
-        PSD_kwargs={},
-        use_gpu=use_gpu,
-        )
+    check_snr = snr([temp_data_channels[0], temp_data_channels[1]],**inner_kw)
 
     dist_factor = check_snr.get() / source_SNR
     emri_injection_params[6] *= dist_factor
@@ -464,13 +322,7 @@ def run_emri_pe(
     toc = time.perf_counter()
     print("timing",(toc-tic)/10, "len vec", len(data_channels[0]))
     
-    check_snr = snr([data_channels[0], data_channels[1]],
-        dt=dt,
-        PSD="lisasens",
-        PSD_args=(),
-        PSD_kwargs={},
-        use_gpu=use_gpu,
-        )
+    check_snr = snr([data_channels[0], data_channels[1]],**inner_kw)
     
     print("SNR",check_snr)
     ############################## priors ########################################################
@@ -522,55 +374,6 @@ def run_emri_pe(
     if intrinsic_only:
         periodic = {"emri": {5: 2 * np.pi, 6: 2 * np.pi}}
     
-    ############################## plots ########################################################
-    if use_gpu:
-        get_spectrogram(data_channels[0],dt,fp[:-3] + "_spectrogram.pdf")
-
-        ffth = xp.fft.rfft(data_channels[0])*dt
-        fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
-        
-
-        plt.figure()
-        plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
-        for el in ["cornish_lisa_psd", "noisepsd_X","lisasens", "noisepsd_AE"]:
-            PSD_arr = get_sensitivity(fft_freq, sens_fn=el)
-            plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
-        plt.legend()
-        plt.xlim(1e-4,1e-1)
-        plt.ylim(1e-46,1e-31)
-        plt.savefig(fp[:-3] + "injection_fd.pdf")
-        # plt.savefig("injection_fd.pdf")
-
-        # plt.figure()
-        # plt.plot(np.arange(len(data_channels[0].get()))*dt,  data_channels[0].get())
-        # plt.savefig(fp[:-3] + "injection_td.pdf")
-
-        plt.figure()
-        for cc in 10**np.linspace(-5,-2,num=10):
-            injection_temp = injection_in.copy()
-            injection_temp[-1] = cc
-            data_temp = wave_gen(*injection_temp, **emri_kwargs)
-            
-            Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],
-                dt=dt,
-                PSD="lisasens",
-                PSD_args=(),
-                PSD_kwargs={},
-                use_gpu=use_gpu,
-                normalize=True
-                )
-            plt.loglog(cc, 1-Overlap.get(),'ko')
-        plt.ylabel('Mismatch')
-        plt.xlabel('Charge')
-        plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
-        # plt.savefig("mismatch_evolution.pdf")
-    
-    else:
-        plt.figure()
-        plt.plot(data_channels[0])
-        plt.show()
-        plt.savefig(fp[:-3] + "injection.pdf")
-
     ############################## likelihood ########################################################
     # this is a parent likelihood class that manages the parameter transforms
     like = Likelihood(
@@ -584,24 +387,28 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt,sens_fn="lisasens"):
+    def get_noise_injection(N, dt, sens_fn="lisasens"):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
         psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
+        # psd = [get_sensitivity_stas(freqs.get(),sens_fn=sens_fn), get_sensitivity_stas(freqs.get(),sens_fn=sens_fn)]
+        # psd = [xp.asarray(psd_temp) for psd_temp in psd]
+        
         # normalize by the factors:
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
-        return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
+        return [xp.asarray(tukey(len_tot,alpha=0.01)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],
+                xp.asarray(tukey(len_tot,alpha=0.01)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
-    full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
+    full_noise = get_noise_injection(len(data_channels[0]),dt)
     print("check nosie value",full_noise[0][0],full_noise[1][0])
-    inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=True)
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
     
     nchannels = 2
+    
     like.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
         noise_fn=get_sensitivity,
@@ -612,6 +419,50 @@ def run_emri_pe(
     ndim = 13
     if intrinsic_only:
         ndim = 8
+    
+    ############################## plots ########################################################
+    if use_gpu:
+        get_spectrogram(data_channels[0],dt,fp[:-3] + "_spectrogram.pdf")
+
+        plt.figure()
+        
+        ffth = xp.fft.rfft(data_channels[0]+full_noise[0][:len(data_channels[0])])*dt
+        fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+        plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+        
+        ffth = xp.fft.rfft(data_channels[0])*dt
+        fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+        plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+        
+        for el in ["lisasens"]:
+            PSD_arr = get_sensitivity(fft_freq+1e-8, sens_fn=el)/ (4 * xp.diff(fft_freq)[0])
+            plt.loglog(fft_freq.get()+1e-8, PSD_arr.get(),label=el,alpha=0.5)
+        plt.legend()
+        plt.savefig(fp[:-3] + "injection_fd.pdf")
+
+        plt.figure()
+        plt.plot(np.arange(len(data_channels[0].get()))*dt,  (data_channels[0]+full_noise[0][:len(data_channels[0])]).get())
+        plt.savefig(fp[:-3] + "injection_td.pdf")
+        
+        plt.figure()
+        for cc in 10**np.linspace(-5,-2,num=10):
+            injection_temp = injection_in.copy()
+            injection_temp[-1] = cc
+            data_temp = wave_gen(*injection_temp, **emri_kwargs)
+            
+            Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],normalize=True,**inner_kw)
+            plt.loglog(cc, 1-Overlap.get(),'ko')
+        plt.ylabel('Mismatch')
+        plt.xlabel('Charge')
+        plt.savefig(fp[:-3] + "mismatch_evolution.pdf")
+        # plt.savefig("mismatch_evolution.pdf")
+    
+    else:
+        plt.figure()
+        plt.plot(data_channels[0])
+        plt.show()
+        plt.savefig(fp[:-3] + "injection.pdf")
+
     #####################################################################
     # generate starting points
     try:
@@ -636,11 +487,15 @@ def run_emri_pe(
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
 
         # set one to the true value
+        gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
         tmp[0] = emri_injection_params_in.copy()
         new_tmp = emri_injection_params_in.copy()
-        # intial periodic points
-        new_tmp[10] += np.pi
-        tmp[1] = new_tmp.copy()
+        for mean_i in range(4):
+            new_tmp = emri_injection_params_in.copy()
+            # intial periodic points
+            new_tmp[8:11] = gmm_means[mean_i]
+            tmp[mean_i] = new_tmp
+
         new_tmp = emri_injection_params_in.copy()
         new_tmp[9] += np.pi
         tmp[2] = new_tmp.copy()

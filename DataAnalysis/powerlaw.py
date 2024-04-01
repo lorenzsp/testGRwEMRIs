@@ -154,7 +154,7 @@ class SklearnGaussianMixtureModel(object):
 # from eryn.prior import ProbDistContainer
 # from eryn.moves import DistributionGenerate
 
-# fname = "results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
+# fname = "results_paper/mcmc_nonoise_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
 # data = np.load(fname)#[-1000:]
 
 # # Fit Gaussian Mixture Model
