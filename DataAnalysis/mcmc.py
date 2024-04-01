@@ -28,6 +28,7 @@ parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", req
 parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, default=50.0)
 parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
 parser.add_argument("-zerolike", "--zerolike", help="zero likelihood test", required=False, type=int, default=0)
+parser.add_argument("-noise", "--noise", help="noise injection on=1, off=0", required=False, type=float, default=1.0)
 
 args = vars(parser.parse_args())
 
@@ -262,7 +263,8 @@ def run_emri_pe(
     log_prior=False,
     source_SNR=50.0,
     intrinsic_only=False,
-    zero_like=False
+    zero_like=False,
+    noise=1.0
 ):
 
     # fix seed for reproducibility and noise injection
@@ -591,7 +593,7 @@ def run_emri_pe(
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
-        return [1/(dt*np.sqrt(2*df_full)) * noise_to_add[0],1/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
+        return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
     full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
     print("check nosie value",full_noise[0][0],full_noise[1][0])
@@ -697,13 +699,12 @@ def run_emri_pe(
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
     
     # shift values move
-    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([9]), get_True_vec([10]), get_True_vec([7]), get_True_vec([6]), get_True_vec([8])]]
+    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
     # prob, index par to shift, value
     shift_value = [0.3, to_shift, np.pi]
 
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=100, sky_periodic=sky_periodic, 
-                      shift_value=shift_value, indx_list=[("emri",el[None,:] ) for el in indx_list]),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic, shift_value=shift_value),0.5),
         (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
     ]
 
@@ -745,31 +746,31 @@ def run_emri_pe(
                 # else:
                 fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
-                if (current_it<max_it_update):
-                    num = 10
-                    # beginning
-                    start_ind = int(N_obs/4)
-                    end_ind = start_ind + 500
-                    plt.figure()
-                    for i in range(num):
-                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                    plt.legend()
-                    plt.savefig(fp[:-3] + "_td_1over4.pdf")
+                # if (current_it<max_it_update):
+                #     num = 10
+                #     # beginning
+                #     start_ind = int(N_obs/4)
+                #     end_ind = start_ind + 500
+                #     plt.figure()
+                #     for i in range(num):
+                #         h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                #         plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
+                #     h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                #     plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
+                #     plt.legend()
+                #     plt.savefig(fp[:-3] + "_td_1over4.pdf")
                     
-                    # end
-                    start_ind = int(3*N_obs/4)
-                    end_ind = start_ind + 500
-                    plt.figure()
-                    for i in range(num):
-                        h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                        plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
-                    h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
-                    plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
-                    plt.legend()
-                    plt.savefig(fp[:-3] + "_td_3over4.pdf")
+                #     # end
+                #     start_ind = int(3*N_obs/4)
+                #     end_ind = start_ind + 500
+                #     plt.figure()
+                #     for i in range(num):
+                #         h_temp = wave_gen(*transform_fn.both_transforms(samples[i][None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                #         plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),alpha=0.5,label=f'{ll[i]}')
+                #     h_temp = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)[0][start_ind:end_ind]
+                #     plt.plot(np.arange(len(h_temp.get()))*dt,  h_temp.get(),'k',alpha=0.3)
+                #     plt.legend()
+                #     plt.savefig(fp[:-3] + "_td_3over4.pdf")
                     
 
             if (current_it<max_it_update):
@@ -800,7 +801,7 @@ def run_emri_pe(
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].scale = samp_cov
+            samp.moves[0].all_proposal['emri'].scale = samp_cov #* 0.9
             # get DE chain
             chain = samp.get_chain(discard=discard)['emri']
             inds = samp.get_inds(discard=discard)['emri']
@@ -811,7 +812,7 @@ def run_emri_pe(
             # samp.weights[2]=0.5
             # samp.weights[3]=0.5
             
-        
+        plt.close()
         return False
     
 
@@ -889,12 +890,12 @@ if __name__ == "__main__":
     e0 = args["e0"]  # 0.35
     x0 = args["x0"]  # will be ignored in Schwarzschild waveform
     qK = np.pi/4  # polar spin angle
-    phiK = 2*np.pi/4 # azimuthal viewing angle
-    qS = 3*np.pi/4 # polar sky angle
+    phiK = np.pi/3 # azimuthal viewing angle
+    qS = np.pi/2 # polar sky angle
     phiS = np.pi # azimuthal viewing angle
     get_plot_sky_location(qK,phiK,qS,phiS)
     dist = 3.0  # distance
-    Phi_phi0 = np.pi/2
+    Phi_phi0 = np.pi/3
     Phi_r0 = np.pi
     Phi_theta0 = Phi_r0
     # LVK bound from paper sqrt(alpha) = 1.1 km 
@@ -992,5 +993,6 @@ if __name__ == "__main__":
         log_prior=logprior,
         source_SNR=source_SNR,
         intrinsic_only=False,
-        zero_like=bool(args['zerolike'])
+        zero_like=bool(args['zerolike']),
+        noise=args['noise']
     )

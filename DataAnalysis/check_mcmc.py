@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python check_mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python check_mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # select the plunge time
 Tplunge = 2.0
 
@@ -603,13 +603,15 @@ def run_emri_pe(
     
     for vv in [7,9,10,11]:
         var_vec = np.linspace(0.0, 2*np.pi, num=20)
-        get_ll_plot(vv, like, var_vec, name = f'll_{vv}.png', )
+        get_ll_plot(vv, like_noise, var_vec, name = f'll_{vv}.png', )
     var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
-    get_ll_plot(8, like, var_vec, name = 'll_thethaK.png', )
+    get_ll_plot(8, like_noise, var_vec, name = 'll_thethaK.png', )
     var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
-    get_ll_plot(6, like, var_vec, name = 'll_thethaS.png', )
-    # var_vec = np.linspace(emri_injection_params_in[0]-1e-5,emri_injection_params_in[0]+1e-5, num=20)
-    # get_ll_plot(0, like, var_vec, name = 'll.png', )
+    get_ll_plot(6, like_noise, var_vec, name = 'll_thethaS.png', )
+    
+    var_vec = np.linspace(emri_injection_params_in[0]-1e-5,emri_injection_params_in[0]+1e-5, num=20)
+    get_ll_plot(0, like, var_vec, name = 'll_M.png', )
+
     return
 
 if __name__ == "__main__":

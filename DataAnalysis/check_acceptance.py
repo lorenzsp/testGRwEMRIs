@@ -228,10 +228,9 @@ for filename,el in zip(datasets,pars_inj):
         print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
     # print("iteration", file.iteration/1e5, " *10^5")
     # print("max last loglike", file.get_log_like()[-1])
-    # burn = int(file.iteration*0.25)
+    # burn = int(file.iteration*0.5)
     # thin = 1
     # # burn,thin = file.get_autocorr_thin_burn()
-    # minus_burn = -1
     # # print("iteration ", file.iteration)
     # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     # print("Effective sample size",(file.iteration-burn) * file.nwalkers / np.sum(autocorr_time) )
@@ -249,19 +248,19 @@ for filename,el in zip(datasets,pars_inj):
     # # # loglike
     # ll = file.get_log_like(discard=burn, thin=thin)[:]
     # plt.figure()
-    # [plt.plot(ll[:minus_burn,temp,walker],'-',label=f'{walker}') for walker in mask]
+    # [plt.plot(ll[:,temp,walker],'-',label=f'{walker}') for walker in mask]
     # plt.tight_layout()
     # plt.savefig(repo_name+f'/traceplot_loglike.png', bbox_inches='tight')
     
     # # chains
-    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:minus_burn,temp,mask,...]
-    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:minus_burn,temp,mask,...]
+    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...]
+    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]
     # toplot = samp[inds]
     # truths = np.load(el)
 
-    # # check autocorrelation plot
-    # get_autocorr_plot(samp[:minus_burn,:,0,:],repo_name+'/autocorrelation')
-    # # check chains
+    # # # check autocorrelation plot
+    # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
+    # # # check chains
     
     # for ii in range(13):
     #     plt.figure()
@@ -298,7 +297,6 @@ for filename,el in zip(datasets,pars_inj):
     # plt.legend()
     # plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
     
-
     # CORNER_KWARGS["truths"] = truths
     
     # overlaid_corner([toplot], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
