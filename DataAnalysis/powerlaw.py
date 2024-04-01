@@ -3,6 +3,11 @@ import scipy.stats as stats
 from scipy.stats import powerlaw
 import matplotlib.pyplot as plt
 
+import os
+os.environ["OMP_NUM_THREADS"] = str(2)
+os.system("OMP_NUM_THREADS=2")
+os.environ["OPENBLAS_NUM_THREADS"] = str(2)
+os.system("OPENBLAS_NUM_THREADS=2")
 class PowerLawDistribution(object):
     """Generate power law distribution between ``min_val`` and ``max_val``
 
@@ -114,3 +119,51 @@ def powerlaw_dist(min, max, alpha=-2, use_cupy=False):
 # plt.legend()
 # plt.grid(True)
 # plt.show()
+
+from sklearn.mixture import GaussianMixture
+
+class SklearnGaussianMixtureModel(object):
+    """Generate samples from a Gaussian Mixture Model (GMM) using scikit-learn.
+
+    Args:
+        n_components (int): The number of Gaussian components in the mixture model.
+
+    """
+
+    def __init__(self, n_components, max_iter=1000):
+        self.n_components = n_components
+        self.gmm = GaussianMixture(n_components=n_components,max_iter=max_iter)
+
+    def fit(self, data):
+        self.gmm.fit(data)
+        self.labels = self.gmm.predict(data)
+
+    def rvs(self, size=1):
+        return self.gmm.sample(*size)[0]
+
+    def pdf(self, x):
+        return np.exp(self.gmm.score_samples(x))
+
+    def logpdf(self, x):
+        return self.gmm.score_samples(x)
+
+    def copy(self):
+        return deepcopy(self)
+
+
+# from eryn.prior import ProbDistContainer
+# from eryn.moves import DistributionGenerate
+
+# fname = "results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
+# data = np.load(fname)#[-1000:]
+
+# # Fit Gaussian Mixture Model
+# n_components = 4
+# sklearn_gmm = SklearnGaussianMixtureModel(n_components=n_components,max_iter=10000)  # You can adjust the number of components as needed
+# sklearn_gmm.fit(data)
+
+# pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
+
+# move_gmm = DistributionGenerate({"emri":pdc_gmm})
+
+# pdc_gmm.rvs(1)
