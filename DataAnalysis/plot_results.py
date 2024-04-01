@@ -40,7 +40,7 @@ mpl.rcParams.update({
 })
 
 
-init_name = 'results_paper/mcmc_*'
+init_name = 'results_paper/mcmc_rndStart_M*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
