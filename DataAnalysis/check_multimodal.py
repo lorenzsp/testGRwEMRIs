@@ -1,6 +1,30 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.mixture import GaussianMixture
+from sklearn.mixture import GaussianMixture, BayesianGaussianMixture
+from sklearn.neighbors import KernelDensity
+
+labels = [r'$\ln (M/{\rm M}_\odot$)', r'$\ln (\mu / M_{\odot})$', r'$a$', r'$p_0 \, [M]$', r'$e_0$', 
+            r'$D_L \, [{\rm Gpc}]$',
+            r"$\cos \theta_S$",r"$\phi_S$",
+            r"$\cos \theta_K$",r"$\phi_K$",
+        r'$\Phi_{\varphi 0}$', r'$\Phi_{r 0}$',
+            r"$d$",
+        ]
+
+CORNER_KWARGS = dict(
+    labels=labels,
+    bins=40,
+    label_kwargs=dict(fontsize=35),
+    levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
+    plot_density=False,
+    plot_datapoints=False,
+    fill_contours=False,
+    show_titles=False,
+    max_n_ticks=4,
+    truth_color='k',
+    labelpad=0.3,
+)
+
 import corner
 import os
 os.environ["OMP_NUM_THREADS"] = str(2)
@@ -11,33 +35,35 @@ os.system("OPENBLAS_NUM_THREADS=2")
 # Generate some sample data
 # Replace this with your actual list of samples
 fname = "results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
-data = np.load(fname)[:1000]#,8:11]
+data = np.load(fname)[:]#,8:11]
 # data = np.load(fname)[:,6:12]
 # Fit Gaussian Mixture Model
 n_components = 4
-gmm = GaussianMixture(n_components=n_components,max_iter=1000)  # You can adjust the number of components as needed
+gmm = GaussianMixture(n_components=n_components, max_iter=200, reg_covar=1e-20)
 gmm.fit(data)
 
-# Predict the labels
-labels = gmm.predict(data)
-
-fig = corner.corner(data, truths=gmm.means_[0]); 
-for ii in range(1,n_components):
-    fig = corner.corner(data, truths=gmm.means_[ii], fig=fig)
-plt.savefig('check_multimodal.png')
-
 # Print the parameters of the Gaussian components
-print("Means:\n", gmm.means_)
-# print("Covariances:\n", gmm.covariances_)
-print("Weights:\n", gmm.weights_)
+print("GMM Means:\n", gmm.means_)
+print("GMM Covariances:\n", gmm.covariances_)
+print("GMM Weights:\n", gmm.weights_)
 
-# Write means and weights to a file
+# Write GMM means and weights to a file
 np.save('check_multimodal_gmm_means.npy', np.asarray(gmm.means_))
 
-# draw samples
-num_samples = data.shape[0]
-samples = gmm.sample(num_samples)[0]
+# Plot corner plot for GMM
+# fig = corner.corner(data, truths=gmm.means_[0], color='b')
+# for i in range(1, n_components):
+#     fig = corner.corner(data[:100], truths=gmm.means_[i], fig=fig, color='b')
+# plt.savefig('check_multimodal_gmm.png')
 
-fig = corner.corner(data, truths=gmm.means_[0], color='b'); 
-fig = corner.corner(samples, fig=fig, color='r')
-plt.savefig('check_multimodal_post.png')
+# Draw samples from GMM
+import time
+tic = time.time()
+gmm_samples = gmm.sample(data.shape[0])[0]
+toc = time.time()
+print("sampled ", data.shape, "in ", toc-tic, "seconds")
+
+# Plot corner plot for GMM samples
+fig = corner.corner(data, color='b', **CORNER_KWARGS)
+fig = corner.corner(gmm_samples, fig=fig, color='r', **CORNER_KWARGS)
+plt.savefig('check_multimodal_gmm_samples.png')
