@@ -399,8 +399,7 @@ def run_emri_pe(
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
-        return [xp.asarray(tukey(len_tot,alpha=0.005)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],
-                xp.asarray(tukey(len_tot,alpha=0.005)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
+        return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0], noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
     full_noise = get_noise_injection(len_tot,dt)
     print("check nosie value",full_noise[0][0],full_noise[1][0])
