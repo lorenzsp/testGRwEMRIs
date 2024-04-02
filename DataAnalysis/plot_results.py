@@ -85,8 +85,9 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     d = np.abs(toplot[:,-1])
     w = mu / np.sqrt(d)
     y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
-    
-    plt.hist(np.log10(y), weights=w/y, bins=np.linspace(-1.0,0.3,num=30)+ np.random.uniform(-0.05,0.0), histtype='step', density=True, label=label, linewidth=2, ls=ll, color=cc)
+    bins = np.linspace(-1.5,0.3,num=25)+ np.random.uniform(-0.05,-0.0001)
+    plt.hist(np.log10(y), weights=w/y, bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll, color=cc)
+    # plt.axvline(np.quantile(np.log10(y),0.975),color=cc)
 
 plt.tight_layout()
 plt.xlabel(r'$\log_{10} [\sqrt{\alpha} / {\rm km} ]$',size=22)
@@ -108,7 +109,8 @@ plt.annotate('Best bound \nfrom 3G', xy=(vpos, 0.0), xytext=(vpos, 0.5),
 
 plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
 # plt.legend()
-plt.xlim(-1.0,1.0)
+plt.xlim(-1.5,1.1)
+plt.ylim(0.0,1.2)
 plt.savefig(f'./plot_paper/alpha_bound.pdf', bbox_inches='tight')
 
 ########################################################################
@@ -152,7 +154,7 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     label += ')'
 
         
-    plt.hist(toplot[:,-1], bins=40, histtype='step', density=True, label=label, linewidth=2, ls=ll, color=cc)
+    plt.hist(toplot[:,-1], bins=40, histtype='step', density=True, label=label, linewidth=3, ls=ll, color=cc)
     # if truths[-1]!=0.0:
     #     plt.axvline(truths[-1],color=cc)
 
@@ -207,7 +209,7 @@ for var in range(5):
         label += f", {params_dict.get('e')}"
         label += ')'
         
-        plt.hist(toplot[:,var]-truths[var], bins=40, histtype='step', density=True, label=label, linewidth=2)
+        plt.hist(toplot[:,var]-truths[var], bins=40, histtype='step', density=True, label=label, linewidth=3)
 
     plt.tight_layout()
     plt.xlabel(labels[var],size=22)
