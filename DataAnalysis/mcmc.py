@@ -79,7 +79,7 @@ from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
 import warnings
 # warnings.filterwarnings("ignore")
 
-SEED = 26011996
+SEED = 2601#1996
 
 try:
     import cupy as xp
@@ -399,10 +399,10 @@ def run_emri_pe(
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
-        return [xp.asarray(tukey(len_tot,alpha=0.01)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],
-                xp.asarray(tukey(len_tot,alpha=0.01)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
+        return [xp.asarray(tukey(len_tot,alpha=0.005)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0],
+                xp.asarray(tukey(len_tot,alpha=0.005)) * noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
-    full_noise = get_noise_injection(len(data_channels[0]),dt)
+    full_noise = get_noise_injection(len_tot,dt)
     print("check nosie value",full_noise[0][0],full_noise[1][0])
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
@@ -644,7 +644,7 @@ def run_emri_pe(
             else:
                 # adapt covariance depending on the acceptance rate
                 target_acceptance_rate = 0.23  # Target acceptance rate
-                if current_it<max_it_update*2:
+                if current_it<max_it_update+601:
                     if current_acceptance_rate > 0.4:
                         samp.moves[0].all_proposal['emri'].scale *= 1.1  # Increase covariance for higher acceptance rate
                     elif current_acceptance_rate < 0.2:
