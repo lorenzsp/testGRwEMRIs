@@ -51,7 +51,7 @@ public:
     int background = KERR;
     bool circular = false;
     bool integrate_constants_of_motion = false;
-    bool integrate_phases = false;
+    bool integrate_phases = true;
 
     KerrEccentricEquatorialAPEX(std::string few_dir);
 

@@ -404,14 +404,14 @@ __deriv__ void KerrEccentricEquatorialAPEX::deriv_func(double ydot[], const doub
 
     double p_sep = get_separatrix(a, e, x);
     // make sure we do not step into separatrix
-    if ((e < 0.0) || (p < p_sep))
+    if ((e < 0.0) || (p < p_sep+0.1))
     {
         ydot[0] = 0.0;
         ydot[1] = 0.0;
         ydot[2] = 0.0;
-        // ydot[3] = 0.0;
-        // ydot[4] = 0.0;
-        // ydot[5] = 0.0;
+        ydot[3] = 0.0;
+        ydot[4] = 0.0;
+        ydot[5] = 0.0;
         return;
     }
     double Omega_phi, Omega_theta, Omega_r;
@@ -438,10 +438,6 @@ __deriv__ void KerrEccentricEquatorialAPEX::deriv_func(double ydot[], const doub
         cout << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
         cout << "omegaphi circ " <<  Omega_phi_sep_circ << " omegaphi " <<  Omega_phi << " omegar " <<  Omega_r <<endl;
         throw std::exception();
-        pdot = 0.0;
-        edot = 0.0;
-        xdot = 0.0;
-        return;
         }
 
     
@@ -501,9 +497,9 @@ __deriv__ void KerrEccentricEquatorialAPEX::deriv_func(double ydot[], const doub
     ydot[0] = pdot;
     ydot[1] = edot;
     ydot[2] = xdot;
-    // ydot[3] = Omega_phi;
-    // ydot[4] = Omega_theta;
-    // ydot[5] = Omega_r;
+    ydot[3] = Omega_phi;
+    ydot[4] = Omega_theta;
+    ydot[5] = Omega_r;
     // delete GKR;
     return;
 }

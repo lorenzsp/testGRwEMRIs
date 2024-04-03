@@ -12,18 +12,12 @@ from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fun
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
-traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
-# run trajectory
-
-
-
-
-np.random.seed(32)
 
 print(os.getpid())
 
 # initialize trajectory class
-traj = EMRIInspiral(func="KerrEccentricEquatorial")
+traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
+use_rk4=False
 
 grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
 
@@ -37,12 +31,12 @@ x0 = 1.0
 
 
 def get_t_dphi_dom(err,charge):
-    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=1e-15, use_rk4=True)
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=1e-10, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp = CubicSplineInterpolant(t, np.vstack((Phi_phi,omPhi)) )
                 
             
-    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=True)
+    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp_d = CubicSplineInterpolant(t_d, np.vstack((Phi_phi,omPhi)) )
     print(len(t_d),err)
@@ -52,12 +46,12 @@ def get_t_dphi_dom(err,charge):
     return np.vstack((new_t[None,:], diff))
 
 def get_t_dphi_dom_fixed_err(err,charge):
-    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=err, use_rk4=True)
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp = CubicSplineInterpolant(t, np.vstack((Phi_phi,omPhi)) )
                 
             
-    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=True)
+    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp_d = CubicSplineInterpolant(t_d, np.vstack((Phi_phi,omPhi)) )
     print(len(t_d),err)
@@ -67,9 +61,9 @@ def get_t_dphi_dom_fixed_err(err,charge):
     return np.vstack((new_t[None,:], diff))
 
 
-charge_vec=10**np.linspace(-5,-2,num=20)
+charge_vec=10**np.linspace(-10,-2,num=20)
 # err_vec = [1e-13, 1e-12, 1e-11, 1e-10, 1e-9]
-err_vec = [1e-9, 1e-10,  1e-11, 1e-12, 1e-13,]
+err_vec = [1e-9, 1e-10,  0.5e-10]#, 1e-12, 1e-13,]
 simbols = ['-o',  '-x',  '-^',  '-d',  '-*', '-+']
 colors = plt.cm.tab10.colors
 
