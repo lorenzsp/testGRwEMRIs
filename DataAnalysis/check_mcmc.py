@@ -65,7 +65,7 @@ from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
 from powerlaw import powerlaw_dist
  
- 
+
 from few.waveform import AAKWaveformBase, Pn5AAKWaveform
 from few.trajectory.inspiral import EMRIInspiral
 from few.summation.aakwave import AAKSummation
@@ -92,7 +92,23 @@ use_gpu = True
 if use_gpu and not gpu_available:
     raise ValueError("Requesting gpu with no GPU available or cupy issue.")
 
+from scipy.interpolate import CubicSpline
+S_git = np.genfromtxt('./LISA_Alloc_Sh.txt')
+Sh_X = CubicSpline(S_git[:,0], S_git[:,1])
 
+def get_sensitivity_stas(f, **kwargs):
+    """
+    Calculate the LISA Sensitivity curve as defined in https://arxiv.org/abs/2108.01167.
+    
+    arguments:
+        f (double scalar or 1D np.ndarray): Frequency array in Hz
+
+    returns:
+        1D array or scalar: S(f) with dimensions of seconds.
+
+    """
+    return Sh_X(np.abs(f))
+    
 import warnings
 
 warnings.filterwarnings("ignore")
@@ -524,17 +540,21 @@ def run_emri_pe(
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
-        psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
+        psd = [get_sensitivity_stas(freqs.get(),sens_fn=sens_fn), get_sensitivity_stas(freqs.get(),sens_fn=sens_fn)]
+        psd = [xp.asarray(psd_temp) for psd_temp in psd]
         # normalize by the factors:
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
         return [1/(dt*np.sqrt(2*df_full)) * noise_to_add[0],1/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
-    full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
-    print("check nosie value",full_noise[0][0],full_noise[1][0])
-    inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=True)
-    print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
+    for _ in range(10):
+        full_noise = get_noise_injection(len(data_channels[0]),dt,sens_fn="lisasens")
+        # print("check nosie value",full_noise[0][0],full_noise[1][0])
+        inner_kw = dict(dt=dt,PSD="lisasens",PSD_args=(),PSD_kwargs={},use_gpu=True)
+        freqs = np.fft.rfftfreq(len(data_channels[0]), dt)[1:]
+        inner_kw = dict(dt=dt,PSD=xp.asarray(get_sensitivity_stas(freqs)),use_gpu=True)
+        print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
     
     nchannels = 2
@@ -551,7 +571,7 @@ def run_emri_pe(
     
     like_noise.inject_signal(
         data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
-        noise_fn=get_sensitivity,
+        noise_fn=get_sensitivity_stas,
         noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
     )
@@ -569,11 +589,34 @@ def run_emri_pe(
     
     like.inject_signal(
         data_stream=[data_channels[0], data_channels[1]],
-        noise_fn=get_sensitivity,
+        noise_fn=get_sensitivity_stas,
         noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
     )
     
+
+
+    plt.figure()
+    
+    ffth = xp.fft.rfft(data_channels[0]+full_noise[0][:len(data_channels[0])])*dt
+    fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+    plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+    
+    ffth = xp.fft.rfft(data_channels[0])*dt
+    fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+    plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+    
+    
+    for el in ["lisasens"]:
+        PSD_arr = get_sensitivity(fft_freq, sens_fn=el)/ (4 * xp.diff(fft_freq)[0])
+        plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
+        
+    plt.loglog(fft_freq.get(), Sh_X(fft_freq.get())/ (4 * xp.diff(fft_freq)[0].get()) ,'--',  label='Stas',alpha=0.5)
+    plt.legend()
+    plt.savefig("injection_fd.pdf")
+    
+    plt.figure(); plt.plot((data_channels[0]+full_noise[0][:len(data_channels[0])]).get()); plt.savefig('injection_td.pdf')
+    breakpoint()
     ###################################################
     def get_wave(pars):
         # get injected parameters after transformation
@@ -665,7 +708,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results_paper/"
+    folder = "./"
     
     if bool(args['zerolike']):
         folder + "zerolike_"
