@@ -8,15 +8,15 @@ from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fun
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
+# initialize trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 # run trajectory
 err = 1e-10
 insp_kw = {
     "err": err,
     "DENSE_STEPPING": 0,
-    "use_rk4": True,
+    "use_rk4": False,
     }
-
 
 
 np.random.seed(32)
@@ -24,8 +24,6 @@ import matplotlib.pyplot as plt
 import time, os
 print(os.getpid())
 
-# initialize trajectory class
-traj = EMRIInspiral(func="KerrEccentricEquatorial")
 
 grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
 
