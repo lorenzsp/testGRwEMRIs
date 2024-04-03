@@ -84,7 +84,7 @@ e0=0.4
 x0=1.0
 # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
 # d = 0.01040505633416082 = (sqrt_alpha/(10*MRSUN_SI/1e3))**2 / 2
-charge=0.01040505633416082
+charge=0.0025
 nwalkers=16
 ntemps=1
 nsteps=50000
