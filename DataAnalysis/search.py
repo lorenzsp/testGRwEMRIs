@@ -1,3 +1,4 @@
+# clean up this code and comment
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python search.py -delta 1e-3 -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo  -hdf_data search_results/test_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_delta0.1_SNR50.0_T0.1_seed2601_nw8_nt1.h5 
 # nohup python search.py -delta 1e-1 -Tobs 0.1 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 5 -nwalkers 16 -ntemps 1 -nsteps 500000 -outname search2 > out2.out &
@@ -413,10 +414,64 @@ def run_emri_pe(
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
     
+    data_stream = [data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]]
+    # ---------------------------------------------------------------------------------
+    freqs = xp.fft.fftfreq(len_tot, dt)
+    Sn = get_sensitivity(xp.abs(freqs))
+    Sn[0] = Sn[1]
+    ifft_data = xp.fft.ifft(get_fft(xp.asarray(data_stream),dt)/ Sn ,axis=1) / dt
+    d_d = inner_product(data_stream,data_stream, **inner_kw)
+    
+    check = xp.sqrt(2*xp.real(xp.sum(xp.diff(freqs)[0] * get_fft(data_channels,dt) * get_fft(xp.asarray(data_channels),dt).conj()/ Sn)))
+    check2 = xp.sqrt(2*xp.real(xp.sum(xp.asarray(data_channels)*ifft_data*dt)))
+    
+    def get_matched_SNR(el):
+        wavehere = wave_gen(*transform_fn.both_transforms(el[None,:])[0], **emri_kwargs)
+        snr_here = inner_product(wavehere,wavehere, **inner_kw)**0.5
+        return inner_product(data_stream,wavehere, **inner_kw)/snr_here
+    
+    def get_new_inner(el, verbose=False):
+        inp_par = transform_fn.both_transforms(el[None,:])[0]
+        wavehere = wave_gen(*inp_par, **emri_kwargs)
+        snr_here = inner_product(wavehere,wavehere, **inner_kw)**0.5
+        new_inner = xp.abs( xp.sum(2. * xp.fft.fft(xp.asarray(wavehere) * ifft_data, axis=1) * dt, axis=0) )
+        fphi,fr = get_fm_fn_from_p_e(inp_par[0],inp_par[2],inp_par[3],inp_par[4])
+        maxf = 2*fphi
+        new_inner = new_inner[xp.abs(freqs)<maxf]
+        # d_m_h = inner_product([data_stream[0]-wavehere[0],data_stream[1]-wavehere[1]],[data_stream[0]-wavehere[0],data_stream[1]-wavehere[1]], **inner_kw)
+        # mSNR = inner_product(data_stream,wavehere, **inner_kw)/snr_here
+        if verbose:
+            best_ = xp.argsort(new_inner/snr_here)[-1]
+            
+            print("delta_f",freqs[xp.abs(freqs)<maxf][best_], xp.sort(new_inner/snr_here)[-1])
+            # print("factor", mSNR)
+            plt.figure(); plt.loglog(freqs[xp.abs(freqs)<maxf].get(), np.abs(new_inner.get())); plt.xlim(-maxf,maxf); plt.savefig('newinner')
+            # get_p_e_from_freq(inp_par[0],inp_par[2],np.asarray([fphi - freqs[xp.argmax(new_inner/snr_here)],fr]))
+            
+            wavehere = wave_gen(*inp_par, **emri_kwargs)
+            argexp = 2*np.pi*1j*freqs[xp.abs(freqs)<maxf][best_]*xp.arange(len(wavehere[0]))*dt
+            plt.figure(); 
+            to_plot = get_fft(xp.asarray(wavehere)*xp.exp(-argexp) ,dt)[0]
+            plt.loglog(freqs.get(), np.abs(to_plot.get()),label='shifted')
+            to_plot = get_fft(xp.asarray(wavehere),dt)[0]
+            plt.loglog(freqs.get(), np.abs(to_plot.get()),label='tested')
+            to_plot = get_fft(xp.asarray(data_channels),dt)[0]
+            plt.loglog(freqs.get(), np.abs(to_plot.get()),'--',label='true')
+            plt.legend()
+            plt.xlim(1e-4,1e-2)
+            plt.savefig('spectrum_freq')
+        
+        return -0.25 *( d_d - 2 * new_inner.max() + snr_here**2 ).get()
+    
+    print("check maximization over frequency", get_new_inner(emri_injection_params_in))
+    yo = emri_injection_params_in.copy()
+    yo[0] += 1e-4
+    print("check maximization over frequency", get_new_inner(yo))
+    
     nchannels = 2
     
     like.inject_signal(
-        data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
+        data_stream=data_stream,
         noise_fn=get_sensitivity,
         noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
         noise_args=[[] for _ in range(nchannels)],
@@ -478,7 +533,7 @@ def run_emri_pe(
         
         # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
-        bounds = np.quantile(toplot,[0.025,0.975],axis=0).T
+        # bounds = np.quantile(toplot,[0.025,0.975],axis=0).T
         cov = np.cov(toplot,rowvar=False) # np.load(fp[:-3] + "_covariance.npy")
         tmp = toplot[:nwalkers*ntemps]
         
@@ -508,7 +563,7 @@ def run_emri_pe(
             filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
             cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
 
-        tmp = get_sequence(5000) # priors['emri'].rvs(nwalkers*ntemps) #draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
+        tmp = get_sequence(1000) # priors['emri'].rvs(nwalkers*ntemps) #draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
         
         
         stll = like(tmp, **emri_kwargs)
@@ -516,12 +571,8 @@ def run_emri_pe(
         # set one to the true value        
         cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
 
-    def get_matched_SNR(el):
-        wavehere = wave_gen(*transform_fn.both_transforms(el[None,:])[0], **emri_kwargs)
-        snr_here = inner_product(wavehere,wavehere, **inner_kw)**0.5
-        return inner_product([data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],wavehere, **inner_kw)/snr_here
     
-
+    print("check matched SNR true",get_matched_SNR(emri_injection_params_in))
     #########################################################################
     # save parameters
     np.save(fp[:-3] + "_injected_pars",emri_injection_params_in)
@@ -537,6 +588,7 @@ def run_emri_pe(
     start_prior = priors["emri"].logpdf(start_params)
     # true likelihood
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
+    # true_like = get_new_inner(emri_injection_params_in)
     print("true log like",true_like)
     
     # start state
@@ -607,13 +659,13 @@ def run_emri_pe(
 
     moves = [
         (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=10.0, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
-        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr, prop=propose_transform),0.5),
+        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr),0.5),#, prop=propose_transform
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 100
+        check_it = 200
         max_it_update = 1000
         
         if (current_it // 100) % 2 == 0:
@@ -643,12 +695,12 @@ def run_emri_pe(
             print("acceptance", np.mean(samp.acceptance_fraction) )
             print("Temperatures", 1/samp.temperature_control.betas)
             current_acceptance_rate = np.mean(samp.acceptance_fraction)
-            ll = samp.get_log_like(discard=discard, thin=1)[-200:,0].flatten()
+            ll = samp.get_log_like(discard=discard, thin=1).flatten()
             # # # select the best half
-            # mask=(ll>np.quantile(ll,0.95))
-            mask=(ll<0.0)
-            chain = samp.get_chain(discard=discard)['emri'][-200:,0]
-            inds = samp.get_inds(discard=discard)['emri'][-200:,0]
+            mask=(ll>np.quantile(ll,0.95))
+            # mask=(ll<0.0)
+            chain = samp.get_chain(discard=discard)['emri']
+            inds = samp.get_inds(discard=discard)['emri']
             to_cov = chain[inds][mask]
             # print("len",to_cov.shape)
             # freq = [get_fm_fn_from_p_e(*el) for el in  np.asarray(transf_func(*to_cov[:,:5].T))[[0,2,3,4]].T]
@@ -666,12 +718,13 @@ def run_emri_pe(
             
             # matched SNR
             print("matched SNR ", get_matched_SNR(chain[inds][np.argmax(ll)]) ) 
+            print("new matched SNR ", get_new_inner(chain[inds][np.argmax(ll)],verbose=True) ) 
             
-            if np.any((true_like - samp.get_log_like()[-1])<0.0):
-                print("best fit",samp.get_chain()["emri"][-1,0][np.argmax(samp.get_log_like()[-1,0])])
-                print("true",emri_injection_params_in)
-                print("diff fit",samp.get_chain()["emri"][-1,0][np.argmax(samp.get_log_like()[-1,0])]-emri_injection_params_in)
-
+            # if np.any((true_like - samp.get_log_like()[-1])<0.0):
+            print("best fit",samp.get_chain()["emri"][-1,0][np.argmax(samp.get_log_like()[-1,0])])
+            print("true",emri_injection_params_in)
+            print("diff fit",samp.get_chain()["emri"][-1,0][np.argmax(samp.get_log_like()[-1,0])]-emri_injection_params_in)
+            
             # plot
             if (not zero_like)and(current_it % check_it == 0):
                 samples = samp.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
@@ -681,7 +734,7 @@ def run_emri_pe(
 
                 # plt.figure(); plt.plot(omr,omphi,'.'); plt.savefig('omr,omphi_ll.png')
                 
-                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
             # if (current_it<max_it_update):
             #     # update moves from chain
@@ -732,7 +785,7 @@ def run_emri_pe(
             return np.zeros(len(params))
         # to avoid nans
         like_val = np.zeros(len(params))-1e300
-        like_val = like(params,**kargs)
+        like_val = like(params,**kargs) # np.asarray([get_new_inner(el) for el in params]) # 
         like_val[np.isnan(like_val)] = np.zeros(like_val[np.isnan(like_val)].shape)-1e300
         return like_val
     

@@ -3,11 +3,15 @@ import scipy.stats as stats
 from scipy.stats import powerlaw
 import matplotlib.pyplot as plt
 
+from eryn.prior import ProbDistContainer
+from eryn.moves import DistributionGenerate
+
 import os
 os.environ["OMP_NUM_THREADS"] = str(2)
 os.system("OMP_NUM_THREADS=2")
 os.environ["OPENBLAS_NUM_THREADS"] = str(2)
 os.system("OPENBLAS_NUM_THREADS=2")
+
 class PowerLawDistribution(object):
     """Generate power law distribution between ``min_val`` and ``max_val``
 
@@ -150,19 +154,20 @@ class SklearnGaussianMixtureModel(object):
         return deepcopy(self)
 
 
-from eryn.prior import ProbDistContainer
-from eryn.moves import DistributionGenerate
-
-fname = "results_paper/mcmc_nonoise_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
-data = np.load(fname)
+# fname = "results_paper/mcmc_nonoise_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed26011996_nw16_nt1/samples.npy"
+# data = np.load(fname)
 
 # Fit Gaussian Mixture Model
-sklearn_gmm = SklearnGaussianMixtureModel(n_components=4)  # You can adjust the number of components as needed
-sklearn_gmm.fit(data)
+# sklearn_gmm = SklearnGaussianMixtureModel(n_components=4)  # You can adjust the number of components as needed
+# sklearn_gmm.fit(data)
 
-pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
+# pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
 
-move_gmm = DistributionGenerate({"emri":pdc_gmm})
+# move_gmm = DistributionGenerate({"emri":pdc_gmm})
 
-samp = pdc_gmm.rvs(1000)
-pdc_gmm.logpdf(samp)
+# samp = pdc_gmm.rvs(1000)
+# pdc_gmm.logpdf(samp)
+
+# pdc = move_gmm.generate_dist["emri"]
+# pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)]
+# pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit
