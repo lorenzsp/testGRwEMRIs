@@ -60,14 +60,15 @@ from lisatools.diagnostic import *
 from lisatools.sensitivity import get_sensitivity
 
 from eryn.utils import TransformContainer
+from eryn.moves import DistributionGenerate
+
 from scipy.signal.windows import tukey
 from scipy import signal
 
 from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
-from powerlaw import powerlaw_dist
- 
+from powerlaw import powerlaw_dist, SklearnGaussianMixtureModel
  
 from few.waveform import AAKWaveformBase, Pn5AAKWaveform
 from few.trajectory.inspiral import EMRIInspiral
@@ -77,7 +78,7 @@ from few.utils.constants import *
 from few.utils.utility import get_p_at_t, get_separatrix
 from few.utils.baseclasses import Pn5AAK, ParallelModuleBase
 import warnings
-# warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
 SEED = 2601#1996
 
@@ -100,10 +101,10 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-12,
+    "err": 1e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
-    "use_rk4": True,
+    "use_rk4": False,
     "func": func,
     }
 # keyword arguments for summation generator (AAKSummation)
@@ -444,7 +445,7 @@ def run_emri_pe(
         plt.savefig(fp[:-3] + "injection_td.pdf")
         
         plt.figure()
-        for cc in 10**np.linspace(-5,-2,num=10):
+        for cc in 10**np.linspace(-5,-2,num=20):
             injection_temp = injection_in.copy()
             injection_temp[-1] = cc
             data_temp = wave_gen(*injection_temp, **emri_kwargs)
@@ -465,15 +466,23 @@ def run_emri_pe(
     #####################################################################
     # generate starting points
     try:
-        file  = HDFBackend(fp) # fp.replace('T2.0','T0.5')
+        file  = HDFBackend(fp)
         burn = int(file.iteration*0.25)
         thin = 1
         
-        # # get samples
+        # get samples
         toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]] # np.load(fp.split('.h5')[0] + '/samples.npy') # 
+        
         cov = np.load(fp[:-3] + "_covariance.npy")
         tmp = toplot[:nwalkers*ntemps]
         tmp[0] = emri_injection_params_in.copy()
+        
+        # create move
+        toplot = np.load(fp[:-3] + "_samples.npy") # 
+        sklearn_gmm = SklearnGaussianMixtureModel(n_components=4)  # You can adjust the number of components as needed
+        sklearn_gmm.fit(toplot)
+        pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
+        move_gmm = DistributionGenerate({"emri":pdc_gmm})
         print("covariance imported")
     except:
         print("find starting points")
@@ -556,26 +565,22 @@ def run_emri_pe(
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
     # prob, index par to shift, value
     shift_value = [0.3, to_shift, np.pi]
-
+    
+    
     moves = [
         (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic, shift_value=shift_value),0.5),
+        # (move_gmm,1e-5),
         (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 200
+        check_it = 1000
+        update_it = 200
         max_it_update = 1000
-        
-        # update DE evolution chain at 100 steps
-        if current_it==100:
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
-            to_cov = chain[inds]
-            samp.moves[-1].chain = to_cov.copy()
 
-        if current_it<100: 
+        if current_it<500: 
             # optimization active
             samp.moves[-1].use_current_state = False
         else:
@@ -627,40 +632,37 @@ def run_emri_pe(
                 #     plt.savefig(fp[:-3] + "_td_3over4.pdf")
                     
 
-            if (current_it<max_it_update):
-                # update moves from chain
-                chain = samp.get_chain(discard=discard)['emri']
-                inds = samp.get_inds(discard=discard)['emri']
-                to_cov = chain[inds]
-                # update DE chain
-                samp.moves[1].chain = to_cov.copy()
-                # update cov and svd
-                samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-                svd = np.linalg.svd(samp_cov)
-                samp.moves[0].all_proposal['emri'].scale = samp_cov
-                # save cov
-                np.save(fp[:-3] + "_covariance",samp_cov)   
-            else:
-                # adapt covariance depending on the acceptance rate
-                target_acceptance_rate = 0.23  # Target acceptance rate
-                if current_it<max_it_update+601:
-                    if current_acceptance_rate > 0.4:
-                        samp.moves[0].all_proposal['emri'].scale *= 1.1  # Increase covariance for higher acceptance rate
-                    elif current_acceptance_rate < 0.2:
-                        samp.moves[0].all_proposal['emri'].scale *= 0.9  # Decrease covariance for lower acceptance rate
-                    
-                    np.save(fp[:-3] + "_covariance", samp.moves[0].all_proposal['emri'].scale)   
+        if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):
+            start_ind = current_it - update_it # this ensures new samples
+            end_ind = current_it - 20 # this avoids using the same samples
+            # update moves from chain
+            chain = samp.get_chain()['emri'][start_ind:end_ind]
+            inds = samp.get_inds()['emri'][start_ind:end_ind]
+            to_cov = chain[inds]
+            # update DE chain
+            samp.moves[-1].chain = to_cov.copy()
+            # update cov and svd
+            samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
+            svd = np.linalg.svd(samp_cov)
+            samp.moves[0].all_proposal['emri'].svd = svd
+            # update Dist
+            # pdc = samp.moves[1].generate_dist["emri"]
+            # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
+            # save cov
+            np.save(fp[:-3] + "_covariance",samp_cov)
+            np.save(fp[:-3] + "_samples", samples)   
 
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
-            samp_cov = np.load(fp[:-3] + "_covariance.npy") # np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
+            samp_cov = np.load(fp[:-3] + "_covariance.npy")
             svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].scale = samp_cov #* 0.9
+            samp.moves[0].all_proposal['emri'].svd = svd
             # get DE chain
-            chain = samp.get_chain(discard=discard)['emri']
-            inds = samp.get_inds(discard=discard)['emri']
-            to_cov = chain[inds]
-            samp.moves[1].chain = to_cov.copy()
+            samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
+            # chain = samp.get_chain(discard=discard)['emri']
+            # inds = samp.get_inds(discard=discard)['emri']
+            # to_cov = chain[inds]
+            
             # samp.weights[0]=0.0
             # samp.weights[1]=0.0
             # samp.weights[2]=0.5

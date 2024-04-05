@@ -596,27 +596,27 @@ def run_emri_pe(
     
 
 
-    plt.figure()
+    # plt.figure()
     
-    ffth = xp.fft.rfft(data_channels[0]+full_noise[0][:len(data_channels[0])])*dt
-    fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
-    plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+    # ffth = xp.fft.rfft(data_channels[0]+full_noise[0][:len(data_channels[0])])*dt
+    # fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+    # plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
     
-    ffth = xp.fft.rfft(data_channels[0])*dt
-    fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
-    plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
+    # ffth = xp.fft.rfft(data_channels[0])*dt
+    # fft_freq = xp.fft.rfftfreq(len(data_channels[0]),dt)
+    # plt.plot(fft_freq.get(), (xp.abs(ffth)**2).get())
     
     
-    for el in ["lisasens"]:
-        PSD_arr = get_sensitivity(fft_freq, sens_fn=el)/ (4 * xp.diff(fft_freq)[0])
-        plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
+    # for el in ["lisasens"]:
+    #     PSD_arr = get_sensitivity(fft_freq, sens_fn=el)/ (4 * xp.diff(fft_freq)[0])
+    #     plt.loglog(fft_freq.get(), PSD_arr.get(),label=el,alpha=0.5)
         
-    plt.loglog(fft_freq.get(), Sh_X(fft_freq.get())/ (4 * xp.diff(fft_freq)[0].get()) ,'--',  label='Stas',alpha=0.5)
-    plt.legend()
-    plt.savefig("injection_fd.pdf")
+    # plt.loglog(fft_freq.get(), Sh_X(fft_freq.get())/ (4 * xp.diff(fft_freq)[0].get()) ,'--',  label='Stas',alpha=0.5)
+    # plt.legend()
+    # plt.savefig("injection_fd.pdf")
     
-    plt.figure(); plt.plot((data_channels[0]+full_noise[0][:len(data_channels[0])]).get()); plt.savefig('injection_td.pdf')
-    breakpoint()
+    # plt.figure(); plt.plot((data_channels[0]+full_noise[0][:len(data_channels[0])]).get()); plt.savefig('injection_td.pdf')
+    # breakpoint()
     ###################################################
     def get_wave(pars):
         # get injected parameters after transformation
@@ -644,16 +644,15 @@ def run_emri_pe(
         plt.legend(); 
         plt.savefig(name)
     
-    for vv in [7,9,10,11]:
-        var_vec = np.linspace(0.0, 2*np.pi, num=20)
-        get_ll_plot(vv, like_noise, var_vec, name = f'll_{vv}.png', )
-    var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
-    get_ll_plot(8, like_noise, var_vec, name = 'll_thethaK.png', )
-    var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
-    get_ll_plot(6, like_noise, var_vec, name = 'll_thethaS.png', )
-    
-    var_vec = np.linspace(emri_injection_params_in[0]-1e-5,emri_injection_params_in[0]+1e-5, num=20)
-    get_ll_plot(0, like, var_vec, name = 'll_M.png', )
+    # for vv in [7,9,10,11]:
+    #     var_vec = np.linspace(0.0, 2*np.pi, num=20)
+    #     get_ll_plot(vv, like_noise, var_vec, name = f'll_{vv}.png', )
+    # var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
+    # get_ll_plot(8, like_noise, var_vec, name = 'll_thethaK.png', )
+    # var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
+    # get_ll_plot(6, like_noise, var_vec, name = 'll_thethaS.png', )
+    var_vec = np.linspace(emri_injection_params_in[4]-1e-5,emri_injection_params_in[4]+1e-5, num=20)
+    get_ll_plot(4, like, var_vec, name = 'll_e.png', )
 
     return
 
