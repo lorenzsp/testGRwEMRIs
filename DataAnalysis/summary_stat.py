@@ -144,6 +144,7 @@ colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
 ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
 
 list_chains,labs = [], []
+list_dict = []
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -154,7 +155,20 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     
     # Load MCMC samples
     list_chains.append(np.load(repo_name + '/samples.npy') - truths[None,:])
-    
+    # obtain median and 95% credible interval from the samples
+    med = np.median(np.load(repo_name + '/samples.npy'), axis=0)
+    low = np.percentile(np.load(repo_name + '/samples.npy'), 2.5, axis=0)
+    high = np.percentile(np.load(repo_name + '/samples.npy'), 97.5, axis=0)
+    with open(repo_name + '/summary_stat.txt','w') as f:
+        f.write('estimator\tln M\tln mu\ta\tp0\te0\tDL\tcosthetaS\tphiS\tcosthetaK\tphiK\tPhivarphi0\tPhir0\td\n')
+        # write true value
+        f.write(f"true\t{truths[0]}\t{truths[1]}\t{truths[2]}\t{truths[3]}\t{truths[4]}\t{truths[5]}\t{truths[6]}\t{truths[7]}\t{truths[8]}\t{truths[9]}\t{truths[10]}\t{truths[11]}\t{truths[12]}\n")
+        f.write(f"median\t{med[0]}\t{med[1]}\t{med[2]}\t{med[3]}\t{med[4]}\t{med[5]}\t{med[6]}\t{med[7]}\t{med[8]}\t{med[9]}\t{med[10]}\t{med[11]}\t{med[12]}\n")
+        # write low
+        f.write(f"percentile 2.5%\t{low[0]}\t{low[1]}\t{low[2]}\t{low[3]}\t{low[4]}\t{low[5]}\t{low[6]}\t{low[7]}\t{low[8]}\t{low[9]}\t{low[10]}\t{low[11]}\t{low[12]}\n")
+        # write high
+        f.write(f"percentile 97.5%\t{high[0]}\t{high[1]}\t{high[2]}\t{high[3]}\t{high[4]}\t{high[5]}\t{high[6]}\t{high[7]}\t{high[8]}\t{high[9]}\t{high[10]}\t{high[11]}\t{high[12]}\n")
+
     # Parse parameters from repo_name
     params = repo_name.split('_')[3:]
     params_dict = {}
@@ -182,9 +196,18 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     
     label += ')'
     print(params_dict)
+    # update dict with med and 95% CI
+    params_dict.update({f"median":med})
+    params_dict.update({f"perc2.5":low})
+    params_dict.update({f"perc97.5":high})
+    # append params_dict to list_dict
+    list_dict.append(params_dict)
+    
     labs.append(label)
 
 ########################### plot all #############################################
+# create a txt and store the information in list_dict
+
 overlaid_corner(list_chains, labs, './plot_paper/all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
 # indintr = np.asarray([0,1,2,3,4,10,11,12])
 # c_kw = CORNER_KWARGS.copy()
