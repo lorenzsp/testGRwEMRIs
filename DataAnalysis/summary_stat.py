@@ -1,5 +1,5 @@
 import glob
-from eryn.backends import HDFBackend
+# from eryn.backends import HDFBackend
 import numpy as np
 import matplotlib.pyplot as plt
 import corner
@@ -7,6 +7,9 @@ import os
 from few.utils.constants import *
 import matplotlib as mpl
 import re
+import matplotlib.style as style
+style.use('tableau-colorblind10')
+
 default_width = 5.78853 # in inches
 default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
 
@@ -56,7 +59,7 @@ labels = [r'$\Delta \ln M$', r'$\Delta \ln \mu$', r'$\Delta a$', r'$\Delta p_0 \
 CORNER_KWARGS = dict(
     labels=labels,
     bins=40,
-    truths=np.ones(len(labels)),
+    truths=np.zeros(len(labels)),
     label_kwargs=dict(fontsize=35),
     levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
     plot_density=False,
@@ -76,6 +79,8 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
     max_len = max([len(s) for s in samples_list])
     cmap = plt.cm.get_cmap('Set1',)
     colors = [cmap(i) for i in range(n)]#['black','red', 'royalblue']#
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
 
     plot_range = []
     for dim in range(ndim):
@@ -128,6 +133,11 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
 init_name = 'results_paper/mcmc_rndStart_M*_charge0.0*seed2601*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
+# sort datasets by charge
+datasets = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1.h5', ]
+# create the list of injected parameters
+pars_inj = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', ]
+
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
 colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
@@ -135,7 +145,7 @@ ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
 
 list_chains,labs = [], []
 # Scalar plot
-for filename, inj_params, color, ls_style in zip(datasets, pars_inj, colors, ls):
+for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
     repo_name = inj_params.split('_injected_pars.npy')[0]
     
@@ -165,9 +175,13 @@ for filename, inj_params, color, ls_style in zip(datasets, pars_inj, colors, ls)
         label += f", {int(params_dict.get('mu'))}"
     label += f", {params_dict.get('a'):.2f}"
     label += f", {params_dict.get('e')}"
-    label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
-    label += ')'
+    if params_dict.get('charge') == 0.0:
+        label += f", $0.0$"
+    else:
+        label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
     
+    label += ')'
+    print(params_dict)
     labs.append(label)
 
 ########################### plot all #############################################
