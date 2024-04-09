@@ -89,7 +89,7 @@ t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.
 
 # Plot the first trajectory
 
-plt.plot(p, e, '--', label=fr"{M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, '--', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
 
 # Set the parameters for the second plot
 M = 1e6
@@ -99,7 +99,7 @@ p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatr
 t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
 
 # Plot the second trajectory
-plt.plot(p, e, '-.', label=fr"{M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, '-.', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
 
 # Set the parameters for the third plot
 M = 1e6
@@ -109,7 +109,7 @@ p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatr
 t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
 
 # Plot the third trajectory
-plt.plot(p, e, ':', label=fr"{M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, ':', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
 
 
 # Set the parameters for the third plot
@@ -127,8 +127,9 @@ plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"{M/1e6}$\times 10^6$" + 
 plt.xlabel('p',fontsize=20)
 plt.ylabel('e',fontsize=20)
 plt.tight_layout()
-plt.legend(loc='upper left',)
-plt.xlim(1.0,12.5)
+plt.legend(loc='upper right',ncol=2)
+plt.xlim(1.5,12.5)
+plt.ylim(-0.05,0.75)
 # Save and show the plot
 plt.savefig('../DataAnalysis/plot_paper/grid_plot.pdf')
 # plt.show()
