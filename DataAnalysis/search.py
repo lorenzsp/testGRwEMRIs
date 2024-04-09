@@ -563,7 +563,7 @@ def run_emri_pe(
             filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
             cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
 
-        tmp = get_sequence(1000) # priors['emri'].rvs(nwalkers*ntemps) #draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
+        tmp = get_sequence(5000) # priors['emri'].rvs(nwalkers*ntemps) #draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
         
         
         stll = like(tmp, **emri_kwargs)
@@ -659,7 +659,7 @@ def run_emri_pe(
 
     moves = [
         (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=10.0, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
-        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr),0.5),#, prop=propose_transform
+        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr, prop=propose_transform),0.5),#
     ]
 
     def stopping_fn(i, res, samp):
@@ -734,7 +734,7 @@ def run_emri_pe(
 
                 # plt.figure(); plt.plot(omr,omphi,'.'); plt.savefig('omr,omphi_ll.png')
                 
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
             # if (current_it<max_it_update):
             #     # update moves from chain
