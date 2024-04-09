@@ -600,10 +600,10 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            if not zero_like:
+            # if not zero_like:
                 # fig = corner.corner(samples,truths=emri_injection_params_in); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 # else:
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10

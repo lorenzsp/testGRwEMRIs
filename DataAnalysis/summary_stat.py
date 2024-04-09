@@ -56,6 +56,7 @@ labels = [r'$\Delta \ln M$', r'$\Delta \ln \mu$', r'$\Delta a$', r'$\Delta p_0 \
 CORNER_KWARGS = dict(
     labels=labels,
     bins=40,
+    truths=np.ones(len(labels)),
     label_kwargs=dict(fontsize=35),
     levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
     plot_density=False,
@@ -123,8 +124,8 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
     else:
         plt.show()
 
-########################################################################
-init_name = 'results_paper/mcmc_rndStart_M*_charge0.0*seed26011996*'
+########################### preparation of the data #############################################
+init_name = 'results_paper/mcmc_rndStart_M*_charge0.0*seed2601*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -164,10 +165,18 @@ for filename, inj_params, color, ls_style in zip(datasets, pars_inj, colors, ls)
         label += f", {int(params_dict.get('mu'))}"
     label += f", {params_dict.get('a'):.2f}"
     label += f", {params_dict.get('e')}"
-    label += f", {params_dict.get('charge'):.2e}"
+    label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
     label += ')'
     
     labs.append(label)
 
-
-overlaid_corner(list_chains, labs, './plot_paper/all_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+########################### plot all #############################################
+overlaid_corner(list_chains, labs, './plot_paper/all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+# indintr = np.asarray([0,1,2,3,4,10,11,12])
+# c_kw = CORNER_KWARGS.copy()
+# c_kw['labels'] = [labels[i] for i in indintr]
+# overlaid_corner(  [el[:,indintr] for el in list_chains], labs, './plot_paper/intr_parameters_posteriors', corn_kw=c_kw, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+# c_kw = CORNER_KWARGS.copy()
+# indext = np.asarray([5,6,7,8,9,])
+# c_kw['labels'] = [labels[i] for i in indext]
+# overlaid_corner(  [el[:,indext] for el in list_chains], labs, './plot_paper/extr_parameters_posteriors', corn_kw=c_kw, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
