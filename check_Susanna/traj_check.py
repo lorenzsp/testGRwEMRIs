@@ -9,7 +9,6 @@ from few.utils.utility import get_fundamental_frequencies
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
-
 # Set the style of the plot
 import matplotlib.style as style
 style.use('tableau-colorblind10')
@@ -90,7 +89,7 @@ for err, simb, color in zip(err_vec, simbols, colors):
     Npoints = np.min([len(el) for el in deph ])
     deph = np.asarray([el[-1] for el in deph ])
     
-    plt.loglog(charge_vec, np.abs(deph), simb, color=color, label=rf'error=$10^{{{int(np.log10(err))}}}$, N={Npoints}')
+    plt.loglog(charge_vec, np.abs(deph), simb, label=rf'error=$10^{{{int(np.log10(err))}}}$, N={Npoints}')
 plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k--', label=rf'$\propto d^2$')
 plt.legend(ncol=2)
 plt.xlabel(r'Scalar charge $d$', fontsize=20)
