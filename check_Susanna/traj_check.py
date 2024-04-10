@@ -1,18 +1,34 @@
 #python -m unittest few/tests/test_traj.py 
-import unittest
 import numpy as np
-import warnings
 import matplotlib.pyplot as plt
-import time, os
-import matplotlib.colors as mcolors
+import os
+from scipy.constants import golden
 
-import glob
 from few.trajectory.inspiral import EMRIInspiral
-from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
+from few.utils.utility import get_fundamental_frequencies
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
 
+# Set the style of the plot
+import matplotlib.style as style
+style.use('tableau-colorblind10')
+
+# Set the matplotlib parameters
+inv_golden = 1. / golden
+px = 2*0.0132
+
+plt.rcParams.update({
+    "text.usetex": True,
+    "pgf.texsystem": 'pdflatex',
+    "pgf.rcfonts": False,
+    "font.family": "serif",
+    "figure.figsize": [246.0*px, inv_golden * 246.0*px],
+    'legend.fontsize': 12,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.title_fontsize' : 12,
+})
 print(os.getpid())
 
 # initialize trajectory class
@@ -61,19 +77,24 @@ def get_t_dphi_dom_fixed_err(err,charge):
     return np.vstack((new_t[None,:], diff))
 
 
-charge_vec=10**np.linspace(-10,-2,num=20)
+charge_vec=10**np.linspace(-10,-3,num=10)
 # err_vec = [1e-13, 1e-12, 1e-11, 1e-10, 1e-9]
-err_vec = [1e-9, 1e-10,  0.5e-10]#, 1e-12, 1e-13,]
+err_vec = [ 1e-5, 1e-6, 1e-7, 1e-8, 1e-9]#, 1e-12, 1e-13,]
 simbols = ['-o',  '-x',  '-^',  '-d',  '-*', '-+']
 colors = plt.cm.tab10.colors
 
 plt.figure()
-plt.title('Phase difference before plunge')
+# plt.title('Phase difference before plunge')
 for err, simb, color in zip(err_vec, simbols, colors):
-    deph = np.asarray([get_t_dphi_dom(err, ch)[1,-1] for ch in charge_vec])
-    plt.loglog(charge_vec, np.abs(deph), simb, color=color, label=rf'error=$10^{{{int(np.log10(err))}}}$')
+    deph = [get_t_dphi_dom(err, ch)[1] for ch in charge_vec]
+    Npoints = np.min([len(el) for el in deph ])
+    deph = np.asarray([el[-1] for el in deph ])
+    
+    plt.loglog(charge_vec, np.abs(deph), simb, color=color, label=rf'error=$10^{{{int(np.log10(err))}}}$, N={Npoints}')
 plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k--', label=rf'$\propto d^2$')
-plt.legend()
-plt.xlabel('Charge')
-plt.ylabel('Phase Difference')
-plt.show()
+plt.legend(ncol=2)
+plt.xlabel(r'Scalar charge $d$', fontsize=20)
+plt.ylabel(r'Phase difference $\Delta \Phi_\varphi$', fontsize=20)
+plt.ylim(1e-9,1.0)
+plt.tight_layout()
+plt.savefig('../DataAnalysis/plot_paper/phase_difference_trajectory.pdf')
