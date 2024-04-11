@@ -8,8 +8,8 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 # Set the style of the plot
-import matplotlib.style as style
-style.use('tableau-colorblind10')
+# import matplotlib.style as style
+# style.use('tableau-colorblind10')
 
 # Set the default figure size and ratio
 default_width = 5.78853 # in inches
@@ -76,7 +76,7 @@ mask = (grid[:,0] == grid[ind,0])
 
 # Initialize the trajectory class
 traj = EMRIInspiral(func="KerrEccentricEquatorial")
-
+print(grid[ind,0])
 # Plot the grid points
 plt.plot(grid[mask,1], grid[mask,2], '.',label=fr'Grid points',alpha=0.7)#,ms=10) of $a=${grid[ind,0]:.2e}
 
@@ -131,5 +131,5 @@ plt.legend(loc='upper right',ncol=2)
 plt.xlim(1.5,12.5)
 plt.ylim(-0.05,0.75)
 # Save and show the plot
-plt.savefig('../DataAnalysis/plot_paper/grid_plot.pdf')
+plt.savefig('./plot_paper/grid_plot.pdf')
 # plt.show()

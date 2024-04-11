@@ -10,8 +10,8 @@ from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
 # Set the style of the plot
-import matplotlib.style as style
-style.use('tableau-colorblind10')
+# import matplotlib.style as style
+# style.use('tableau-colorblind10')
 
 # Set the matplotlib parameters
 inv_golden = 1. / golden

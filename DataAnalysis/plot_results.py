@@ -8,7 +8,7 @@ import matplotlib as mpl
 import re
 import matplotlib.style as style
 import seaborn as sns
-style.use('tableau-colorblind10')
+# style.use('tableau-colorblind10')
 
 default_width = 5.78853 # in inches
 default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean

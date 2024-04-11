@@ -7,8 +7,8 @@ import os
 from few.utils.constants import *
 import matplotlib as mpl
 import re
-import matplotlib.style as style
-style.use('tableau-colorblind10')
+# import matplotlib.style as style
+# style.use('tableau-colorblind10')
 
 default_width = 5.78853 # in inches
 default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
