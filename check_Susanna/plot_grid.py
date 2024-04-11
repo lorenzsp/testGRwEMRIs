@@ -1,63 +1,50 @@
-#python -m unittest few/tests/test_traj.py 
-import unittest
 import numpy as np
-import warnings
-import glob
+from scipy.constants import golden
 from few.trajectory.inspiral import EMRIInspiral
-from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
-from few.summation.interpolatedmodesum import CubicSplineInterpolant
+from few.utils.utility import get_separatrix, get_p_at_t
 from few.utils.constants import *
-from few.utils.utility import get_p_at_t, get_separatrix
 
-traj = EMRIInspiral(func="KerrEccentricEquatorial")
-# run trajectory
-err = 1e-10
-insp_kw = {
-    "err": err,
-    "DENSE_STEPPING": 0,
-    "max_init_len": int(1e4),
-    }
-
-
-
-np.random.seed(32)
 import matplotlib.pyplot as plt
-import time, os
-print(os.getpid())
+import matplotlib.ticker as mticker
 
-# initialize trajectory class
-traj = EMRIInspiral(func="KerrEccentricEquatorial")
+# Set the style of the plot
+import matplotlib.style as style
+style.use('tableau-colorblind10')
 
+# Set the default figure size and ratio
+default_width = 5.78853 # in inches
+default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
+
+import matplotlib.ticker as mticker
+
+# Define a function to format the numbers as 10^n
+def format_func(value, tick_number):
+    # make the value into a proper scientific notation
+    exponent = np.floor(np.log10(abs(value)))
+    coeff = value / 10**exponent
+
+    return r"${} \times 10^{{{:2.0f}}}$".format(coeff, exponent)
+
+# Create a FuncFormatter object based on the function
+formatter = mticker.FuncFormatter(format_func)
+
+# Set the matplotlib parameters
+inv_golden = 1. / golden
+px = 2*0.0132
+plt.rcParams.update({
+    "text.usetex": True,
+    "pgf.texsystem": 'pdflatex',
+    "pgf.rcfonts": False,
+    "font.family": "serif",
+    "figure.figsize": [246.0*px, inv_golden * 246.0*px],
+    'legend.fontsize': 12,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.title_fontsize' : 12,
+})
+
+# Load the grid data
 grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
-
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
-
-# Generate some random data for demonstration
-np.random.seed(42)
-
-sep = get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0)
-x = np.log10(grid[:,1] - sep)
-y = grid[:,2]
-z = grid[:,0]
-
-# Create a 3D scatter plot
-# fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(x, y, z, c='r', marker='o')
-# # ax.scatter(sep, y, z, c='b', marker='o')
-
-# # Set labels for each axis
-# ax.set_xlabel('X-axis')
-# ax.set_ylabel('Y-axis')
-# ax.set_zlabel('Z-axis')
-
-# # Set the title of the plot
-# ax.set_title('3D Scatter Plot')
-
-# # Show the plot
-# plt.show()
 
 def find_closest_value_indices(array, target_value):
     """
@@ -78,45 +65,71 @@ def find_closest_value_indices(array, target_value):
 
     return closest_index
 
-# rhs ode
-M = 1e6
-mu = 1e1
+# Set the parameters for the trajectory
 a = 0.95
-e0=0.4
-x0=1.0
-e0=0.4
-
-p0 = get_p_at_t(
-        traj,
-        2.0 * 0.999,
-        [M, mu, a, e0, x0, 0.0],
-        bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
-    )
-
-# p0=get_separatrix(a,e0,1.0) + 2.0
 charge = 0.0
+x0 = 1.0
 
-ind = find_closest_value_indices(grid[:,0],a,)
+# Find the closest value indices in the grid
+ind = find_closest_value_indices(grid[:,0], a)
+mask = (grid[:,0] == grid[ind,0])
 
-mask = (grid[:,0]== grid[ind,0])
+# Initialize the trajectory class
+traj = EMRIInspiral(func="KerrEccentricEquatorial")
+
+# Plot the grid points
+plt.plot(grid[mask,1], grid[mask,2], '.',label=fr'Grid points',alpha=0.7)#,ms=10) of $a=${grid[ind,0]:.2e}
+
+# Set the parameters for the first plot
+M = 1e6
+mu = 10
+e0 = 0.4
+p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+
+# Plot the first trajectory
+
+plt.plot(p, e, '--', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+
+# Set the parameters for the second plot
+M = 1e6
+mu = 10
+e0 = 0.1
+p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+
+# Plot the second trajectory
+plt.plot(p, e, '-.', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+
+# Set the parameters for the third plot
+M = 1e6
+mu = 5
+e0 = 0.4
+p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+
+# Plot the third trajectory
+plt.plot(p, e, ':', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
 
 
-plt.figure()
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0, **insp_kw)
-plt.plot(p,e,'.')
-plt.plot(grid[mask,1],grid[mask,2],'x')
-plt.xlabel('p')
-plt.ylabel('e')
-plt.xlim(1,5)
+# Set the parameters for the third plot
+M = 5e5
+mu = 10
+e0 = 0.4
+p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+
+ 
+# Plot the third trajectory
+plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"{M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+
+# Set the labels and title of the plot
+plt.xlabel('p',fontsize=20)
+plt.ylabel('e',fontsize=20)
 plt.tight_layout()
-plt.savefig('grid_plot')
-
-out_deriv = np.asarray([traj.get_rhs_ode(M, mu, a, pp, ee, xx, charge) for pp,ee,xx in zip(p, e, np.ones_like(p)*x0)])
-
-plt.figure()
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0, **insp_kw)
-plt.plot(p,out_deriv[:,0],'x')
-plt.xlabel('p')
-plt.ylabel('flux')
-plt.tight_layout()
-plt.savefig('rhs_ode')
+plt.legend(loc='upper right',ncol=2)
+plt.xlim(1.5,12.5)
+plt.ylim(-0.05,0.75)
+# Save and show the plot
+plt.savefig('../DataAnalysis/plot_paper/grid_plot.pdf')
+# plt.show()
