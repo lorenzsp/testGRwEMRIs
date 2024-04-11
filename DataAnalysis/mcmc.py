@@ -568,9 +568,9 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic, shift_value=shift_value),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, shift_value=shift_value),0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
@@ -650,7 +650,7 @@ def run_emri_pe(
             # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
             # save cov
             np.save(fp[:-3] + "_covariance",samp_cov)
-            np.save(fp[:-3] + "_samples", samples)   
+            np.save(fp[:-3] + "_samples", to_cov)   
 
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
