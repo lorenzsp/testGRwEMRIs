@@ -6,8 +6,8 @@ import os
 from few.utils.constants import *
 import matplotlib as mpl
 import re
-import matplotlib.style as style
-style.use('tableau-colorblind10')
+# import matplotlib.style as style
+# style.use('tableau-colorblind10')
 # get palette from tableau-colorblind10
 # palette = plt.get_cmap('tab10')
 # get the default color cycle
