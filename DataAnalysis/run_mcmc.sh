@@ -62,15 +62,42 @@ nsteps=500000
 # # Execute the Python command and redirect output to the dynamic filename
 # nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname mcmc > $output_filename &
 
+# # ---------------------------------------------------------
+# dev=4
+# M=1e6
+# mu=5
+# # Create a dynamic output filename
+# output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
+
+# # Execute the Python command and redirect output to the dynamic filename
+# nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname mcmc > $output_filename &
+
 # ---------------------------------------------------------
-dev=4
-M=1e6
+dev=1
+M=0.5e6
 mu=5
 # Create a dynamic output filename
 output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
 # Execute the Python command and redirect output to the dynamic filename
 nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname mcmc > $output_filename &
+
+# # ----------------------- bias ----------------------------------
+# Tobs=2.0
+# dt=10.0
+# M=1e6
+# mu=1e1
+# a=0.95
+# p0=13.0
+# e0=0.4
+# x0=1.0
+# charge=0.0
+# dev=2
+# # Create a dynamic output filename
+# output_filename="output_bias_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
+
+# # Execute the Python command and redirect output to the dynamic filename
+# nohup python bias.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname bias > $output_filename &
 
 # # ------------------ Non Zero Charge ---------------------------------------
 # # Assign variables to each parameter
