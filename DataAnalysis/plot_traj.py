@@ -97,3 +97,17 @@ plt.ylabel(r'Phase difference $\Delta \Phi_\varphi$', fontsize=20)
 plt.ylim(1e-9,1.0)
 plt.tight_layout()
 plt.savefig('../DataAnalysis/plot_paper/phase_difference_trajectory.pdf')
+
+# check the cycles as a function of the mass ratio
+# # create eta_vec log10 spaced 
+# eta_vec = 10**np.linspace(-6,-3,num=10)
+# plt.figure()
+# # create a for loop over eta (mass ratio)
+# for eta in eta_vec:
+#     t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, M*eta, a, p0, e0, x0, 0.0, T=100.0, dt=10.0, err=1e-10, use_rk4=use_rk4)
+#     plt.loglog(1/eta,Phi_phi[-1]/np.pi/2,'o')
+# plt.loglog(1/eta_vec,eta_vec[-1]/eta_vec * Phi_phi[-1]/np.pi/2,'--')
+# plt.ylabel(r'$\Phi_\varphi/(2 \pi)$',fontsize=20)
+# plt.xlabel(r'$1/\eta$',fontsize=20)
+# plt.tight_layout()
+# plt.show()
