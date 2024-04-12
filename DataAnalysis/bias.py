@@ -1,7 +1,7 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python bias.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # test with zero likelihood
-# python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
+# python bias.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
 Tplunge = 2.0
 
@@ -203,15 +203,15 @@ def run_emri_pe(
     # (you need to remove them from the other parts of initialization)
     fill_dict = {
        "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([ 5, 12])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([ 5, 12]),
+       "fill_values": emri_injection_params[np.array([ 5, 12, 14])], # spin and inclination and Phi_theta
+       "fill_inds": np.array([ 5, 12, 14]),
     }
     
     if intrinsic_only:        
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([5,6,7,8,9,10,12]),
+       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12, 14])], # spin and inclination and Phi_theta
+       "fill_inds": np.array([5,6,7,8,9,10,12, 14]),
         }
 
     (
@@ -243,15 +243,6 @@ def run_emri_pe(
         emri_injection_params[9] = np.cos(emri_injection_params[9]) 
         emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
     
-    if log_prior:
-        if emri_injection_params[-1] == 0.0:
-            emri_injection_params[-1] = np.log(1.001e-7)
-        else:
-            emri_injection_params[-1] = np.log(emri_injection_params[-1])
-        
-        prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
-    else:
-        prior_charge = uniform_dist(-0.1, 0.1)
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -262,7 +253,6 @@ def run_emri_pe(
             1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
-            14: np.exp
         }
     else:
         parameter_transforms = {
@@ -302,8 +292,8 @@ def run_emri_pe(
     if intrinsic_only:
         fill_dict = {
        "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([5,6,7,8,9,10,12]),
+       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12,14])], # spin and inclination and Phi_theta
+       "fill_inds": np.array([5,6,7,8,9,10,12,14]),
         }
         transform_fn = TransformContainer(
         parameter_transforms=parameter_transforms,
@@ -346,7 +336,6 @@ def run_emri_pe(
                 9: uniform_dist(0.0, 2 * np.pi),  # phiK
                 10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
                 11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: prior_charge,  # charge
             }
         ) 
     }
@@ -362,7 +351,6 @@ def run_emri_pe(
                     4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
                     5: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
                     6: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                    7: prior_charge,  # charge
                 }
             ) 
         }
@@ -416,9 +404,9 @@ def run_emri_pe(
         noise_args=[[] for _ in range(nchannels)],
     )
 
-    ndim = 13
+    ndim = 12
     if intrinsic_only:
-        ndim = 8
+        ndim = 7
     
     ############################## plots ########################################################
     if use_gpu:
@@ -478,11 +466,7 @@ def run_emri_pe(
         tmp[0] = emri_injection_params_in.copy()
         
         # create move
-        toplot = np.load(fp[:-3] + "_samples.npy") # 
-        sklearn_gmm = SklearnGaussianMixtureModel(n_components=4)  # You can adjust the number of components as needed
-        sklearn_gmm.fit(toplot)
-        pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
-        move_gmm = DistributionGenerate({"emri":pdc_gmm})
+        toplot = np.load(fp[:-3] + "_samples.npy") # )
         print("covariance imported")
     except:
         print("find starting points")
@@ -492,7 +476,7 @@ def run_emri_pe(
             filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
             cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
 
-        tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
+        tmp = draw_initial_points(emri_injection_params_in, cov[:-1,:-1], nwalkers*ntemps, intrinsic_only=intrinsic_only)
 
         # set one to the true value
         gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
@@ -559,7 +543,7 @@ def run_emri_pe(
     # MCMC moves (move, percentage of draws)
     indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
-    indx_list.append(get_True_vec([0,1,2,3,4,12]))
+    indx_list.append(get_True_vec([0,1,2,3,4]))
     
     # shift values move
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
@@ -587,7 +571,7 @@ def run_emri_pe(
             # optimization inactive
             samp.moves[-1].use_current_state = True
         
-        
+        print("max last loglike", samp.get_log_like()[-1])
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
             print("max last loglike", samp.get_log_like()[-1])
@@ -793,9 +777,9 @@ if __name__ == "__main__":
         folder + "zerolike_"
     
     if logprior:
-        fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = folder + args["outname"] + f"_bias_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = folder + args["outname"] + f"_rndStart_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = folder + args["outname"] + f"_bias_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))
