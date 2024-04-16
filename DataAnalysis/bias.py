@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python bias.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python bias.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 8 -ntemps 1 -nsteps 10 -outname test
 # test with zero likelihood
 # python bias.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
@@ -197,23 +197,7 @@ def run_emri_pe(
         temp_data_channels = few_gen(*args, **kwargs)
         return [el*window for el in temp_data_channels]
 
-    # for transforms
-    # this is an example of how you would fill parameters 
-    # if you want to keep them fixed
-    # (you need to remove them from the other parts of initialization)
-    fill_dict = {
-       "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([ 5, 12, 14])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([ 5, 12, 14]),
-    }
-    
-    if intrinsic_only:        
-        fill_dict = {
-       "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12, 14])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([5,6,7,8,9,10,12, 14]),
-        }
-
+    # parameters
     (
         M,  
         mu,
@@ -231,6 +215,24 @@ def run_emri_pe(
         Phi_r0,
         charge
     ) = emri_injection_params
+    
+    emri_injection_params[-1] = 0.0
+    # for transforms
+    # this is an example of how you would fill parameters 
+    # if you want to keep them fixed
+    # (you need to remove them from the other parts of initialization)
+    fill_dict = {
+       "ndim_full": 15,
+       "fill_values": emri_injection_params[np.array([ 5, 12, 14])], # spin and inclination and Phi_theta
+       "fill_inds": np.array([ 5, 12, 14]),
+    }
+    
+    if intrinsic_only:        
+        fill_dict = {
+       "ndim_full": 15,
+       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12, 14])], # spin and inclination and Phi_theta
+       "fill_inds": np.array([5,6,7,8,9,10,12, 14]),
+        }
 
     # get the sampling parameters
     emri_injection_params[0] = np.log(emri_injection_params[0])
@@ -303,10 +305,11 @@ def run_emri_pe(
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     print("new distance based on SNR", emri_injection_params[6])
 
-    # get injected parameters after transformation
+    # inject parameters
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     
     # get AE
+    injection_in[-1] = charge
     data_channels = wave_gen(*injection_in, **emri_kwargs)
     tic = time.perf_counter()
     [wave_gen(*injection_in, **emri_kwargs) for _ in range(10)]
@@ -390,10 +393,14 @@ def run_emri_pe(
         noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
         return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0], noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
+
+    # get injected parameters after transformation
+    nocharge_channels = wave_gen(*transform_fn.both_transforms(emri_injection_params_in[None, :])[0], **emri_kwargs)
+    
     full_noise = get_noise_injection(len_tot,dt)
     print("check nosie value",full_noise[0][0],full_noise[1][0])
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
-    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
+    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],nocharge_channels[0], **inner_kw)/inner_product(nocharge_channels[0],nocharge_channels[0], **inner_kw)**0.5 ) 
     
     nchannels = 2
     
@@ -560,7 +567,7 @@ def run_emri_pe(
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 1000
+        check_it = 2000
         update_it = 200
         max_it_update = 1000
 
@@ -571,7 +578,6 @@ def run_emri_pe(
             # optimization inactive
             samp.moves[-1].use_current_state = True
         
-        print("max last loglike", samp.get_log_like()[-1])
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
             print("max last loglike", samp.get_log_like()[-1])
@@ -584,10 +590,10 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            # if not zero_like:
+            if not zero_like:
                 # fig = corner.corner(samples,truths=emri_injection_params_in); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 # else:
-                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
