@@ -479,10 +479,6 @@ def run_emri_pe(
         
         # create move
         toplot = np.load(fp[:-3] + "_samples.npy") # 
-        sklearn_gmm = SklearnGaussianMixtureModel(n_components=4)  # You can adjust the number of components as needed
-        sklearn_gmm.fit(toplot)
-        pdc_gmm = ProbDistContainer({(0,1,2,3,4,5,6,7,8,9,10,11,12): sklearn_gmm})
-        move_gmm = DistributionGenerate({"emri":pdc_gmm})
         print("covariance imported")
     except:
         print("find starting points")
@@ -568,9 +564,9 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, shift_value=shift_value),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", factor=1000, sky_periodic=sky_periodic, shift_value=shift_value),0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", factor=10, sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
