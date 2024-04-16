@@ -337,7 +337,7 @@ def run_emri_pe(
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
                 8: uniform_dist(-0.99999, 0.99999),  # qK
                 9: uniform_dist(0.0, 2 * np.pi),  # phiK
-                10: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
+                10: uniform_dist(0.0, np.pi),  # Phi_phi0
                 11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
             }
         ) 
@@ -360,7 +360,7 @@ def run_emri_pe(
 
     # sampler treats periodic variables by wrapping them properly
     periodic = {
-        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: 2 * np.pi, 11: 2 * np.pi}
+        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: np.pi, 11: 2 * np.pi}
     }
     
     if intrinsic_only:
@@ -488,16 +488,16 @@ def run_emri_pe(
         # set one to the true value
         gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
         tmp[0] = emri_injection_params_in.copy()
-        new_tmp = emri_injection_params_in.copy()
-        for mean_i in range(4):
-            new_tmp = emri_injection_params_in.copy()
-            # intial periodic points
-            new_tmp[8:11] = gmm_means[mean_i]
-            tmp[mean_i] = new_tmp
+        # new_tmp = emri_injection_params_in.copy()
+        # for mean_i in range(4):
+        #     new_tmp = emri_injection_params_in.copy()
+        #     # intial periodic points
+        #     new_tmp[8:11] = gmm_means[mean_i]
+        #     tmp[mean_i] = new_tmp
 
-        new_tmp = emri_injection_params_in.copy()
-        new_tmp[9] += np.pi
-        tmp[2] = new_tmp.copy()
+        # new_tmp = emri_injection_params_in.copy()
+        # new_tmp[9] += np.pi
+        # tmp[2] = new_tmp.copy()
         
         cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
     #########################################################################
@@ -569,9 +569,9 @@ def run_emri_pe(
         discard = int(current_it*0.25)
         check_it = 2000
         update_it = 200
-        max_it_update = 1000
+        max_it_update = 2000
 
-        if current_it<500: 
+        if current_it<1000: 
             # optimization active
             samp.moves[-1].use_current_state = False
         else:
@@ -591,8 +591,6 @@ def run_emri_pe(
             
             # plot
             if not zero_like:
-                # fig = corner.corner(samples,truths=emri_injection_params_in); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
-                # else:
                 fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
@@ -777,7 +775,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results_paper/"
+    folder = "./results/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"
