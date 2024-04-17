@@ -299,17 +299,17 @@ def run_emri_pe(
     print("SNR",check_snr)
     ############################## priors ########################################################
     
-    delta = 0.05
+    delta = 0.01
     
     # priors
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
-                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
-                3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                0: uniform_dist(emri_injection_params_in[0]*(1-delta), emri_injection_params_in[0]*(1+delta)),  # ln M
+                1: uniform_dist(emri_injection_params_in[1]*(1-delta), emri_injection_params_in[1]*(1+delta)),  # ln mu
+                2: uniform_dist(emri_injection_params_in[2]*(1-delta), emri_injection_params_in[2]*(1+delta)),  # a
+                3: uniform_dist(emri_injection_params_in[3]*(1-delta), emri_injection_params_in[3]*(1+delta)),  # p0
+                4: uniform_dist(emri_injection_params_in[4]*(1-delta), emri_injection_params_in[4]*(1+delta)),  # e0
                 5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -446,7 +446,6 @@ def run_emri_pe(
         tmp = draw_initial_points(emri_injection_params_in, cov[:-1,:-1], nwalkers*ntemps)
 
         # set one to the true value
-        gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
         tmp[0] = emri_injection_params_in.copy()
         # new_tmp = emri_injection_params_in.copy()
         # for mean_i in range(4):
@@ -466,6 +465,9 @@ def run_emri_pe(
     
     logp = priors["emri"].logpdf(tmp)
     print("logprior",logp)
+    # draw again for infinit prior
+    if int(np.sum(np.isinf(logp)))>0:
+        tmp[np.isinf(logp)] =  priors["emri"].rvs(int(np.sum(np.isinf(logp))))
     tic = time.time()
     start_like = like(tmp, **emri_kwargs)
     toc = time.time()
