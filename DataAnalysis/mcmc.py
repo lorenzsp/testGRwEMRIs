@@ -71,7 +71,7 @@ from few.utils.utility import get_p_at_t, get_separatrix
 import warnings
 warnings.filterwarnings("ignore")
 
-SEED = 2601#1996
+SEED = 26011996
 
 try:
     import cupy as xp
@@ -314,17 +314,17 @@ def run_emri_pe(
     print("SNR",check_snr)
     ############################## priors ########################################################
     
-    delta = 0.05
+    delta = 0.01
     
     # priors
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
-                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
-                3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
+                0: uniform_dist(emri_injection_params_in[0]*(1-delta), emri_injection_params_in[0]*(1+delta)),  # ln M
+                1: uniform_dist(emri_injection_params_in[1]*(1-delta), emri_injection_params_in[1]*(1+delta)),  # ln mu
+                2: uniform_dist(emri_injection_params_in[2]*(1-delta), emri_injection_params_in[2]*(1+delta)),  # a
+                3: uniform_dist(emri_injection_params_in[3]*(1-delta), emri_injection_params_in[3]*(1+delta)),  # p0
+                4: uniform_dist(emri_injection_params_in[4]*(1-delta), emri_injection_params_in[4]*(1+delta)),  # e0
                 5: powerlaw_dist(0.01,10.0),  # dist in Gpc
                 6: uniform_dist(-0.99999, 0.99999),  # qS
                 7: uniform_dist(0.0, 2 * np.pi),  # phiS
@@ -355,7 +355,7 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt, sens_fn="lisasens"):
+    def get_noise_injection(N, dt, sens_fn="lisasens",sym=True):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
@@ -366,7 +366,12 @@ def run_emri_pe(
         # normalize by the factors:
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
-        noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
+        noise_to_add_FD = [xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) for psd_temp in psd]
+        if sym:
+            for ii in range(2):
+                noise_to_add_FD[ii][freqs<0.0] = noise_to_add_FD[ii][freqs>0.0][::-1].conj()
+        # noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
+        noise_to_add = [xp.fft.ifft(el).real for el in noise_to_add_FD]
         return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0], noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
     full_noise = get_noise_injection(len_tot,dt)
@@ -448,13 +453,15 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy")/1000 # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
+        cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
 
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
         # set one to the true value
         gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
         tmp[0] = emri_injection_params_in.copy()
+        tmp[1:,-1] = priors['emri'].rvs(tmp[1:].shape[0])[:,-1]
+        
         # new_tmp = emri_injection_params_in.copy()
         # for mean_i in range(4):
         #     new_tmp = emri_injection_params_in.copy()
@@ -531,8 +538,8 @@ def run_emri_pe(
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 1000
-        update_it = 200
+        check_it = 5000
+        update_it = 250
         max_it_update = 1000
 
         if current_it<500: 
@@ -555,8 +562,8 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            if not zero_like:
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+            # if not zero_like:
+            #     fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10

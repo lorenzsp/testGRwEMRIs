@@ -229,7 +229,7 @@ for filename,el in zip(datasets,pars_inj):
     #     print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
     # print("iteration", file.iteration/1e5, " *10^5")
     print("max last loglike", file.get_log_like()[-1])
-    burn = int(file.iteration*0.3)
+    burn = int(file.iteration*0.32)
     thin = 1
     # burn,thin = file.get_autocorr_thin_burn()
     # print("iteration ", file.iteration)
@@ -251,64 +251,65 @@ for filename,el in zip(datasets,pars_inj):
     plt.tight_layout()
     plt.savefig(repo_name+f'/traceplot_loglike.png', bbox_inches='tight')
     ll = file.get_log_like(discard=burn, thin=thin)[-1,temp]
-    # mask = (ll<np.max(ll))
+    # mask = (ll<0.0)
+    mask = (ll>np.max(ll)-20)
     
     
     # # print("mask",mask)
 
     # # # chains
-    # maxind = -1#int(1.3e6/file.nwalkers)
-    # samp = file.get_chain(discard=burn, thin=thin)['emri'][:maxind,temp,mask,...]
-    # inds = file.get_inds(discard=burn, thin=thin)['emri'][:maxind,temp,mask,...]
-    # toplot = samp[inds]
+    maxind = -1#int(1.3e6/file.nwalkers)
+    samp = file.get_chain(discard=burn, thin=thin)['emri'][:maxind,temp,mask,...]
+    inds = file.get_inds(discard=burn, thin=thin)['emri'][:maxind,temp,mask,...]
+    toplot = samp[inds]
     # np.save(repo_name + '_samples',toplot)
-    # truths = np.load(el)
+    truths = np.load(el)
 
-    # # # # check autocorrelation plot
-    # get_autocorr_plot(samp[:maxind,:,0,:],repo_name+'/autocorrelation')
-    # # # # check chains
+    # # # check autocorrelation plot
+    get_autocorr_plot(samp[:maxind,:,0,:],repo_name+'/autocorrelation')
+    # # # check chains
     
-    # for ii in range(samp.shape[-1]):
-    #     plt.figure()
-    #     plt.plot(toplot[:,ii])
-    #     plt.xlabel(labels[ii])
-    #     plt.axhline(truths[ii],color='k')
-    #     plt.tight_layout()
-    #     plt.savefig(repo_name+f'/traceplot_chain{ii}.png', bbox_inches='tight')
+    for ii in range(samp.shape[-1]):
+        plt.figure()
+        plt.plot(toplot[:,ii])
+        plt.xlabel(labels[ii])
+        plt.axhline(truths[ii],color='k')
+        plt.tight_layout()
+        plt.savefig(repo_name+f'/traceplot_chain{ii}.png', bbox_inches='tight')
         
-    #     plt.figure()
-    #     plt.hist(toplot[:,ii],bins=30,density=True)
-    #     plt.axvline(truths[ii],color='k')
-    #     plt.xlabel(labels[ii])
-    #     plt.tight_layout()
-    #     plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
+        plt.figure()
+        plt.hist(toplot[:,ii],bins=30,density=True)
+        plt.axvline(truths[ii],color='k')
+        plt.xlabel(labels[ii])
+        plt.tight_layout()
+        plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
     
-    # # alpha bound
-    # mu = np.exp(toplot[:,1])
-    # d = np.abs(toplot[:,-1])
-    # w = mu / np.sqrt(d)
-    # y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
-    # plt.figure()
-    # plt.hist(np.log10(y), weights=w/y, bins=np.linspace(-2.0,0.5,num=40), density=True)
-    # plt.tight_layout()
-    # plt.xlabel(r'$\log_{10} [\sqrt{\alpha} / {\rm km} ]$',size=22)
-    # vpos = 0.8
-    # plt.axvline(vpos,color='k',linestyle=':',label='Current bound')
-    # vpos = np.log10(0.4 * np.sqrt( 16 * np.pi**0.5 ))
-    # plt.axvline(vpos,color='r',linestyle=':',label='Best bound from 3G')
-    # text_position = (vpos - 0.1, vpos)  # Adjust the position as needed
-    # plt.text(*text_position, 'Current bound', verticalalignment='center', fontsize=18, rotation='vertical')
-    # legend = plt.legend(title=r'$(T [{\rm yr}], M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yr}])$',framealpha=1.0,ncol=2,loc='upper left',fontsize=12)
-    # legend.get_title().set_fontsize('12')
-    # plt.legend()
-    # plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
+    # alpha bound
+    mu = np.exp(toplot[:,1])
+    d = np.abs(toplot[:,-1])
+    w = mu / np.sqrt(d)
+    y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
+    plt.figure()
+    plt.hist(np.log10(y), weights=w/y, bins=np.linspace(-2.0,0.5,num=40), density=True)
+    plt.tight_layout()
+    plt.xlabel(r'$\log_{10} [\sqrt{\alpha} / {\rm km} ]$',size=22)
+    vpos = 0.8
+    plt.axvline(vpos,color='k',linestyle=':',label='Current bound')
+    vpos = np.log10(0.4 * np.sqrt( 16 * np.pi**0.5 ))
+    plt.axvline(vpos,color='r',linestyle=':',label='Best bound from 3G')
+    text_position = (vpos - 0.1, vpos)  # Adjust the position as needed
+    plt.text(*text_position, 'Current bound', verticalalignment='center', fontsize=18, rotation='vertical')
+    legend = plt.legend(title=r'$(T [{\rm yr}], M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yr}])$',framealpha=1.0,ncol=2,loc='upper left',fontsize=12)
+    legend.get_title().set_fontsize('12')
+    plt.legend()
+    plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
     
-    # CORNER_KWARGS["truths"] = truths
+    CORNER_KWARGS["truths"] = truths
     
-    # overlaid_corner([toplot], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
-    # np.save(repo_name + '/samples',toplot)
-    # # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
+    overlaid_corner([toplot], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
+    np.save(repo_name + '/samples',toplot)
+    # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
     
-    # plt.close()
+    plt.close()
     
     # print("Effective sample size",toplot.shape[0] / np.mean(autocorr_time),  toplot.shape[0])
