@@ -127,7 +127,6 @@ def run_emri_pe(
     emri_kwargs={},
     log_prior=False,
     source_SNR=50.0,
-    intrinsic_only=False,
     zero_like=False,
     noise=1.0
 ):
@@ -227,24 +226,18 @@ def run_emri_pe(
        "fill_inds": np.array([ 5, 12, 14]),
     }
     
-    if intrinsic_only:        
-        fill_dict = {
-       "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12, 14])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([5,6,7,8,9,10,12, 14]),
-        }
 
     # get the sampling parameters
     emri_injection_params[0] = np.log(emri_injection_params[0])
     emri_injection_params[1] = np.log(emri_injection_params[1])
     
     # do conversion only when sampling over all parameters
-    if not intrinsic_only:
-        emri_injection_params[7] = np.cos(emri_injection_params[7]) 
-        emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
-        emri_injection_params[9] = np.cos(emri_injection_params[9]) 
-        emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
-    
+
+    emri_injection_params[7] = np.cos(emri_injection_params[7]) 
+    emri_injection_params[8] = emri_injection_params[8] % (2 * np.pi)
+    emri_injection_params[9] = np.cos(emri_injection_params[9]) 
+    emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
+
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -265,10 +258,6 @@ def run_emri_pe(
             # 14: np.exp
         }
     
-    if intrinsic_only:
-        del parameter_transforms[7]
-        del parameter_transforms[9]
-
     transform_fn = TransformContainer(
         parameter_transforms=parameter_transforms,
         fill_dict=fill_dict,
@@ -278,7 +267,7 @@ def run_emri_pe(
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
-    
+    injection_in[-1] = charge
     # get AE
     temp_emri_kwargs = emri_kwargs.copy()
     temp_emri_kwargs['T'] = Tplunge
@@ -290,17 +279,6 @@ def run_emri_pe(
 
     dist_factor = check_snr.get() / source_SNR
     emri_injection_params[6] *= dist_factor
-    
-    if intrinsic_only:
-        fill_dict = {
-       "ndim_full": 15,
-       "fill_values": emri_injection_params[np.array([5,6,7,8,9,10,12,14])], # spin and inclination and Phi_theta
-       "fill_inds": np.array([5,6,7,8,9,10,12,14]),
-        }
-        transform_fn = TransformContainer(
-        parameter_transforms=parameter_transforms,
-        fill_dict=fill_dict,
-        )
     
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     print("new distance based on SNR", emri_injection_params[6])
@@ -342,30 +320,12 @@ def run_emri_pe(
             }
         ) 
     }
-    
-    if intrinsic_only:
-        priors = {
-            "emri": ProbDistContainer(
-                {
-                    0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
-                    1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
-                    2: uniform_dist(emri_injection_params_in[2] - delta, 0.98),  # a
-                    3: uniform_dist(emri_injection_params_in[3] - delta, emri_injection_params_in[3] + delta),  # p0
-                    4: uniform_dist(emri_injection_params_in[4] - delta, emri_injection_params_in[4] + delta),  # e0
-                    5: uniform_dist(0.0, 2 * np.pi),  # Phi_phi0
-                    6: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                }
-            ) 
-        }
 
     # sampler treats periodic variables by wrapping them properly
     periodic = {
         "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: np.pi, 11: 2 * np.pi}
     }
-    
-    if intrinsic_only:
-        periodic = {"emri": {5: 2 * np.pi, 6: 2 * np.pi}}
-    
+
     ############################## likelihood ########################################################
     # this is a parent likelihood class that manages the parameter transforms
     like = Likelihood(
@@ -379,7 +339,7 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt, sens_fn="lisasens"):
+    def get_noise_injection(N, dt, sens_fn="lisasens",sym=True):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
@@ -390,7 +350,12 @@ def run_emri_pe(
         # normalize by the factors:
         # 1/dt because when you take the FFT of the noise in time domain
         # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
-        noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
+        noise_to_add_FD = [xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) for psd_temp in psd]
+        if sym:
+            for ii in range(2):
+                noise_to_add_FD[ii][freqs<0.0] = noise_to_add_FD[ii][freqs>0.0][::-1].conj()
+        # noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
+        noise_to_add = [xp.fft.ifft(el).real for el in noise_to_add_FD]
         return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0], noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
 
 
@@ -412,9 +377,7 @@ def run_emri_pe(
     )
 
     ndim = 12
-    if intrinsic_only:
-        ndim = 7
-    
+
     ############################## plots ########################################################
     if use_gpu:
         get_spectrogram(data_channels[0],dt,fp[:-3] + "_spectrogram.pdf")
@@ -478,12 +441,9 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy")/1000 # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
-        if intrinsic_only:
-            filtered_matrix = np.delete(cov, [5, 6, 7, 8, 9], axis=0)
-            cov = np.delete(filtered_matrix, [5, 6, 7, 8, 9], axis=1)
+        cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
 
-        tmp = draw_initial_points(emri_injection_params_in, cov[:-1,:-1], nwalkers*ntemps, intrinsic_only=intrinsic_only)
+        tmp = draw_initial_points(emri_injection_params_in, cov[:-1,:-1], nwalkers*ntemps)
 
         # set one to the true value
         gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
@@ -542,10 +502,7 @@ def run_emri_pe(
     #     list_comb.append(subset)
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
-    if intrinsic_only:
-        sky_periodic = None
-    else:
-        sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
+    sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
     
     # MCMC moves (move, percentage of draws)
     indx_list.append(get_True_vec(np.arange(ndim)))
@@ -590,8 +547,8 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            if not zero_like:
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+            # if not zero_like:
+            #     fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
@@ -836,7 +793,6 @@ if __name__ == "__main__":
         emri_kwargs=waveform_kwargs,
         log_prior=logprior,
         source_SNR=source_SNR,
-        intrinsic_only=False,
         zero_like=bool(args['zerolike']),
         noise=args['noise']
     )
