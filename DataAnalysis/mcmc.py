@@ -453,14 +453,13 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
+        cov = np.load("covariance.npy") / ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
 
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
         # set one to the true value
-        gmm_means = np.asarray([[0.68922426, 1.03834327, 4.21885407],[0.68954361, 1.03875544, 1.07632933],[0.61027008, 5.20376569, 1.84941836],[0.61156604, 5.20491747, 4.99252013]])
         tmp[0] = emri_injection_params_in.copy()
-        tmp[1:,-1] = priors['emri'].rvs(tmp[1:].shape[0])[:,-1]
+        # tmp[1:,-1] = priors['emri'].rvs(tmp[1:].shape[0])[:,-1]
         
         # new_tmp = emri_injection_params_in.copy()
         # for mean_i in range(4):
@@ -480,6 +479,9 @@ def run_emri_pe(
     
     logp = priors["emri"].logpdf(tmp)
     print("logprior",logp)
+    # draw again for infinit prior
+    if int(np.sum(np.isinf(logp)))>0:
+        tmp[np.isinf(logp)] =  priors["emri"].rvs(int(np.sum(np.isinf(logp))))
     tic = time.time()
     start_like = like(tmp, **emri_kwargs)
     toc = time.time()
@@ -530,17 +532,17 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", factor=10.0, sky_periodic=sky_periodic),0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
         check_it = 5000
-        update_it = 250
-        max_it_update = 1000
+        update_it = 200
+        max_it_update = 600
 
         if current_it<500: 
             # optimization active
