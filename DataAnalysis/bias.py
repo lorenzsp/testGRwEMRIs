@@ -225,7 +225,8 @@ def run_emri_pe(
        "fill_values": emri_injection_params[np.array([ 5, 12, 14])], # spin and inclination and Phi_theta
        "fill_inds": np.array([ 5, 12, 14]),
     }
-    
+    print("emri_injection_params",emri_injection_params)
+    print("fill_dict",fill_dict)
 
     # get the sampling parameters
     emri_injection_params[0] = np.log(emri_injection_params[0])
@@ -268,6 +269,8 @@ def run_emri_pe(
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     injection_in[-1] = charge
+    print("injection_in",injection_in)
+    print("transform", transform_fn.both_transforms(emri_injection_params_in[None, :])[0])
     # get AE
     temp_emri_kwargs = emri_kwargs.copy()
     temp_emri_kwargs['T'] = Tplunge
@@ -339,7 +342,7 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt, sens_fn="lisasens",sym=True):
+    def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
@@ -479,6 +482,15 @@ def run_emri_pe(
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
     print("true log like",true_like)
     
+    # implement an optimization of the likelihood using differential evolution
+    from scipy.optimize import differential_evolution
+    bounds = [[priors["emri"].priors[i][1].min_val, priors["emri"].priors[i][1].max_val]  for i in range(ndim)]
+    def opt_like(x):
+        return -like(x[None,:], **emri_kwargs)
+    res = differential_evolution(opt_like, bounds, init=tmp, popsize=nwalkers*ntemps, maxiter=100, disp=True,tol=1e-10)
+    print(res.x)
+    tmp[0] = res.x
+    
     # start state
     start_state = State(
         {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
@@ -526,7 +538,7 @@ def run_emri_pe(
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 2000
+        check_it = 20
         update_it = 200
         max_it_update = 2000
 
@@ -734,15 +746,15 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results/"
+    folder = "./results_paper/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"
     
     if logprior:
-        fp = folder + args["outname"] + f"_bias_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = folder + args["outname"] + f"_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = folder + args["outname"] + f"_bias_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = folder + args["outname"] + f"_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))

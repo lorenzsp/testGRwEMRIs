@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 7 -nwalkers 16 -ntemps 1 -nsteps 1000 -outname test
 # test with zero likelihood
 # python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
@@ -355,7 +355,7 @@ def run_emri_pe(
         subset=6,  # may need this subset
     )
 
-    def get_noise_injection(N, dt, sens_fn="lisasens",sym=True):
+    def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
         freqs = xp.fft.fftfreq(N, dt)
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
@@ -454,11 +454,15 @@ def run_emri_pe(
         print("find starting points")
         # precision of 1e-5
         cov = np.load("covariance.npy") / ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
-
+        # increase the size of the covariance only along the last direction
+        cov[-1,-1] *= 100.0
+        
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
+        # define second element of tmp like [ 1.38155123e+01  2.30258725e+00  9.50000418e-01  8.34323989e+00 3.99998872e-01  1.00599036e+00 -8.15276851e-03  3.14312695e+00 6.80315016e-01  1.05573421e+00  1.02150614e+00  3.20198579e+00]
+        tmp[1]= np.asarray([1.38155123e+01,  2.30258725e+00,  9.50000418e-01,  8.34323989e+00, 3.99998872e-01,  1.00599036e+00, -8.15276851e-03,  3.14312695e+00, 6.80315016e-01,  1.05573421e+00,  1.02150614e+00,  3.20198579e+00, 0.0])
         # tmp[1:,-1] = priors['emri'].rvs(tmp[1:].shape[0])[:,-1]
         
         # new_tmp = emri_injection_params_in.copy()
@@ -532,7 +536,7 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", factor=10.0, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=10.0, sky_periodic=sky_periodic),0.5),
         # (move_gmm,1e-5),
         (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.5),
     ]
@@ -605,8 +609,9 @@ def run_emri_pe(
             samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-            svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].svd = svd
+            # svd = np.linalg.svd(samp_cov)
+            # samp.moves[0].all_proposal['emri'].svd = svd
+            samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
             # update Dist
             # pdc = samp.moves[1].generate_dist["emri"]
             # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
@@ -617,8 +622,9 @@ def run_emri_pe(
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy")
-            svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].svd = svd
+            # svd = np.linalg.svd(samp_cov)
+            # samp.moves[0].all_proposal['emri'].svd = svd
+            samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
             # get DE chain
             samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
             # chain = samp.get_chain(discard=discard)['emri']
@@ -749,7 +755,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results/"
+    folder = "./final_results/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"

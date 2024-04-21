@@ -658,24 +658,25 @@ def run_emri_pe(
         return samples
 
     moves = [
-        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=10.0, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
-        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr, prop=propose_transform),0.5),#
+        # (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=10.0, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
+        # (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr, prop=propose_transform),0.5),#
+        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic),0.5),#
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 200
+        check_it = 100
         max_it_update = 1000
         
-        if (current_it // 100) % 2 == 0:
-            # intrinsic
-            samp.weights[1]=1.0
-            samp.weights[0]=0.0
-        else:
-            # extrinsic
-            samp.weights[1]=0.0
-            samp.weights[0]=1.0
+        # if (current_it // 100) % 2 == 0:
+        #     # intrinsic
+        #     samp.weights[1]=1.0
+        #     samp.weights[0]=0.0
+        # else:
+        #     # extrinsic
+        #     samp.weights[1]=0.0
+        #     samp.weights[0]=1.0
             
         # rn = np.random.uniform(0,1)
         # if rn>0.3:
@@ -711,7 +712,7 @@ def run_emri_pe(
 
             # else:
             samp.moves[0].chain = None # np.vstack((to_cov,get_sequence(100,name='sob')))
-            samp.moves[1].chain = None # propose_transform(to_cov) # np.vstack((to_cov,get_sequence(100,name='sob')))
+            # samp.moves[1].chain = None # propose_transform(to_cov) # np.vstack((to_cov,get_sequence(100,name='sob')))
             #     print('cov_sob',samp.moves[1].chain.shape)
             # else:
             #     print('none')
