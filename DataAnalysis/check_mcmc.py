@@ -321,9 +321,19 @@ def run_emri_pe(
 
     # with longer signals we care less about this
     t0 = 10000.0  # throw away on both ends when our orbital information is weird
-   
+    few_gen_list = GenerateEMRIWaveform(
+    AAKWaveformBase, 
+    EMRIInspiral,
+    AAKSummation,
+    # when using intrinsic only , we return a list
+    return_list=False,
+    inspiral_kwargs=insp_kwargs,
+    sum_kwargs=sum_kwargs,
+    use_gpu=use_gpu,
+    frame=None
+    )
     resp_gen = ResponseWrapper(
-        few_gen,
+        few_gen_list,
         Tobs,
         dt,
         index_lambda,
@@ -336,7 +346,27 @@ def run_emri_pe(
         **tdi_kwargs_esa,
     )
     
-    h_plus = few_gen(*emri_injection_params,**emri_kwargs)[0]
+    h_plus_aak = few_gen(*emri_injection_params,**emri_kwargs)[0]
+    emri_kwargs['mich'] = False
+    h_plus_fresp = resp_gen(*emri_injection_params,**emri_kwargs)[0]
+    # create spectrum of the signals using fft
+    fft_h_plus = xp.fft.rfft(h_plus_aak)
+    fft_h_plus_fresp = xp.fft.rfft(h_plus_fresp)
+    # get the frequencies
+    # make loglog plot
+    plt.figure()
+    freq = xp.fft.rfftfreq(len(h_plus_aak), dt)
+    plt.loglog(freq.get(), xp.abs(fft_h_plus).get()*dt, label='AAK')
+    freq = xp.fft.rfftfreq(len(h_plus_fresp), dt)
+    plt.loglog(freq.get(), xp.abs(fft_h_plus_fresp).get()*dt, label='AAK + Fresp')
+    for el in ["lisasens", "cornish_lisa_psd", "noisepsd_AE"]:
+        PSD_arr = get_sensitivity(freq, sens_fn=el)/ (4 * xp.diff(freq)[0])
+        plt.loglog(freq.get(), xp.sqrt(PSD_arr).get(),label=el,alpha=0.5)
+    
+    plt.legend()
+    plt.savefig('spectrum.pdf')
+    breakpoint()
+    
 
     len_tot = len(h_plus)
     window = xp.asarray(tukey(len_tot,alpha=0.005))

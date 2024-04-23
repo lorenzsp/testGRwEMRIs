@@ -71,7 +71,7 @@ from few.utils.utility import get_p_at_t, get_separatrix
 import warnings
 warnings.filterwarnings("ignore")
 
-SEED = 26011996
+SEED = 2601
 
 try:
     import cupy as xp
@@ -253,6 +253,8 @@ def run_emri_pe(
         prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
         prior_charge = uniform_dist(-0.1, 0.1)
+        if charge != 0.0:
+            prior_charge = uniform_dist(-1e-5, 0.1)
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -455,7 +457,7 @@ def run_emri_pe(
         # precision of 1e-5
         cov = np.load("covariance.npy") / ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         # increase the size of the covariance only along the last direction
-        cov[-1,-1] *= 100.0
+        cov[-1,-1] *= 1e4
         
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
@@ -536,7 +538,7 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=10.0, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, sky_periodic=sky_periodic),0.5),
         # (move_gmm,1e-5),
         (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.5),
     ]

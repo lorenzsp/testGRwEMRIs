@@ -746,7 +746,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results_paper/"
+    folder = "./final_results/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"
