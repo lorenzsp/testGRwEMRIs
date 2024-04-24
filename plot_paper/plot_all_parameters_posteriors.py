@@ -26,6 +26,7 @@ fmt = mticker.FuncFormatter(g)
 
 from scipy.constants import golden
 import corner
+import pandas as pd
 inv_golden = 1. / golden
 
 px = 2*0.0132
@@ -211,15 +212,30 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     med = np.median(np.load(repo_name + '/samples.npy'), axis=0)
     low = np.percentile(np.load(repo_name + '/samples.npy'), 2.5, axis=0)
     high = np.percentile(np.load(repo_name + '/samples.npy'), 97.5, axis=0)
-    with open(repo_name + '/summary_stat.txt','w') as f:
-        f.write('estimator\tln M\tln mu\ta\tp0\te0\tDL\tcosthetaS\tphiS\tcosthetaK\tphiK\tPhivarphi0\tPhir0\td\n')
-        # write true value
-        f.write(f"true\t{truths[0]}\t{truths[1]}\t{truths[2]}\t{truths[3]}\t{truths[4]}\t{truths[5]}\t{truths[6]}\t{truths[7]}\t{truths[8]}\t{truths[9]}\t{truths[10]}\t{truths[11]}\t{truths[12]}\n")
-        f.write(f"median\t{med[0]}\t{med[1]}\t{med[2]}\t{med[3]}\t{med[4]}\t{med[5]}\t{med[6]}\t{med[7]}\t{med[8]}\t{med[9]}\t{med[10]}\t{med[11]}\t{med[12]}\n")
-        # write low
-        f.write(f"percentile 2.5%\t{low[0]}\t{low[1]}\t{low[2]}\t{low[3]}\t{low[4]}\t{low[5]}\t{low[6]}\t{low[7]}\t{low[8]}\t{low[9]}\t{low[10]}\t{low[11]}\t{low[12]}\n")
-        # write high
-        f.write(f"percentile 97.5%\t{high[0]}\t{high[1]}\t{high[2]}\t{high[3]}\t{high[4]}\t{high[5]}\t{high[6]}\t{high[7]}\t{high[8]}\t{high[9]}\t{high[10]}\t{high[11]}\t{high[12]}\n")
+    # Create a DataFrame with the parameter information
+    data = {
+        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'precision 68%'],
+        'ln M': [truths[0], med[0], low[0], high[0], np.std(np.load(repo_name + '/samples.npy'), axis=0)[0] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[0]],
+        'ln mu': [truths[1], med[1], low[1], high[1], np.std(np.load(repo_name + '/samples.npy'), axis=0)[1] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[1]],
+        'a': [truths[2], med[2], low[2], high[2], np.std(np.load(repo_name + '/samples.npy'), axis=0)[2] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[2]],
+        'p0': [truths[3], med[3], low[3], high[3], np.std(np.load(repo_name + '/samples.npy'), axis=0)[3] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[3]],
+        'e0': [truths[4], med[4], low[4], high[4], np.std(np.load(repo_name + '/samples.npy'), axis=0)[4] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[4]],
+        'DL': [truths[5], med[5], low[5], high[5], np.std(np.load(repo_name + '/samples.npy'), axis=0)[5] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[5]],
+        'costhetaS': [truths[6], med[6], low[6], high[6], np.std(np.load(repo_name + '/samples.npy'), axis=0)[6] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[6]],
+        'phiS': [truths[7], med[7], low[7], high[7], np.std(np.load(repo_name + '/samples.npy'), axis=0)[7] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[7]],
+        'costhetaK': [truths[8], med[8], low[8], high[8], np.std(np.load(repo_name + '/samples.npy'), axis=0)[8] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[8]],
+        'phiK': [truths[9], med[9], low[9], high[9], np.std(np.load(repo_name + '/samples.npy'), axis=0)[9] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[9]],
+        'Phivarphi0': [truths[10], med[10], low[10], high[10], np.std(np.load(repo_name + '/samples.npy'), axis=0)[10] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[10]],
+        'Phir0': [truths[11], med[11], low[11], high[11], np.std(np.load(repo_name + '/samples.npy'), axis=0)[11] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[11]],
+        'd': [truths[12], med[12], low[12], high[12], np.std(np.load(repo_name + '/samples.npy'), axis=0)[12] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[12]]
+    }
+
+    df = pd.DataFrame(data)
+    
+    # Save the DataFrame as a PDF table
+    # Save the DataFrame as a LaTeX table
+    pd.set_option('display.float_format', lambda x: '%.8e' % x)
+    df.to_html('./posterior_summary/parameter_table'+repo_name.split('/')[-1]+'.html', index=False)
 
     # Parse parameters from repo_name
     params = repo_name.split('_')[3:]
