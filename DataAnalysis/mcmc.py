@@ -457,14 +457,14 @@ def run_emri_pe(
         # precision of 1e-5
         cov = np.load("covariance.npy") / ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         # increase the size of the covariance only along the last direction
-        cov[-1,-1] *= 1e4
-        
+        cov[-1,-1] *= 100.0
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
         # define second element of tmp like [ 1.38155123e+01  2.30258725e+00  9.50000418e-01  8.34323989e+00 3.99998872e-01  1.00599036e+00 -8.15276851e-03  3.14312695e+00 6.80315016e-01  1.05573421e+00  1.02150614e+00  3.20198579e+00]
-        tmp[1]= np.asarray([1.38155123e+01,  2.30258725e+00,  9.50000418e-01,  8.34323989e+00, 3.99998872e-01,  1.00599036e+00, -8.15276851e-03,  3.14312695e+00, 6.80315016e-01,  1.05573421e+00,  1.02150614e+00,  3.20198579e+00, 0.0])
+        # tmp[1:3]= draw_initial_points(np.asarray([1.38155123e+01,  2.30258725e+00,  9.50000418e-01,  8.34323989e+00, 3.99998872e-01,  1.00599036e+00, -8.15276851e-03,  3.14312695e+00, 6.80315016e-01,  1.05573421e+00,  1.02150614e+00,  3.20198579e+00, 0.0])
+        #                             , cov, nwalkers*ntemps)[1:3]
         # tmp[1:,-1] = priors['emri'].rvs(tmp[1:].shape[0])[:,-1]
         
         # new_tmp = emri_injection_params_in.copy()
@@ -540,15 +540,15 @@ def run_emri_pe(
     moves = [
         (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, sky_periodic=sky_periodic),0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.25)
-        check_it = 5000
+        check_it = 500
         update_it = 200
-        max_it_update = 600
+        max_it_update = 2000
 
         if current_it<500: 
             # optimization active
@@ -570,8 +570,8 @@ def run_emri_pe(
             ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
             
             # plot
-            # if not zero_like:
-            #     fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+            if (not zero_like)and(current_it<max_it_update):
+                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
@@ -604,21 +604,31 @@ def run_emri_pe(
             start_ind = current_it - update_it # this ensures new samples
             end_ind = current_it - 20 # this avoids using the same samples
             # update moves from chain
-            chain = samp.get_chain()['emri'][start_ind:end_ind]
-            inds = samp.get_inds()['emri'][start_ind:end_ind]
+            chain = samp.get_chain()['emri'][start_ind:end_ind,0]
+            inds = samp.get_inds()['emri'][start_ind:end_ind,0]
             to_cov = chain[inds]
             # update DE chain
-            samp.moves[-1].chain = to_cov.copy()
+            if current_it / update_it > 2:
+                samp.moves[-1].chain = np.append(samp.moves[-1].chain,to_cov,axis=0)
+            else:
+                samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
+            # update cov
+            # current number of samples
+            N_current = to_cov.shape[0]
+            # number of samples in previous update
+            N_prev = (current_it / update_it - 1) * N_current
+            # update covariance
+            to_scale = (N_current * samp_cov + N_prev * samp.moves[0].all_proposal['emri'].scale) / (N_current + N_prev)
             # svd = np.linalg.svd(samp_cov)
             # samp.moves[0].all_proposal['emri'].svd = svd
-            samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
+            samp.moves[0].all_proposal['emri'].scale = to_scale
             # update Dist
             # pdc = samp.moves[1].generate_dist["emri"]
             # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
             # save cov
-            np.save(fp[:-3] + "_covariance",samp_cov)
+            np.save(fp[:-3] + "_covariance", samp_cov)
             np.save(fp[:-3] + "_samples", to_cov)
 
         if (i==0)and(current_it>1):
@@ -671,7 +681,7 @@ def run_emri_pe(
         new_like,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 30.0},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 100.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
