@@ -1,7 +1,7 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python bias.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 8 -ntemps 1 -nsteps 10 -outname test
 # test with zero likelihood
-# python bias.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
+# python bias.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
 Tplunge = 2.0
 
@@ -782,6 +782,9 @@ if __name__ == "__main__":
         ax.set_xlabel(xlab, fontsize=16)
         ax.set_ylabel(ylab, fontsize=16)
     plt.savefig(fp[:-3] + "_trajectory.pdf")
+    
+    tvec_0, p_tmp_0, e_tmp_0, x_tmp_0, Phi_phi_tmp_0, Phi_theta_tmp_0, Phi_r_tmp_0 = traj(M, mu, a, p0, e0, x0, 0.0,T=10.0,new_t=tvec,upsample=True, err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
+    print("dephasing",np.abs(Phi_phi_tmp-Phi_phi_tmp_0).max(),np.abs(Phi_theta_tmp-Phi_theta_tmp_0).max(),np.abs(Phi_r_tmp-Phi_r_tmp_0).max())
 
     emri_injection_params = np.array([
         M,  
