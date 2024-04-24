@@ -534,13 +534,15 @@ def run_emri_pe(
     # shift values move
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
     # prob, index par to shift, value
-    shift_value = [0.3, to_shift, np.pi]
+    # shift_value = [0.3, to_shift, np.pi]
+    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([12])]]
+    shift_value = [0.3, to_shift, 1e-3]
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, sky_periodic=sky_periodic, shift_value=shift_value),0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic, shift_value=shift_value),0.5),
     ]
 
     def stopping_fn(i, res, samp):

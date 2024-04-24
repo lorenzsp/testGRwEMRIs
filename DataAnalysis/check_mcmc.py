@@ -1,5 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python check_mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
+# python check_mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.005 -dev 6 -nwalkers 8 -ntemps 1 -nsteps 10 -outname yo
 # select the plunge time
 Tplunge = 2.0
 
@@ -365,10 +365,9 @@ def run_emri_pe(
     
     plt.legend()
     plt.savefig('spectrum.pdf')
-    breakpoint()
     
 
-    len_tot = len(h_plus)
+    len_tot = len(h_plus_aak)
     window = xp.asarray(tukey(len_tot,alpha=0.005))
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
@@ -681,8 +680,8 @@ def run_emri_pe(
     # get_ll_plot(8, like_noise, var_vec, name = 'll_thethaK.png', )
     # var_vec = np.cos(np.linspace(0.0, np.pi, num=20))
     # get_ll_plot(6, like_noise, var_vec, name = 'll_thethaS.png', )
-    var_vec = np.linspace(emri_injection_params_in[4]-1e-5,emri_injection_params_in[4]+1e-5, num=20)
-    get_ll_plot(4, like, var_vec, name = 'll_e.png', )
+    var_vec = np.linspace(emri_injection_params_in[-1]-0.005,emri_injection_params_in[-1]+0.005, num=20)
+    get_ll_plot(-1, like, var_vec, name = 'll_d.png', )
 
     return
 
