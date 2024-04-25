@@ -43,7 +43,7 @@ def draw_initial_points(mu, cov, size, intrinsic_only=False):
     
     return tmp
 
-def spectrogram(x, window_size=256, step_size=128, fs=1/10):
+def spectrogram(x, window_size=4*256, step_size=64, fs=1/10):
     # Calculate number of time steps
     n_timesteps = (len(x) - window_size) // step_size + 1
     
@@ -64,17 +64,32 @@ def spectrogram(x, window_size=256, step_size=128, fs=1/10):
         # Store magnitude spectrum
         spectrogram[:, t] = xp.abs(fft_result[:window_size // 2 + 1])
     
-    return spectrogram.get()  # Transfer data from GPU to CPU
+    # Calculate time array
+    time_array = np.arange(0, len(x) / fs, step_size / fs)
+    
+    # Calculate frequency array
+    frequency_array = np.fft.fftfreq(window_size, 1 / fs)[:window_size // 2 + 1]
+    
+    return spectrogram.get(), time_array, frequency_array  # Transfer data from GPU to CPU
 
 def get_spectrogram(h,dt,name):
     # Compute spectrogram
-    spec = spectrogram(h,fs=1/dt)
+    spec, time_array, frequency_array = spectrogram(h, fs=1/dt)
 
     # Plot spectrogram
     plt.figure(figsize=(10, 6))
     plt.imshow(np.log10(spec), aspect='auto', origin='lower', cmap='inferno')
     plt.colorbar(label='Magnitude (dB)')
     plt.title('Spectrogram')
+    plt.xlabel('Time (days)')
+    plt.ylabel('Frequency (Hz)')
+    newt = np.arange(0, time_array.max() / 3600 / 24, 100, dtype=int)
+    xtick_loc = np.interp(newt, time_array / 3600 / 24, np.arange(len(time_array)))
+    plt.xticks(xtick_loc, newt)
+    newf = np.arange(0., 0.05, 0.01)
+    ytick_loc = np.interp(newf, np.abs(frequency_array), np.arange(len(frequency_array)))
+    plt.yticks(ytick_loc, newf)
+    # plt.ylim(0,np.interp(1e-3, np.abs(frequency_array), np.arange(len(frequency_array))))
     plt.savefig(name)
 
 def pad_to_next_power_of_2(arr):
