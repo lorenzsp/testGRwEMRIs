@@ -235,7 +235,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Save the DataFrame as a PDF table
     # Save the DataFrame as a LaTeX table
     pd.set_option('display.float_format', lambda x: '%.8e' % x)
-    df.to_html('./posterior_summary/parameter_table'+repo_name.split('/')[-1]+'.html', index=False)
+    df.to_markdown('./posterior_summary/parameter_table'+repo_name.split('/')[-1]+'.md', floatfmt=".8e")
 
     # Parse parameters from repo_name
     params = repo_name.split('_')[3:]
