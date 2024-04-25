@@ -517,22 +517,31 @@ def run_emri_pe(
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
     sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
-    
     # MCMC moves (move, percentage of draws)
-    indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
     indx_list.append(get_True_vec([0,1,2,3,4]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
     
     # shift values move
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
     # prob, index par to shift, value
-    shift_value = [0.3, to_shift, np.pi]
+    # shift_value = [0.3, to_shift, np.pi]
+    shift_value = [0.3, to_shift, 5e-3]
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, 
+                      sky_periodic=sky_periodic, 
+                    #   shift_value=shift_value, 
+                    #   indx_list=[("emri",el[None,:] ) for el in indx_list]
+                      )
+                        ,0.5),
         # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.5),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic, 
+                    #   shift_value=shift_value,
+                    #   indx_list=[("emri",el[None,:] ) for el in indx_list]
+                      )
+                      ,0.5),
     ]
 
     def stopping_fn(i, res, samp):
@@ -548,7 +557,12 @@ def run_emri_pe(
         else:
             # optimization inactive
             samp.moves[-1].use_current_state = True
-        
+
+        # sample in all parameters after 1000 iterations
+        if current_it > 1000:
+            for el in samp.moves:
+                el.indx_list = None
+
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
             print("max last loglike", samp.get_log_like()[-1])
@@ -763,9 +777,9 @@ if __name__ == "__main__":
         folder + "zerolike_"
     
     if logprior:
-        fp = folder + args["outname"] + f"_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
+        fp = folder + args["outname"] + f"_noise{args['noise']}_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_logprior.h5"
     else:
-        fp = folder + args["outname"] + f"_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
+        fp = folder + args["outname"] + f"_noise{args['noise']}_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))
