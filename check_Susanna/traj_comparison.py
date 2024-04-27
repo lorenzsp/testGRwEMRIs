@@ -4,7 +4,7 @@ import numpy as np
 import warnings
 import glob
 from few.trajectory.inspiral import EMRIInspiral
-from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
+from few.utils.utility import get_overlap, get_mismatch, get_separatrix, get_kerr_geo_constants_of_motion, get_fundamental_frequencies, get_fundamental_frequencies_spin_corrections
 from few.summation.interpolatedmodesum import CubicSplineInterpolant
 from few.utils.constants import *
 
@@ -18,6 +18,21 @@ insp_kw = {
     "use_rk4": False,
     }
 
+# get Edot function
+trajELQ = EMRIInspiral(func="KerrEccentricEquatorial")
+def get_Edot(M, mu, a, p0, e0, x0, charge):
+    trajELQ(M, mu, a, p0, e0, x0, charge, T=1e-2, dt=10.0, **insp_kw)
+    y1, y2, y3 = get_kerr_geo_constants_of_motion(a, p0, e0, x0)
+    y0 = np.array([y1, y2, y3])
+    return trajELQ.inspiral_generator.integrator.get_derivatives(y0)[0] / (mu/M)
+
+def get_delta_Edot(M, mu, a, p0, e0, x0, charge):
+    
+    Edot_Charge = get_Edot(M, mu, a, p0, e0, x0, charge)
+    Edot_ZeroCharge = get_Edot(M, mu, a, p0, e0, x0, 0.0)
+    return Edot_Charge - Edot_ZeroCharge
+
+get_delta_Edot(1e6,10,0.9,10.0,0.3,1.0,0.0)
 
 np.random.seed(32)
 import matplotlib.pyplot as plt
