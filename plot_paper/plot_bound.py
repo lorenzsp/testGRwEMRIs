@@ -127,28 +127,33 @@ plt.ticklabel_format(style='sci')
 #              arrowprops=dict(facecolor='black', shrink=0.001),
 #              fontsize=12, ha='center')
 
-
+# from Maselli, to be updated with Elise's paper
 vpos = 0.8
 xlow = -1.5
 # Create a bar
 ylev = 1.3
 plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
-plt.text(vpos+0.1, ylev+0.05, 'Current\nconstraint\nfrom LVK', ha='left', va='center', fontsize=12)
+plt.text(vpos+0.1, ylev+0.05, 'LVK current\nconstraint', ha='left', va='center', fontsize=12)
 
+# from figure 21 https://arxiv.org/pdf/2010.09010
 Nsource_3g = 1e6
-vpos = np.log10(5e-2 * np.sqrt(16*np.pi**0.5))
-ylev = 1.5
+vpos = np.log10(0.4 * np.sqrt(16*np.pi**0.5))
+ylev = 1.55
 plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
-plt.text(vpos+0.1, ylev+0.05, 'Projected cumulative constraint\nfrom LIGO Voyager 08/09', ha='left', va='center', fontsize=12)
+plt.text(vpos+0.1, ylev+0.05, 'Projected best event\nLIGO Voyager 08/09', ha='left', va='center', fontsize=12)
+
+vpos = np.log10(5e-2 * np.sqrt(16*np.pi**0.5))
+ylev = 1.8
+plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
+plt.text(vpos+0.1, ylev+0.05, 'Projected cumulative constraint\n LIGO Voyager 08/09', ha='left', va='center', fontsize=12)
 
 plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$',loc='lower right')
 
 # plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
 # plt.legend()
-plt.xlim(xlow,1.3)
-plt.ylim(0.0,1.7)
+plt.xlim(xlow,1.4)
+plt.ylim(0.0,2.0)
 plt.savefig(f'./figures/bound_alpha.pdf', bbox_inches='tight')
-
 ########################################################################
 from few.trajectory.inspiral import EMRIInspiral
 from few.utils.utility import get_kerr_geo_constants_of_motion
