@@ -542,7 +542,7 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=100.0, 
+        (GaussianMove({"emri": cov}, mode="Gaussian", factor=1000.0, 
                       sky_periodic=sky_periodic, 
                     #   shift_value=shift_value, 
                     #   indx_list=[("emri",el[None,:] ) for el in indx_list]
@@ -561,19 +561,19 @@ def run_emri_pe(
         discard = int(current_it*0.25)
         check_it = 500
         update_it = 200
-        max_it_update = 2000
+        max_it_update = 10000
 
-        if current_it<500: 
+        if current_it < update_it:
             # optimization active
             samp.moves[-1].use_current_state = False
-        else:
-            # optimization inactive
-            samp.moves[-1].use_current_state = True
-        
+
         # sample in all parameters after 1000 iterations
-        if current_it > 1000:
+        if current_it > update_it:
             for el in samp.moves:
                 el.indx_list = None
+            
+            samp.weights[0]=1.0
+            samp.weights[1]=0.0
         
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
@@ -625,10 +625,10 @@ def run_emri_pe(
             inds = samp.get_inds()['emri'][start_ind:end_ind,0]
             to_cov = chain[inds]
             # update DE chain
-            if current_it / update_it > 2:
-                samp.moves[-1].chain = np.append(samp.moves[-1].chain,to_cov,axis=0)
-            else:
-                samp.moves[-1].chain = to_cov.copy()
+            # if current_it / update_it > 2:
+            #     samp.moves[-1].chain = np.append(samp.moves[-1].chain,to_cov,axis=0)
+            # else:
+            #     samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             # update cov
@@ -638,8 +638,8 @@ def run_emri_pe(
             N_prev = (current_it / update_it - 1) * N_current
             # update covariance
             to_scale = (N_current * samp_cov + N_prev * samp.moves[0].all_proposal['emri'].scale) / (N_current + N_prev)
-            # svd = np.linalg.svd(samp_cov)
-            # samp.moves[0].all_proposal['emri'].svd = svd
+            svd = np.linalg.svd(to_scale)
+            samp.moves[0].all_proposal['emri'].svd = svd
             samp.moves[0].all_proposal['emri'].scale = to_scale
             # update Dist
             # pdc = samp.moves[1].generate_dist["emri"]
@@ -651,19 +651,17 @@ def run_emri_pe(
         if (i==0)and(current_it>1):
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy")
-            # svd = np.linalg.svd(samp_cov)
-            # samp.moves[0].all_proposal['emri'].svd = svd
+            svd = np.linalg.svd(samp_cov)
+            samp.moves[0].all_proposal['emri'].svd = svd
             samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
             # get DE chain
-            samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
+            # samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
             # chain = samp.get_chain(discard=discard)['emri']
             # inds = samp.get_inds(discard=discard)['emri']
             # to_cov = chain[inds]
             
-            # samp.weights[0]=0.0
-            # samp.weights[1]=0.0
-            # samp.weights[2]=0.5
-            # samp.weights[3]=0.5
+            samp.weights[0]=1.0
+            samp.weights[1]=0.0
             
         plt.close()
         return False
@@ -698,7 +696,7 @@ def run_emri_pe(
         new_like,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 100.0},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 10.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
