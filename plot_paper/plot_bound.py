@@ -42,6 +42,40 @@ mpl.rcParams.update({
 # "axes.formatter.offset_threshold": 10
 })
 
+def weighted_quantile(values, quantiles, sample_weight=None, 
+                      values_sorted=False, old_style=False):
+    """ Very close to numpy.percentile, but supports weights.
+    NOTE: quantiles should be in [0, 1]!
+    :param values: numpy.array with data
+    :param quantiles: array-like with many quantiles needed
+    :param sample_weight: array-like of the same length as `array`
+    :param values_sorted: bool, if True, then will avoid sorting of
+        initial array
+    :param old_style: if True, will correct output to be consistent
+        with numpy.percentile.
+    :return: numpy.array with computed quantiles.
+    """
+    values = np.array(values)
+    quantiles = np.array(quantiles)
+    if sample_weight is None:
+        sample_weight = np.ones(len(values))
+    sample_weight = np.array(sample_weight)
+    assert np.all(quantiles >= 0) and np.all(quantiles <= 1), \
+        'quantiles should be in [0, 1]'
+
+    if not values_sorted:
+        sorter = np.argsort(values)
+        values = values[sorter]
+        sample_weight = sample_weight[sorter]
+
+    weighted_quantiles = np.cumsum(sample_weight) - 0.5 * sample_weight
+    if old_style:
+        # To be convenient with numpy.percentile
+        weighted_quantiles -= weighted_quantiles[0]
+        weighted_quantiles /= weighted_quantiles[-1]
+    else:
+        weighted_quantiles /= np.sum(sample_weight)
+    return np.interp(quantiles, weighted_quantiles, values)
 
 init_name = 'results_paper/mcmc_rndStart_M*_charge0.0_*seed2601*'
 datasets = sorted(glob.glob(init_name + '.h5'))
@@ -102,6 +136,13 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
 
     
     # alpha bound
+    # lnmu = toplot[:,1] - np.median(toplot[:,1]) + truths[1]
+    # d = np.abs(toplot[:,-1] - np.median(toplot[:,-1]))
+    # lnmu = lnmu[d!=0.0]
+    # d = d[d!=0.0]
+    # log10alpha, w = get_log10alpha_weights(lnmu,d)
+    # bins = np.linspace(-1.5,0.3,num=25)+ np.random.uniform(-0.05,-0.0001)
+    
     mu = np.exp(toplot[:,1] - np.median(toplot[:,1]) + truths[1])
     d = np.abs(toplot[:,-1] - np.median(toplot[:,-1]))
     mu = mu[d!=0.0]
@@ -111,6 +152,8 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     bins = np.linspace(-1.5,0.3,num=25)+ np.random.uniform(-0.05,-0.0001)
     
     plt.hist(np.log10(y), weights=w/y, bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
+    # create a function for the quantile of alpha and put in in summary
+    upp95 = weighted_quantile(np.log10(y),[0.95],sample_weight=w/y)
     # plt.axvline(np.quantile(np.log10(y),0.975),color=cc)
 
 plt.tight_layout()
@@ -154,6 +197,7 @@ plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$',loc
 plt.xlim(xlow,1.4)
 plt.ylim(0.0,2.0)
 plt.savefig(f'./figures/bound_alpha.pdf', bbox_inches='tight')
+breakpoint()
 ########################################################################
 from few.trajectory.inspiral import EMRIInspiral
 from few.utils.utility import get_kerr_geo_constants_of_motion
