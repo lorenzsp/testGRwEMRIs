@@ -566,9 +566,7 @@ def run_emri_pe(
         if current_it < update_it:
             # optimization active
             samp.moves[-1].use_current_state = False
-
-        # sample in all parameters after 1000 iterations
-        if current_it > update_it:
+        else:
             for el in samp.moves:
                 el.indx_list = None
             
@@ -581,13 +579,13 @@ def run_emri_pe(
             print("acceptance", samp.acceptance_fraction )
             print("Temperatures", 1/samp.temperature_control.betas)
             current_acceptance_rate = np.mean(samp.acceptance_fraction)
-            
-            # get samples
-            samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
-            ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
-            
+            print("current acceptance rate", current_acceptance_rate)
             # plot
             if (not zero_like)and(current_it<max_it_update):
+                # get samples
+                samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
+                ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
+                
                 fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
@@ -617,9 +615,10 @@ def run_emri_pe(
                 #     plt.savefig(fp[:-3] + "_td_3over4.pdf")
                     
 
-        if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):
-            start_ind = current_it - update_it # this ensures new samples
-            end_ind = current_it - 20 # this avoids using the same samples
+        if (current_it<max_it_update)and(current_it>update_it)and(current_it % update_it == 0):
+            number_update = current_it / update_it
+            start_ind = current_it - int(update_it * number_update) # this ensures new samples
+            end_ind = int(current_it*0.9) # this avoids using the same samples
             # update moves from chain
             chain = samp.get_chain()['emri'][start_ind:end_ind,0]
             inds = samp.get_inds()['emri'][start_ind:end_ind,0]
@@ -631,16 +630,9 @@ def run_emri_pe(
             #     samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
-            # update cov
-            # current number of samples
-            N_current = to_cov.shape[0]
-            # number of samples in previous update
-            N_prev = (current_it / update_it - 1) * N_current
-            # update covariance
-            to_scale = (N_current * samp_cov + N_prev * samp.moves[0].all_proposal['emri'].scale) / (N_current + N_prev)
-            svd = np.linalg.svd(to_scale)
+            svd = np.linalg.svd(samp_cov)
             samp.moves[0].all_proposal['emri'].svd = svd
-            samp.moves[0].all_proposal['emri'].scale = to_scale
+            samp.moves[0].all_proposal['emri'].scale = samp_cov
             # update Dist
             # pdc = samp.moves[1].generate_dist["emri"]
             # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
@@ -696,7 +688,7 @@ def run_emri_pe(
         new_like,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 10.0},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 50**2/20**2},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -782,7 +774,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./final_results/"
+    folder = "./results/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"

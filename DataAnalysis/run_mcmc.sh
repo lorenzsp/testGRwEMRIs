@@ -10,11 +10,11 @@ p0=13.0
 e0=0.4
 x0=1.0
 charge=0.0
-nwalkers=16
-ntemps=1
+nwalkers=8
+ntemps=2
 nsteps=500000
 noise=0.0
-outname=finalMCMC
+outname=MCMC
 # # ---------------------------------------------------------
 dev=0
 # Create a dynamic output filename
