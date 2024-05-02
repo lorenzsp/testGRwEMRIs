@@ -222,14 +222,16 @@ for filename,el in zip(datasets,pars_inj):
     print('-------------------------------------')
     file  = HDFBackend(filename)
     print(filename)
+    print("iteration",file.iteration)
     print("swaps:",file.swaps_accepted/file.iteration)
-    print("acceptance:")
+    # print("acceptance:")
     print(file.get_move_info())
+    
     # for nummove in range(2):
     #     print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
     # print("iteration", file.iteration/1e5, " *10^5")
-    print("max last loglike", file.get_log_like(discard=file.iteration-1))
-    burn = int(file.iteration*0.2)
+    # print("max last loglike", file.get_log_like(discard=file.iteration-1))
+    burn = int(file.iteration*0.0)
     thin = 1
     # burn,thin = file.get_autocorr_thin_burn()
     # print("iteration ", file.iteration)
@@ -270,9 +272,9 @@ for filename,el in zip(datasets,pars_inj):
     truths = np.load(el)
     
 
-    # # # check autocorrelation plot
+    # # check autocorrelation plot
     # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
-    # # # check chains
+    # # check chains
     
     for ii in range(samp.shape[-1]):
         plt.figure()
