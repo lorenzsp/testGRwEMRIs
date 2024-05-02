@@ -529,9 +529,11 @@ def run_emri_pe(
     # MCMC moves (move, percentage of draws)
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
-    for el in [0,1,2,3,4,5,6,7,8,9,10,11]:
+    indx_list.append(get_True_vec(np.arange(ndim)))
+    for el in [0,1,2,3,4]:
         indx_list.append(get_True_vec([el,12]))
-        indx_list.append(get_True_vec(np.arange(ndim)))
+    
+    gibbs_setup_start = [("emri",el[None,:] ) for el in indx_list]
     
     # shift values move
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
@@ -542,36 +544,35 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="Gaussian", factor=1000.0, 
-                      sky_periodic=sky_periodic, 
-                    #   shift_value=shift_value, 
-                    #   indx_list=[("emri",el[None,:] ) for el in indx_list]
-                    )
-                        ,0.5),
-        # (move_gmm,1e-5),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic, 
-                    #   shift_value=shift_value,
-                    #   indx_list=[("emri",el[None,:] ) for el in indx_list]
-                    )
-                      ,0.5),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.3),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
-        discard = int(current_it*0.25)
-        check_it = 500
-        update_it = 200
+        discard = int(current_it*0.2)
+        check_it = 1000
+        update_it = 250
         max_it_update = 10000
-
-        if current_it < update_it:
-            # optimization active
-            samp.moves[-1].use_current_state = False
+        
+        # use current state
+        samp.moves[-1].use_current_state = True
+        
+        # do not use DE in the first update_it
+        if (current_it<update_it):
+            samp.weights[0]=0.5
+            samp.weights[1]=0.5
+            samp.weights[2]=0.0
         else:
+            samp.weights[0]=0.4
+            samp.weights[1]=0.4
+            samp.weights[2]=0.2
+        
+        # stop gibbs sampling at half of max_it_update
+        if current_it>max_it_update/2:
             for el in samp.moves:
                 el.indx_list = None
-            
-            samp.weights[0]=1.0
-            samp.weights[1]=0.0
         
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
@@ -615,27 +616,24 @@ def run_emri_pe(
                 #     plt.savefig(fp[:-3] + "_td_3over4.pdf")
                     
 
-        if (current_it<max_it_update)and(current_it>update_it)and(current_it % update_it == 0):
+        if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):
             number_update = current_it / update_it
-            start_ind = current_it - int(update_it * number_update) # this ensures new samples
-            end_ind = int(current_it*0.9) # this avoids using the same samples
+            start_ind = discard # this ensures new samples
+            end_ind = int(current_it*0.9) # this avoids using the last samples
+            
             # update moves from chain
             chain = samp.get_chain()['emri'][start_ind:end_ind,0]
             inds = samp.get_inds()['emri'][start_ind:end_ind,0]
             to_cov = chain[inds]
             # update DE chain
-            # if current_it / update_it > 2:
-            #     samp.moves[-1].chain = np.append(samp.moves[-1].chain,to_cov,axis=0)
-            # else:
-            #     samp.moves[-1].chain = to_cov.copy()
+            samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
             samp.moves[0].all_proposal['emri'].svd = svd
             samp.moves[0].all_proposal['emri'].scale = samp_cov
-            # update Dist
-            # pdc = samp.moves[1].generate_dist["emri"]
-            # pdc.priors_in[(0,1,2,3,4,5,6,7,8,9,10,11,12)].fit(samples)
+            samp.moves[1].all_proposal['emri'].svd = svd
+            samp.moves[1].all_proposal['emri'].scale = samp_cov
             # save cov
             np.save(fp[:-3] + "_covariance", samp_cov)
             np.save(fp[:-3] + "_samples", to_cov)
@@ -646,14 +644,17 @@ def run_emri_pe(
             svd = np.linalg.svd(samp_cov)
             samp.moves[0].all_proposal['emri'].svd = svd
             samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
+            samp.moves[1].all_proposal['emri'].svd = svd
+            samp.moves[1].all_proposal['emri'].scale = samp_cov.copy()
             # get DE chain
-            # samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
+            samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
             # chain = samp.get_chain(discard=discard)['emri']
             # inds = samp.get_inds(discard=discard)['emri']
             # to_cov = chain[inds]
             
-            samp.weights[0]=1.0
-            samp.weights[1]=0.0
+            samp.weights[0]=0.4
+            samp.weights[1]=0.4
+            samp.weights[2]=0.2
             
         plt.close()
         return False
