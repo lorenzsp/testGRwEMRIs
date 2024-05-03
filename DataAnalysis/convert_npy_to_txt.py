@@ -15,6 +15,10 @@ for npy_file in npy_files:
 
     # Write the array to a .txt file
     np.savetxt(npy_file.replace('.npy', '.txt'), array)
+    
+    # Run the zip command
+    subprocess.run(['zip', '-r', npy_file.replace('.npy', '.zip'), npy_file.replace('.npy', '.txt')])
+    
+    # now remove the .txt file
+    subprocess.run(['rm', npy_file.replace('.npy', '.txt')])
 
-# Run the zip command
-subprocess.run(['zip', '-r', 'results.zip', 'results/'])
