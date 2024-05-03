@@ -224,58 +224,63 @@ for filename,el in zip(datasets,pars_inj):
     print(filename)
     print("iteration",file.iteration)
     print("swaps:",file.swaps_accepted/file.iteration)
-    # print("acceptance:")
+    print("acceptance:")
     print(file.get_move_info())
     
-    # for nummove in range(2):
-    #     print(file.get_move_info()[f'GaussianMove_{nummove}']['acceptance_fraction'])
-    # print("iteration", file.iteration/1e5, " *10^5")
-    # print("max last loglike", file.get_log_like(discard=file.iteration-1))
-    burn = int(file.iteration*0.0)
-    thin = 1
+    burn, thin = int(file.iteration*0.35), 1
     # burn,thin = file.get_autocorr_thin_burn()
-    # print("iteration ", file.iteration)
-    # autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
-    # print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
+    autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
+    print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
 
-    # # print(file.get_betas()[-1])
-    # # print("Gel Rub stat",file.get_gelman_rubin_convergence_diagnostic(discard=burn, thin=thin, doprint=True))
     
-    
-    # # # create directory
+    # # ------ create dir ----------
     repo_name = el.split('_injected_pars.npy')[0]
     create_folder(repo_name)
     
-    # # # loglike
+    # ------ Log like ----------
     ll = file.get_log_like(discard=burn, thin=thin)[:]
     plt.figure()
     [plt.plot(ll[:,temp,walker],'-',label=f'{walker}') for walker in np.arange(file.nwalkers)]
     plt.tight_layout()
-    # plt.axvline(2000,color='k')
     plt.savefig(repo_name+f'/traceplot_loglike.png', bbox_inches='tight')
     ll = file.get_log_like(discard=burn, thin=thin)[-1,temp]
-    mask = (ll<0.0)
+    mask = (ll<10.0)
     # mask = (ll>np.max(ll)-20)
     print("maximum likelihood",np.max(ll))
     
-    
-    # # # print("mask",mask)
-
-    # # # chains
-    maxind = -1#int(1.3e6/file.nwalkers)
+    # ------ Import samples ----------
+    maxind = int(file.iteration*file.nwalkers*file.ntemps*0.95)
     samp = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...]
     inds = file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]
     toplot = samp[inds]
     ll = file.get_log_like(discard=burn, thin=thin)[:].flatten()
     
-    # np.save(repo_name + '_samples',toplot)
-    truths = np.load(el)
-    
+    # ------ Covariance Evolution ----------
+    samp_cov = np.cov(toplot,rowvar=False) * 2.38**2 / 13
+    # create a plot to investigate the stability of the covariance matrix as a function of the iteration number
+    it_cov_ev = range(100, samp.shape[0], 100)
+    cov_evolution = np.asarray([np.diag(np.cov(samp[:i].reshape(-1, samp.shape[-1]), rowvar=False) * 2.38**2 / 13 ) for i in it_cov_ev])
+    # normalize cov_evolution by the first element
+    curent_cov = np.diag(np.load(repo_name+'_covariance.npy'))
+    cov_evolution /= curent_cov#cov_evolution[0]
 
-    # # check autocorrelation plot
-    # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
-    # # check chains
+    plt.figure()
+    [plt.plot(it_cov_ev,cov_evolution[:,ii],label=labels[ii]) for ii in range(cov_evolution.shape[1])]
+    plt.xlabel('iteration')
+    plt.ylabel('normalized diagonal element of covariance matrix')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(repo_name+'/covariance_trace.png')
     
+    np.save(repo_name+'_covariance.npy', samp_cov) 
+    np.save(repo_name + '_samples',toplot)
+    
+    # ------ autocorrelation plot ----------
+    get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
+    
+    # ------ trace plot ----------
+    # check chains
+    truths = np.load(el)
     for ii in range(samp.shape[-1]):
         plt.figure()
         plt.plot(samp[:,:,0,ii])
@@ -284,67 +289,35 @@ for filename,el in zip(datasets,pars_inj):
         plt.tight_layout()
         plt.savefig(repo_name+f'/traceplot_chain{ii}.png', bbox_inches='tight')
         
-        # plt.figure()
-        # plt.hist(toplot[:,ii],bins=30,density=True)
-        # plt.axvline(truths[ii],color='k')
-        # plt.xlabel(labels[ii])
-        # plt.tight_layout()
-        # plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
+        plt.figure()
+        plt.hist(toplot[:,ii],bins=30,density=True)
+        plt.axvline(truths[ii],color='k')
+        plt.xlabel(labels[ii])
+        plt.tight_layout()
+        plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
     
-    # alpha bound
-    # mu = np.exp(toplot[:,1])
-    # d = np.abs(toplot[:,-1])
-    # w = mu / np.sqrt(d)
-    # y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
-    # plt.figure()
-    # plt.hist(np.log10(y), weights=w/y, bins=np.linspace(-2.0,0.5,num=40), density=True)
-    # plt.tight_layout()
-    # plt.xlabel(r'$\log_{10} [\sqrt{\alpha} / {\rm km} ]$',size=22)
-    # vpos = 0.8
-    # plt.axvline(vpos,color='k',linestyle=':',label='Current bound')
-    # vpos = np.log10(0.4 * np.sqrt( 16 * np.pi**0.5 ))
+    # ------ alpha bound plot ----------
+    mu = np.exp(toplot[:,1])
+    d = np.abs(toplot[:,-1])
+    w = mu / np.sqrt(d)
+    y = np.sqrt(2*d)*mu*MRSUN_SI/1e3
+    plt.figure()
+    plt.hist(np.log10(y), weights=w/y, bins=np.linspace(-2.0,0.5,num=40), density=True)
+    plt.tight_layout()
+    plt.xlabel(r'$\log_{10} [\sqrt{\alpha} / {\rm km} ]$',size=22)
+    vpos = 0.8
+    plt.axvline(vpos,color='k',linestyle=':',label='Current bound')
+    vpos = np.log10(0.4 * np.sqrt( 16 * np.pi**0.5 ))
     # plt.axvline(vpos,color='r',linestyle=':',label='Best bound from 3G')
-    # text_position = (vpos - 0.1, vpos)  # Adjust the position as needed
-    # plt.text(*text_position, 'Current bound', verticalalignment='center', fontsize=18, rotation='vertical')
-    # legend = plt.legend(title=r'$(T [{\rm yr}], M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yr}])$',framealpha=1.0,ncol=2,loc='upper left',fontsize=12)
-    # legend.get_title().set_fontsize('12')
-    # plt.legend()
-    # plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
+    text_position = (vpos - 0.1, vpos)  # Adjust the position as needed
+    plt.text(*text_position, 'Current bound', verticalalignment='center', fontsize=18, rotation='vertical')
+    legend = plt.legend(title=r'$(T [{\rm yr}], M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yr}])$',framealpha=1.0,ncol=2,loc='upper left',fontsize=12)
+    legend.get_title().set_fontsize('12')
+    plt.legend()
+    plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
     
-    # CORNER_KWARGS["truths"] = truths
+    CORNER_KWARGS["truths"] = truths
     
-    # overlaid_corner([toplot], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
-    # np.save(repo_name + '/samples',toplot)
-    # plt.figure(); corner.corner(toplot, truths=truths); plt.tight_layout(); plt.savefig(repo_name + '/corner.png')
-    # # print median
-    # # print("median",np.median(toplot,axis=0))
+    overlaid_corner([toplot], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
+    np.save(repo_name + '/samples',toplot)
     plt.close()
-    # if 'bias' not in repo_name:
-    #     samp_final.append(np.hstack((toplot[:,:-1],ll[:,None])))
-    #     # plot d vs likelihood
-    #     plt.figure()
-    #     plt.plot(toplot[:,-1],ll,'.')
-    #     plt.xlabel('d')
-    #     plt.ylabel('loglike')
-    #     plt.tight_layout()
-    #     plt.savefig(repo_name+'/d_vs_loglike.png', bbox_inches='tight')
-    # else:
-    #     samp_final.append(np.hstack((toplot,ll[:,None])))
-    # inj_pars.append(repo_name.split('/')[-1])
-    # # print("Effective sample size",toplot.shape[0] / np.mean(autocorr_time),  toplot.shape[0])
-
-# CORNER_KWARGS = dict(
-#     labels=labels[:-1]+['loglike'],
-#     bins=40,
-#     label_kwargs=dict(fontsize=35),
-#     levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
-#     plot_density=False,
-#     plot_datapoints=False,
-#     fill_contours=False,
-#     show_titles=False,
-#     max_n_ticks=4,
-#     truth_color='k',
-#     labelpad=0.3,
-#     truths=list(truths[:-1])+[0.0],
-# )
-# overlaid_corner(samp_final, inj_pars, name_save= f'./corner', corn_kw=CORNER_KWARGS)

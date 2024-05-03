@@ -554,7 +554,7 @@ def run_emri_pe(
         discard = int(current_it*0.3)
         check_it = 1000
         update_it = 1000
-        max_it_update = 50000
+        max_it_update = 100000
         
         # use current state
         samp.moves[-1].use_current_state = True
