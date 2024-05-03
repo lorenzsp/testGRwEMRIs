@@ -234,8 +234,8 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     
     # Save the DataFrame as a PDF table
     # Save the DataFrame as a LaTeX table
-    pd.set_option('display.float_format', lambda x: '%.8e' % x)
-    df.to_markdown('./posterior_summary/parameter_table'+repo_name.split('/')[-1]+'.md', floatfmt=".8e")
+    # pd.set_option('display.float_format', lambda x: '%.16e' % x)
+    df.to_markdown('./posterior_summary/summary_table'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
 
     # Parse parameters from repo_name
     params = repo_name.split('_')[2:]
@@ -276,7 +276,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 ########################### plot all #############################################
 # create a txt and store the information in list_dict
 
-overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
 # indintr = np.asarray([0,1,2,3,4,10,11,12])
 # c_kw = CORNER_KWARGS.copy()
 # c_kw['labels'] = [labels[i] for i in indintr]
