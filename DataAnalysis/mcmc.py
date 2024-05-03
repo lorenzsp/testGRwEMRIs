@@ -545,16 +545,16 @@ def run_emri_pe(
     
     moves = [
         (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="DE", sky_periodic=sky_periodic),0.3),
+        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=10.0, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="DE", factor=2.0, sky_periodic=sky_periodic),0.3),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
-        discard = int(current_it*0.2)
+        discard = int(current_it*0.3)
         check_it = 1000
-        update_it = 250
-        max_it_update = 10000
+        update_it = 1000
+        max_it_update = 50000
         
         # use current state
         samp.moves[-1].use_current_state = True
@@ -570,7 +570,7 @@ def run_emri_pe(
             samp.weights[2]=0.2
         
         # stop gibbs sampling at half of max_it_update
-        if current_it>max_it_update/2:
+        if current_it>5000:
             for el in samp.moves:
                 el.indx_list = None
         
@@ -587,7 +587,7 @@ def run_emri_pe(
                 samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
                 ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
                 
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
@@ -616,16 +616,14 @@ def run_emri_pe(
                 #     plt.savefig(fp[:-3] + "_td_3over4.pdf")
                     
 
-        if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):
-            number_update = current_it / update_it
-            start_ind = discard # this ensures new samples
-            end_ind = int(current_it*0.9) # this avoids using the last samples
-            
+        if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):            
             # update moves from chain
-            chain = samp.get_chain()['emri'][start_ind:end_ind,0]
-            inds = samp.get_inds()['emri'][start_ind:end_ind,0]
+            chain = samp.get_chain(discard=discard)['emri'][:,0]
+            inds = samp.get_inds(discard=discard)['emri'][:,0]
             to_cov = chain[inds]
             # update DE chain
+            # create 10000 random indices
+            # inds = np.random.randint(0,to_cov.shape[0],10000)
             samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
