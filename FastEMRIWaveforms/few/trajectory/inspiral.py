@@ -27,6 +27,7 @@ from scipy.integrate import cumulative_simpson
 
 # Cython/C++ imports
 from pyInspiral import pyInspiralGenerator, pyDerivative
+from pyUtility import pyKerrEqDerivFrequenciesPhiR
 
 # Python imports
 from few.utils.baseclasses import TrajectoryBase
@@ -320,3 +321,61 @@ class EMRIInspiral(TrajectoryBase):
                 out = np.hstack((out, phase_array))
 
         return tuple(out.T.copy())
+
+    def get_omegadot(self, M, mu, a, y1, y2, y3, *args, Phi_phi0=0.0, Phi_theta0=0.0, Phi_r0=0.0, 
+        in_coordinate_time=True,
+        dt=10.0,
+        T=1.0,
+        new_t=None,
+        spline_kwargs={},
+        DENSE_STEPPING=0,
+        max_init_len=1000,
+        upsample=False,
+        err=1e-10,
+        use_rk4=False,
+        fix_t=False,
+        **kwargs):
+    
+        kwargs["dt"] = dt
+        kwargs["T"] = T
+        kwargs["max_init_len"] = max_init_len
+        kwargs["err"] = err
+        kwargs["DENSE_STEPPING"] = DENSE_STEPPING
+        kwargs["use_rk4"] = use_rk4
+        
+        # if integrating constants of motion, convert from pex to ELQ now
+        if self.integrate_constants_of_motion:
+            ValueError("Cannot use get_omegadot with constants of motion.")
+
+        # transfer kwargs from parent class
+        temp_kwargs = {key: kwargs[key] for key in self.specific_kwarg_keys}
+
+        args_in = np.asarray(args)
+
+        # correct for issue in Cython pass
+        if len(args_in) == 0:
+            args_in = np.array([0.0])
+
+        if self.integrate_ODE_phases:
+            y0 = np.array([y1, y2, y3, Phi_phi0, Phi_theta0, Phi_r0])
+        else:
+            y0 = np.array([y1, y2, y3])
+        
+        args_in = np.asarray(args)
+        if len(args_in) == 0:
+            args_in = np.array([0.0])
+        
+        self.inspiral_generator.moves_check = 0
+        temp_kwargs = {key: kwargs[key] for key in self.specific_kwarg_keys}
+        self.inspiral_generator.initialize_integrator(**temp_kwargs)
+
+        # Compute the adimensionalized time steps and max time
+        self.inspiral_generator.tmax_dimensionless = YRSID_SI / (M * MTSUN_SI)
+        self.inspiral_generator.dt_dimensionless = 10.0 / (M * MTSUN_SI)
+        self.inspiral_generator.Msec = MTSUN_SI * M
+        self.inspiral_generator.a = a
+        # define fixed variables
+        self.inspiral_generator.integrator.add_parameters_to_holder(M, mu, a, args_in)
+        pdot,edot = self.inspiral_generator.integrator.get_derivatives(y0)[:2] / (mu/M)
+        OmPhi_dp, OmPhi_de, OmR_dp, OmR_de = pyKerrEqDerivFrequenciesPhiR(a, y1, y2)
+        return OmPhi_dp * pdot + OmPhi_de * edot , OmR_dp * pdot + OmR_de * edot
