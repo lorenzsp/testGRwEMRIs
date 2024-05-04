@@ -545,8 +545,8 @@ def run_emri_pe(
     
     moves = [
         (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=10.0, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="DE", factor=2.0, sky_periodic=sky_periodic),0.3),
+        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=20.0, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.2),
     ]
 
     def stopping_fn(i, res, samp):

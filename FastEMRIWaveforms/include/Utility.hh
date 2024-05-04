@@ -46,4 +46,5 @@ double KerrGeoAngularMomentum(double a, double p, double e, double x, double En)
 
 double separatrix_KerrEquatorial(const double a, const double e);
 
+void KerrEquatorialFrequencyDerivative(double *omegaPhi_dp, double *omegaPhi_de, double a, double p, double e);
 #endif // __FUND_FREQS__

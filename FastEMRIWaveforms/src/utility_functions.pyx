@@ -19,6 +19,7 @@ cdef extern from "../include/Utility.hh":
     void Y_to_xI_vector(double* x, double* a, double* p, double* e, double* Y, int length);
     void set_threads(int num_threads);
     int get_threads();
+    void KerrEquatorialFrequencyDerivative(double *omegaPhi_dp, double *omegaPhi_de, double a, double p, double e);
 
 def pyKerrGeoCoordinateFrequencies(np.ndarray[ndim=1, dtype=np.float64_t] a,
                                    np.ndarray[ndim=1, dtype=np.float64_t] p,
@@ -98,3 +99,11 @@ def set_threads_wrap(num_threads):
 
 def get_threads_wrap():
     return get_threads()
+
+def pyKerrEqDerivFrequenciesPhi(a_in, p_in, e_in):
+    cdef double OmegaPhi_dp, OmegaPhi_de
+    cdef double a = a_in
+    cdef double p = p_in
+    cdef double e = e_in
+    KerrEquatorialFrequencyDerivative(&OmegaPhi_dp, &OmegaPhi_de, a, p, e)
+    return (OmegaPhi_dp, OmegaPhi_de)
