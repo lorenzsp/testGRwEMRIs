@@ -1,3 +1,43 @@
+# Repository Description
+
+This repository provides the code and the data analysis tools to reproduce the paper [](). To reproduce the results of the paper it is necessary to install the `FastEMRIWaveform` package (installation details outlined below), and `Eryn` and `LISAanalysistools` which can be installed using `python setup.py install`.
+
+# Markov Chain Monte Carlo (MCMC) analysis
+
+mcmc.py
+-------
+
+This script contains the implementation of the Markov Chain Monte Carlo (MCMC) algorithm used in the Fast EMRI Waveforms project.
+
+Usage:
+------
+You can run this script directly from the command line using the following command:
+
+  python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 7 -nwalkers 16 -ntemps 1 -nsteps 1000 -outname test
+
+where:
+- `-Tobs` is the observation time in years.
+- `-M` is the mass of the black hole (MBH) in solar masses.
+- `-mu` is the mass of the compact object in solar masses.
+- `-a` is the dimensionless spin of the black hole.
+- `-p0` is the semi-latus rectum.
+- `-e0` is the eccentricity.
+- `-x0` is the prograde orbits (default value is 1.0).
+- `-charge` is the scalar charge.
+- `-dev` is the CUDA device (optional, default value is 0).
+- `-dt` is the sampling interval delta t (optional, default value is 10.0).
+- `-nwalkers` is the number of MCMC walkers.
+- `-ntemps` is the number of MCMC temperatures.
+- `-nsteps` is the number of MCMC iterations (optional, default value is 1000).
+- `-SNR` is the signal-to-noise ratio (optional, default value is 50.0).
+- `-outname` is the output name (optional, default value is "MCMC").
+- `-zerolike` is the zero likelihood test (optional, default value is 0).
+- `-noise` is the noise injection (on=1, off=0) (optional, default value is 1.0).
+
+Author:
+-------
+Lorenzo Speri (lorenzo.speri@aei.mpg.de)
+
 # few: Fast EMRI Waveforms for test of GR
 
 This package contains the highly modular framework for fast and accurate extreme mass ratio inspiral (EMRI) waveforms from [arxiv.org/2104.04582](https://arxiv.org/abs/2104.04582) and [arxiv.org/2008.06071](https://arxiv.org/abs/2008.06071). The waveforms in this package combine a variety of separately accessible modules to form EMRI waveforms on both CPUs and GPUs. Generally, the modules fall into four categories: trajectory, amplitudes, summation, and utilities. Please see the [documentation](https://bhptoolkit.org/FastEMRIWaveforms/) for further information on these modules. The code can be found on Github [here](https://github.com/BlackHolePerturbationToolkit/FastEMRIWaveforms). The data necessary for various modules in this package will automatically download the first time it is needed. If you would like to view the data, it can be found on [Zenodo](https://zenodo.org/record/3981654#.XzS_KRNKjlw). The current and all past code release zip files can also be found on Zenodo [here](https://zenodo.org/record/4005001).
