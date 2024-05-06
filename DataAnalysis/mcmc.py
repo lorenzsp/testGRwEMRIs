@@ -545,8 +545,8 @@ def run_emri_pe(
     
     moves = [
         (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=20.0, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="DE", factor=10.0, sky_periodic=sky_periodic),0.2),
+        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
     ]
 
     def stopping_fn(i, res, samp):
@@ -571,8 +571,7 @@ def run_emri_pe(
         
         # stop gibbs sampling at half of max_it_update
         if current_it>5000:
-            for el in samp.moves:
-                el.indx_list = None
+            samp.moves[0].indx_list = None
         
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
