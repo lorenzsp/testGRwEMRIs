@@ -210,7 +210,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'mcmc_runs/*nw4*'#'results_paper//mcmc_rndStart_M5e+05_mu5.0*'#
+init_name = 'mcmc_runs/*'#'results_paper//mcmc_rndStart_M5e+05_mu5.0*'#
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -233,7 +233,6 @@ for filename,el in zip(datasets,pars_inj):
     autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
 
-    
     # # ------ create dir ----------
     repo_name = el.split('_injected_pars.npy')[0]
     create_folder(repo_name)
@@ -257,28 +256,28 @@ for filename,el in zip(datasets,pars_inj):
     toplot = samp[inds]
     ll = file.get_log_like(discard=burn, thin=thin)[:,temp].flatten()
     
-    # # ------ Covariance Evolution ----------
-    # samp_cov = np.cov(toplot,rowvar=False) * 2.38**2 / 13
-    # # create a plot to investigate the stability of the covariance matrix as a function of the iteration number
-    # it_cov_ev = range(100, samp.shape[0], 100)
-    # cov_evolution = np.asarray([np.diag(np.cov(samp[:i].reshape(-1, samp.shape[-1]), rowvar=False) * 2.38**2 / 13 ) for i in it_cov_ev])
-    # # normalize cov_evolution by the first element
+    # ------ Covariance Evolution ----------
+    samp_cov = np.cov(toplot,rowvar=False) * 2.38**2 / 13
+    # create a plot to investigate the stability of the covariance matrix as a function of the iteration number
+    it_cov_ev = range(100, samp.shape[0], 100)
+    cov_evolution = np.asarray([np.diag(np.cov(samp[:i].reshape(-1, samp.shape[-1]), rowvar=False) * 2.38**2 / 13 ) for i in it_cov_ev])
+    # normalize cov_evolution by the first element
     # curent_cov = np.diag(np.load(repo_name+'_covariance.npy'))
-    # cov_evolution /= curent_cov#cov_evolution[0]
+    cov_evolution /= cov_evolution[0]
 
-    # plt.figure()
-    # [plt.plot(it_cov_ev,cov_evolution[:,ii],label=labels[ii]) for ii in range(cov_evolution.shape[1])]
-    # plt.xlabel('iteration')
-    # plt.ylabel('normalized diagonal element of covariance matrix')
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig(repo_name+'/covariance_trace.png')
+    plt.figure()
+    [plt.plot(it_cov_ev,cov_evolution[:,ii],label=labels[ii]) for ii in range(cov_evolution.shape[1])]
+    plt.xlabel('iteration')
+    plt.ylabel('normalized diagonal element of covariance matrix')
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(repo_name+'/covariance_trace.png')
     
-    # np.save(repo_name+'_covariance.npy', samp_cov) 
-    # np.save(repo_name + '_samples',toplot)
+    np.save(repo_name+'_covariance.npy', samp_cov) 
+    np.save(repo_name + '_samples',toplot)
     
-    # ------ autocorrelation plot ----------
-    # get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
+    # # ------ autocorrelation plot ----------
+    get_autocorr_plot(samp[:,:,0,:],repo_name+'/autocorrelation')
     
     # ------ trace plot ----------
     # check chains
@@ -290,14 +289,14 @@ for filename,el in zip(datasets,pars_inj):
         plt.tight_layout()
         plt.savefig(repo_name+f'/traceplot_chain{ii}.png', bbox_inches='tight')
         
-        # plt.figure()
-        # plt.hist(toplot[:,ii],bins=30,density=True)
-        # plt.axvline(truths[ii],color='k')
-        # plt.xlabel(labels[ii])
-        # plt.tight_layout()
-        # plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
+    # #     # plt.figure()
+    # #     # plt.hist(toplot[:,ii],bins=30,density=True)
+    # #     # plt.axvline(truths[ii],color='k')
+    # #     # plt.xlabel(labels[ii])
+    # #     # plt.tight_layout()
+    # #     # plt.savefig(repo_name+f'/posterior_chain{ii}.png', bbox_inches='tight')
     
-    # ------ alpha bound plot ----------
+    # # ------ alpha bound plot ----------
     # mu = np.exp(toplot[:,1])
     # d = np.abs(toplot[:,-1])
     # w = mu / np.sqrt(d)
@@ -317,8 +316,8 @@ for filename,el in zip(datasets,pars_inj):
     # plt.legend()
     # plt.savefig(repo_name+f'/alpha_bound.png', bbox_inches='tight')
     
-    # CORNER_KWARGS["truths"] = np.append(truths,0.0)
+    CORNER_KWARGS["truths"] = np.append(truths,0.0)
     
-    # overlaid_corner([np.hstack((toplot,ll[:,None]))], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
+    overlaid_corner([np.hstack((toplot,ll[:,None]))], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
     # np.save(repo_name + '/samples',toplot)
     plt.close()

@@ -254,8 +254,11 @@ def run_emri_pe(
     else:
         # prior_charge = uniform_dist(-0.1, 0.1)
         # if charge != 0.0:
-        prior_charge = uniform_dist(0.0, 0.1)
+        emri_injection_params[-1] = emri_injection_params[-1]**2 / 4.0
+        prior_charge = uniform_dist(-0.6, 0.6)
 
+    def charge_from_gamma(gamma):
+        return np.sqrt(4.0*np.abs(gamma))
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
     # on my list of things to improve
@@ -273,7 +276,7 @@ def run_emri_pe(
             1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
-            # 14: np.exp
+            14: charge_from_gamma
         }
 
     transform_fn = TransformContainer(
@@ -457,13 +460,12 @@ def run_emri_pe(
         # precision of 1e-5
         cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         # increase the size of the covariance only along the last direction
-        # cov *= 100.0
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
-
+        tmp[:,-1] = np.sign(tmp[:,-1]) * tmp[:,-1]**2 / 4
+        # create a function to find the 1 sigma contour of the likelihood is each direction
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
-        tmp[0,-1] = 1e-7
-        tmp[:,-1] = np.abs(tmp[:,-1])
+
         # define second element of tmp like [ 1.38155123e+01  2.30258725e+00  9.50000418e-01  8.34323989e+00 3.99998872e-01  1.00599036e+00 -8.15276851e-03  3.14312695e+00 6.80315016e-01  1.05573421e+00  1.02150614e+00  3.20198579e+00]
         # tmp[1:3]= draw_initial_points(np.asarray([1.38155123e+01,  2.30258725e+00,  9.50000418e-01,  8.34323989e+00, 3.99998872e-01,  1.00599036e+00, -8.15276851e-03,  3.14312695e+00, 6.80315016e-01,  1.05573421e+00,  1.02150614e+00,  3.20198579e+00, 0.0])
         #                             , cov, nwalkers*ntemps)[1:3]
@@ -500,7 +502,7 @@ def run_emri_pe(
     # true likelihood
     true_like = like(emri_injection_params_in[None,:], **emri_kwargs)
     print("true log like",true_like)
-    
+
     # start state
     start_state = State(
         {"emri": start_params.reshape(ntemps, nwalkers, 1, ndim)}, 
@@ -522,23 +524,16 @@ def run_emri_pe(
     # import itertools
     # stuff = np.arange(ndim)
     # list_comb = []
-    # for subset in itertools.combinations(stuff, 3):
+    # for subset in itertools.combinations(stuff, 2):
     #     list_comb.append(subset)
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
+    # [indx_list.append(get_True_vec(np.arange(ndim))) for el in list_comb]
     
     sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
 
     # # MCMC moves (move, percentage of draws)
-    indx_list.append(get_True_vec([5,6,7]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
-    indx_list.append(get_True_vec([8,9]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
-    indx_list.append(get_True_vec([10,11]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
-    indx_list.append(get_True_vec(np.arange(ndim)))
     for el in np.arange(ndim-1):
         indx_list.append(get_True_vec([el,12]))
         indx_list.append(get_True_vec(np.arange(ndim)))
@@ -546,40 +541,35 @@ def run_emri_pe(
     gibbs_setup_start = [("emri",el[None,:] ) for el in indx_list]
     # gibbs_setup_start = None
     
-    # shift values move
-    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
-    # prob, index par to shift, value
-    # shift_value = [0.3, to_shift, np.pi]
-    to_shift = [("emri",el[None,:] ) for el in [get_True_vec([12])]]
-    shift_value = [0.3, to_shift, 5e-3]
-    
+    # make the proposal in d always positive
+    abs_value = get_True_vec([12])
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.4),
-        (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
-        # (StretchMove(use_gpu=use_gpu, live_dangerously=True),0.2),
+        (StretchMove(use_gpu=use_gpu),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start, abs_value=abs_value),0.5),
+        # (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start, abs_value=abs_value),0.4),
+        # (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
         discard = int(current_it*0.2)
         check_it = 1000
-        update_it = 100
-        max_it_update = 10001
+        update_it = 1000
+        max_it_update = int(1e4)
         
         # use current state
-        samp.moves[-1].use_current_state = True
+        # samp.moves[-1].use_current_state = True
         
         # do not use DE in the first update_it
-        if (current_it<update_it):
-            samp.weights[0]=0.5
-            samp.weights[1]=0.5
-            samp.weights[2]=0.0
-        else:
-            samp.weights[0]=0.4
-            samp.weights[1]=0.4
-            samp.weights[2]=0.2
+        # if (current_it<update_it):
+        #     samp.weights[0]=0.5
+        #     samp.weights[1]=0.5
+        #     samp.weights[2]=0.0
+        # else:
+        #     samp.weights[0]=0.4
+        #     samp.weights[1]=0.4
+        #     samp.weights[2]=0.2
         
         # stop gibbs sampling at half of max_it_update
         # if current_it>5000:
@@ -598,7 +588,7 @@ def run_emri_pe(
                 samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
                 ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
                 
-                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
@@ -629,18 +619,18 @@ def run_emri_pe(
 
         if (current_it<max_it_update)and(current_it>=update_it)and(current_it % update_it == 0):            
             # update moves from chain
-            chain = samp.get_chain(discard=discard)['emri'][:,0]
-            inds = samp.get_inds(discard=discard)['emri'][:,0]
+            chain = samp.get_chain(discard=discard)['emri'][:,:]
+            inds = samp.get_inds(discard=discard)['emri'][:,:]
             to_cov = chain[inds]
             # update DE chain
             # create 10000 random indices
             # inds = np.random.randint(0,to_cov.shape[0],10000)
-            samp.moves[-1].chain = to_cov.copy()
+            # samp.moves[-1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].svd = svd
-            samp.moves[0].all_proposal['emri'].scale = samp_cov
+            # samp.moves[0].all_proposal['emri'].svd = svd
+            # samp.moves[0].all_proposal['emri'].scale = samp_cov
             samp.moves[1].all_proposal['emri'].svd = svd
             samp.moves[1].all_proposal['emri'].scale = samp_cov
             # save cov
@@ -651,19 +641,19 @@ def run_emri_pe(
             print("resuming run calculate covariance from chain")            
             samp_cov = np.load(fp[:-3] + "_covariance.npy")
             svd = np.linalg.svd(samp_cov)
-            samp.moves[0].all_proposal['emri'].svd = svd
-            samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
+            # samp.moves[0].all_proposal['emri'].svd = svd
+            # samp.moves[0].all_proposal['emri'].scale = samp_cov.copy()
             samp.moves[1].all_proposal['emri'].svd = svd
             samp.moves[1].all_proposal['emri'].scale = samp_cov.copy()
             # get DE chain
-            samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
+            # samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
             # chain = samp.get_chain(discard=discard)['emri']
             # inds = samp.get_inds(discard=discard)['emri']
             # to_cov = chain[inds]
             
-            samp.weights[0]=0.4
-            samp.weights[1]=0.4
-            samp.weights[2]=0.2
+            # samp.weights[0]=0.4
+            # samp.weights[1]=0.4
+            # samp.weights[2]=0.2
             
         plt.close()
         return False
@@ -698,7 +688,7 @@ def run_emri_pe(
         new_like,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 50**2/25**2},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 50**2/20**2},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,

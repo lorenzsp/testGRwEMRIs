@@ -67,7 +67,7 @@ class GaussianMove(MHMove):
 
     """
 
-    def __init__(self, cov_all, mode="AM", factor=None, indx_list=None, sky_periodic=None, shift_value=None, prop=None, **kwargs):
+    def __init__(self, cov_all, mode="AM", factor=None, indx_list=None, sky_periodic=None, abs_value=None, prop=None, **kwargs):
 
         self.all_proposal = {}
         
@@ -108,8 +108,8 @@ class GaussianMove(MHMove):
         self.indx_list = indx_list
         # ensure sky periodicity
         self.sky_periodic = sky_periodic
-        # add random shift (how often, param index as in self.indx_list, value to shift)
-        self.shift_value = shift_value
+        # absolute value variable
+        self.abs_value = abs_value
         super(GaussianMove, self).__init__(**kwargs)
 
     def get_proposal(self, branches_coords, random, branches_inds=None, **kwargs):
@@ -164,17 +164,11 @@ class GaussianMove(MHMove):
             else:
                 new_coords = new_coords_tmp.copy()
             
-            # shift
-            if self.shift_value is not None:
-                # first value tells how often to shift, self.shift_value[0]=1, always
-                if np.random.uniform()<self.shift_value[0]:
-                    indx_list_here = np.asarray([el[1] for el in self.shift_value[1] if el[0]==name])
-                    nw = new_coords_tmp.shape[0]
-                    # list of numbers indicating wich group of parameters to change
-                    ind_to_chage = np.random.randint(len(indx_list_here),size=nw)
-                    random_number = np.random.choice([-1, 1])
-                    # add value
-                    new_coords[indx_list_here[ind_to_chage][:,0,:]] += random_number*self.shift_value[2]
+            # enforce positive proposal
+            if self.abs_value is not None:
+                # change the sign of the parameter randomly
+                sign_par = np.random.choice([-1.0,1.0],size=new_coords[...,self.abs_value].shape)
+                new_coords[...,self.abs_value] *= sign_par
 
             if self.sky_periodic:
                 indx_list_here = [el[1] for el in self.sky_periodic if el[0]==name]
