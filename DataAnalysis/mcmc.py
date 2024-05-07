@@ -48,7 +48,7 @@ from eryn.ensemble import EnsembleSampler
 from eryn.prior import ProbDistContainer, uniform_dist
 from eryn.backends import HDFBackend
 import corner
-from eryn.moves import GaussianMove
+from eryn.moves import GaussianMove, StretchMove
 
 from lisatools.sampling.likelihood import Likelihood
 from lisatools.diagnostic import *
@@ -252,9 +252,9 @@ def run_emri_pe(
         
         prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
-        prior_charge = uniform_dist(-0.1, 0.1)
-        if charge != 0.0:
-            prior_charge = uniform_dist(0.0, 0.1)
+        # prior_charge = uniform_dist(-0.1, 0.1)
+        # if charge != 0.0:
+        prior_charge = uniform_dist(0.0, 0.1)
 
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
@@ -455,13 +455,15 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy") / ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
+        cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         # increase the size of the covariance only along the last direction
-        cov[-1,-1] *= 100.0
+        # cov *= 100.0
         tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
 
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
+        tmp[0,-1] = 1e-7
+        tmp[:,-1] = np.abs(tmp[:,-1])
         # define second element of tmp like [ 1.38155123e+01  2.30258725e+00  9.50000418e-01  8.34323989e+00 3.99998872e-01  1.00599036e+00 -8.15276851e-03  3.14312695e+00 6.80315016e-01  1.05573421e+00  1.02150614e+00  3.20198579e+00]
         # tmp[1:3]= draw_initial_points(np.asarray([1.38155123e+01,  2.30258725e+00,  9.50000418e-01,  8.34323989e+00, 3.99998872e-01,  1.00599036e+00, -8.15276851e-03,  3.14312695e+00, 6.80315016e-01,  1.05573421e+00,  1.02150614e+00,  3.20198579e+00, 0.0])
         #                             , cov, nwalkers*ntemps)[1:3]
@@ -518,22 +520,31 @@ def run_emri_pe(
     
     # gibbs variables
     # import itertools
-    # stuff = np.asarray([0,1,2,3,4,12])
+    # stuff = np.arange(ndim)
     # list_comb = []
-    # for subset in itertools.combinations(stuff, 2):
+    # for subset in itertools.combinations(stuff, 3):
     #     list_comb.append(subset)
     # [indx_list.append(get_True_vec([el[0],el[1]])) for el in list_comb]
     
     sky_periodic = [("emri",el[None,:] ) for el in [get_True_vec([6,7]), get_True_vec([8,9])]]
 
-    # MCMC moves (move, percentage of draws)
+    # # MCMC moves (move, percentage of draws)
+    indx_list.append(get_True_vec([5,6,7]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
+    indx_list.append(get_True_vec([8,9]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
+    indx_list.append(get_True_vec([10,11]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
+    indx_list.append(get_True_vec(np.arange(ndim)))
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
     indx_list.append(get_True_vec(np.arange(ndim)))
-    for el in [0,1,2,3,4]:
+    for el in np.arange(ndim-1):
         indx_list.append(get_True_vec([el,12]))
-    
+        indx_list.append(get_True_vec(np.arange(ndim)))
+
     gibbs_setup_start = [("emri",el[None,:] ) for el in indx_list]
+    # gibbs_setup_start = None
     
     # shift values move
     to_shift = [("emri",el[None,:] ) for el in [get_True_vec([10]), get_True_vec([9]), get_True_vec([8])]]
@@ -544,17 +555,18 @@ def run_emri_pe(
     
     
     moves = [
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start),0.4),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.4),
         (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.4),
         (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
+        # (StretchMove(use_gpu=use_gpu, live_dangerously=True),0.2),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
-        discard = int(current_it*0.3)
+        discard = int(current_it*0.2)
         check_it = 1000
-        update_it = 1000
-        max_it_update = 100000
+        update_it = 100
+        max_it_update = 10001
         
         # use current state
         samp.moves[-1].use_current_state = True
@@ -570,8 +582,8 @@ def run_emri_pe(
             samp.weights[2]=0.2
         
         # stop gibbs sampling at half of max_it_update
-        if current_it>5000:
-            samp.moves[0].indx_list = None
+        # if current_it>5000:
+        #     samp.moves[0].indx_list = None
         
         if (current_it>=check_it)and(current_it % check_it == 0):
             # check acceptance and max loglike
@@ -586,7 +598,7 @@ def run_emri_pe(
                 samples = sampler.get_chain(discard=discard, thin=1)["emri"][:, 0].reshape(-1, ndim)
                 ll = samp.get_log_like(discard=discard, thin=1)[:,0].flatten()
                 
-                # fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
+                fig = corner.corner(np.hstack((samples,ll[:,None])),truths=np.append(emri_injection_params_in,true_like)); fig.savefig(fp[:-3] + "_corner.png", dpi=150)
                 
                 # if (current_it<max_it_update):
                 #     num = 10
@@ -686,7 +698,7 @@ def run_emri_pe(
         new_like,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
-        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 50**2/20**2},
+        tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 50**2/25**2},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
@@ -772,7 +784,7 @@ if __name__ == "__main__":
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./results/"
+    folder = "./mcmc_runs/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"

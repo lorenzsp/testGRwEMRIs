@@ -178,6 +178,62 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
     else:
         plt.show()
 
+def get_log10alpha_weights(lnmu,d):
+    """
+    Calculate the log10alpha weights based on the given parameters.
+
+    Parameters:
+    lnmu (float): The natural logarithm of the parameter mu.
+    d (float): The value of the parameter d.
+
+    Returns:
+    log10alpha (float): The calculated log10alpha value.
+    w_sqrtalpha (float): The calculated weight for log10alpha value.
+    sqrtalpha (float): The calculated sqrtalpha value.
+    w (float): The calculated weight for sqrtalpha value.
+    """
+    mu = np.exp(lnmu)
+    w = mu / np.sqrt(d)
+    sqrtalpha = np.sqrt(2*d)*mu*MRSUN_SI/1e3 # kilometers
+    log10alpha = np.log10(sqrtalpha)
+    return log10alpha, w/sqrtalpha, sqrtalpha, w
+
+
+def weighted_quantile(values, quantiles, sample_weight=None, 
+                      values_sorted=False, old_style=False):
+    """ Very close to numpy.percentile, but supports weights.
+    NOTE: quantiles should be in [0, 1]!
+    :param values: numpy.array with data
+    :param quantiles: array-like with many quantiles needed
+    :param sample_weight: array-like of the same length as `array`
+    :param values_sorted: bool, if True, then will avoid sorting of
+        initial array
+    :param old_style: if True, will correct output to be consistent
+        with numpy.percentile.
+    :return: numpy.array with computed quantiles.
+    """
+    values = np.array(values)
+    quantiles = np.array(quantiles)
+    if sample_weight is None:
+        sample_weight = np.ones(len(values))
+    sample_weight = np.array(sample_weight)
+    assert np.all(quantiles >= 0) and np.all(quantiles <= 1), \
+        'quantiles should be in [0, 1]'
+
+    if not values_sorted:
+        sorter = np.argsort(values)
+        values = values[sorter]
+        sample_weight = sample_weight[sorter]
+
+    weighted_quantiles = np.cumsum(sample_weight) - 0.5 * sample_weight
+    if old_style:
+        # To be convenient with numpy.percentile
+        weighted_quantiles -= weighted_quantiles[0]
+        weighted_quantiles /= weighted_quantiles[-1]
+    else:
+        weighted_quantiles /= np.sum(sample_weight)
+    return np.interp(quantiles, weighted_quantiles, values)
+
 ########################### preparation of the data #############################################
 init_name = '../DataAnalysis/results/*'
 datasets = sorted(glob.glob(init_name + '.h5'))
@@ -207,35 +263,49 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     truths = np.load(inj_params)
     
     # Load MCMC samples
-    list_chains.append(np.load(repo_name + '/samples.npy') - truths[None,:])
+    temp_samp = np.load(repo_name + '/samples.npy')
+    list_chains.append(temp_samp - truths[None,:])
     # obtain median and 95% credible interval from the samples
-    med = np.median(np.load(repo_name + '/samples.npy'), axis=0)
-    low = np.percentile(np.load(repo_name + '/samples.npy'), 2.5, axis=0)
-    high = np.percentile(np.load(repo_name + '/samples.npy'), 97.5, axis=0)
+    med = np.median(temp_samp, axis=0)
+    low = np.percentile(temp_samp, 2.5, axis=0)
+    high = np.percentile(temp_samp, 97.5, axis=0)
+    # add information about log10alpha and weight
+    charge_d = np.abs(temp_samp[:,-1])
+    mask = (charge_d!=0)
+    log10alpha, w_log10, sqrtalpha, w_sqrtalpha = get_log10alpha_weights(temp_samp[:,1][mask], charge_d[mask])
+    # obtain the quantiles 
+    log10alpha_quantiles = weighted_quantile(log10alpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=w_log10)
+    sqrtalpha_quantiles = weighted_quantile(sqrtalpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=w_sqrtalpha)
     # Create a DataFrame with the parameter information
     data = {
         'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'precision 68%'],
-        'ln M': [truths[0], med[0], low[0], high[0], np.std(np.load(repo_name + '/samples.npy'), axis=0)[0] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[0]],
-        'ln mu': [truths[1], med[1], low[1], high[1], np.std(np.load(repo_name + '/samples.npy'), axis=0)[1] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[1]],
-        'a': [truths[2], med[2], low[2], high[2], np.std(np.load(repo_name + '/samples.npy'), axis=0)[2] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[2]],
-        'p0': [truths[3], med[3], low[3], high[3], np.std(np.load(repo_name + '/samples.npy'), axis=0)[3] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[3]],
-        'e0': [truths[4], med[4], low[4], high[4], np.std(np.load(repo_name + '/samples.npy'), axis=0)[4] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[4]],
-        'DL': [truths[5], med[5], low[5], high[5], np.std(np.load(repo_name + '/samples.npy'), axis=0)[5] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[5]],
-        'costhetaS': [truths[6], med[6], low[6], high[6], np.std(np.load(repo_name + '/samples.npy'), axis=0)[6] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[6]],
-        'phiS': [truths[7], med[7], low[7], high[7], np.std(np.load(repo_name + '/samples.npy'), axis=0)[7] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[7]],
-        'costhetaK': [truths[8], med[8], low[8], high[8], np.std(np.load(repo_name + '/samples.npy'), axis=0)[8] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[8]],
-        'phiK': [truths[9], med[9], low[9], high[9], np.std(np.load(repo_name + '/samples.npy'), axis=0)[9] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[9]],
-        'Phivarphi0': [truths[10], med[10], low[10], high[10], np.std(np.load(repo_name + '/samples.npy'), axis=0)[10] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[10]],
-        'Phir0': [truths[11], med[11], low[11], high[11], np.std(np.load(repo_name + '/samples.npy'), axis=0)[11] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[11]],
-        'd': [truths[12], med[12], low[12], high[12], np.std(np.load(repo_name + '/samples.npy'), axis=0)[12] / np.mean(np.load(repo_name + '/samples.npy'), axis=0)[12]]
+        'ln M': [truths[0], med[0], low[0], high[0], np.std(temp_samp, axis=0)[0] / np.mean(temp_samp, axis=0)[0]],
+        'ln mu': [truths[1], med[1], low[1], high[1], np.std(temp_samp, axis=0)[1] / np.mean(temp_samp, axis=0)[1]],
+        'a': [truths[2], med[2], low[2], high[2], np.std(temp_samp, axis=0)[2] / np.mean(temp_samp, axis=0)[2]],
+        'p0': [truths[3], med[3], low[3], high[3], np.std(temp_samp, axis=0)[3] / np.mean(temp_samp, axis=0)[3]],
+        'e0': [truths[4], med[4], low[4], high[4], np.std(temp_samp, axis=0)[4] / np.mean(temp_samp, axis=0)[4]],
+        'DL': [truths[5], med[5], low[5], high[5], np.std(temp_samp, axis=0)[5] / np.mean(temp_samp, axis=0)[5]],
+        'costhetaS': [truths[6], med[6], low[6], high[6], np.std(temp_samp, axis=0)[6] / np.mean(temp_samp, axis=0)[6]],
+        'phiS': [truths[7], med[7], low[7], high[7], np.std(temp_samp, axis=0)[7] / np.mean(temp_samp, axis=0)[7]],
+        'costhetaK': [truths[8], med[8], low[8], high[8], np.std(temp_samp, axis=0)[8] / np.mean(temp_samp, axis=0)[8]],
+        'phiK': [truths[9], med[9], low[9], high[9], np.std(temp_samp, axis=0)[9] / np.mean(temp_samp, axis=0)[9]],
+        'Phivarphi0': [truths[10], med[10], low[10], high[10], np.std(temp_samp, axis=0)[10] / np.mean(temp_samp, axis=0)[10]],
+        'Phir0': [truths[11], med[11], low[11], high[11], np.std(temp_samp, axis=0)[11] / np.mean(temp_samp, axis=0)[11]],
+        'd': [truths[12], med[12], low[12], high[12], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
     }
-
-    df = pd.DataFrame(data)
+    # another table only for the alpha contraints
+    data_alpha = {
+        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'percentile 95 perc'],
+        'log10alpha': [np.log10(np.sqrt(2*truths[12])*truths[1]*MRSUN_SI/1e3), log10alpha_quantiles[1], log10alpha_quantiles[0], log10alpha_quantiles[2], log10alpha_quantiles[3]],
+        'sqrtalpha': [np.sqrt(2*truths[12])*truths[1]*MRSUN_SI/1e3, sqrtalpha_quantiles[1], sqrtalpha_quantiles[0], sqrtalpha_quantiles[2], sqrtalpha_quantiles[3]],
+    }
     
-    # Save the DataFrame as a PDF table
+    df = pd.DataFrame(data)
     # Save the DataFrame as a LaTeX table
-    # pd.set_option('display.float_format', lambda x: '%.16e' % x)
-    df.to_markdown('./posterior_summary/summary_table'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
+    df.to_markdown('./posterior_summary/table_'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
+    
+    df_alpha = pd.DataFrame(data_alpha)
+    df_alpha.to_markdown('./posterior_summary/alpha_table_'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
 
     # Parse parameters from repo_name
     params = repo_name.split('_')[2:]

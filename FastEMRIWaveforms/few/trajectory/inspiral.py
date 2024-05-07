@@ -378,4 +378,4 @@ class EMRIInspiral(TrajectoryBase):
         self.inspiral_generator.integrator.add_parameters_to_holder(M, mu, a, args_in)
         pdot,edot = self.inspiral_generator.integrator.get_derivatives(y0)[:2] / (mu/M)
         OmPhi_dp, OmPhi_de, OmR_dp, OmR_de = pyKerrEqDerivFrequenciesPhiR(a, y1, y2)
-        return OmPhi_dp * pdot + OmPhi_de * edot , OmR_dp * pdot + OmR_de * edot
+        return OmPhi_dp * pdot + OmPhi_de * edot , OmR_dp * pdot + OmR_de * edot, pdot, edot
