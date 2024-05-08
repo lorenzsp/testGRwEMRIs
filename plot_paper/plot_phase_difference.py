@@ -51,7 +51,7 @@ def get_t_dphi_dom(err,charge):
     interp = CubicSplineInterpolant(t, np.vstack((Phi_phi,omPhi)) )
                 
             
-    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
+    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge**2 / 4., T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp_d = CubicSplineInterpolant(t_d, np.vstack((Phi_phi,omPhi)) )
     print(len(t_d),err)
@@ -66,7 +66,7 @@ def get_t_dphi_dom_fixed_err(err,charge):
     interp = CubicSplineInterpolant(t, np.vstack((Phi_phi,omPhi)) )
                 
             
-    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
+    t_d, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, charge**2 / 4, T=4.0, dt=10.0, err=err, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp_d = CubicSplineInterpolant(t_d, np.vstack((Phi_phi,omPhi)) )
     print(len(t_d),err)

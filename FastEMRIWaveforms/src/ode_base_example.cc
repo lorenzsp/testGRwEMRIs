@@ -333,8 +333,8 @@ __deriv__ void KerrEccentricEquatorial::deriv_func(double ydot[], const double y
     // sign of function
     double factor = additional_args[0]*additional_args[0]/4.0;
     // cout << factor << endl;
-    Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
-    Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
+    Edot = additional_args[0]*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
+    Ldot = additional_args[0]*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
     
     Qdot = 0.0;
     // cout << 'Edot \t' << Edot << endl;
@@ -459,11 +459,14 @@ __deriv__ void KerrEccentricEquatorialAPEX::deriv_func(double ydot[], const doub
     // Fluxes in E,L from Chebyshev
     double pdot_out, edot_out, xdot_out;
     // sign of function
-    double factor = additional_args[0]*additional_args[0]/4.0;
+    // double factor = additional_args[0]*additional_args[0]/4.0;
     // cout << factor << endl;
     
-    Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
-    Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
+    // Edot = factor*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
+    // Ldot = factor*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
+    // Qdot = 0.0;
+    Edot = additional_args[0]*Edot_SC(a*copysign(1.0,x), e, r, p)+Edot_GR(a*copysign(1.0,x),e,r,p);
+    Ldot = additional_args[0]*Ldot_SC(a*copysign(1.0,x), e, r, p)*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
     Qdot = 0.0;
     // cout << 'Edot \t' << Edot << endl;
     // cout << 'Ldot \t' << Ldot << endl;

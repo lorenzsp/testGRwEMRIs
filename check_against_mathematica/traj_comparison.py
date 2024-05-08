@@ -91,7 +91,7 @@ for filename in files:
     if filename.split('_')[1] == 'GR':
         charge = 0.0
     else:
-        charge = float(filename.split('_')[1].split('d')[1] )
+        charge = float(filename.split('_')[1].split('d')[1] )**2/4.0
 
     # # define parameters
     a= float(filename.split('_')[2].split('a')[1])

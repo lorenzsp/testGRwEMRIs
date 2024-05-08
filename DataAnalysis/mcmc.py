@@ -252,13 +252,10 @@ def run_emri_pe(
         
         prior_charge = uniform_dist(np.log(1e-7) , np.log(0.5))
     else:
-        # prior_charge = uniform_dist(-0.1, 0.1)
-        # if charge != 0.0:
+        # transform charge value into gamma value
         emri_injection_params[-1] = emri_injection_params[-1]**2 / 4.0
         prior_charge = uniform_dist(-0.6, 0.6)
 
-    def charge_from_gamma(gamma):
-        return np.sqrt(4.0*np.abs(gamma))
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
     # on my list of things to improve
@@ -276,7 +273,6 @@ def run_emri_pe(
             1: np.exp,  # mu
             7: np.arccos, # qS
             9: np.arccos,  # qK
-            14: charge_from_gamma
         }
 
     transform_fn = TransformContainer(
@@ -422,7 +418,7 @@ def run_emri_pe(
         plt.figure()
         for cc in 10**np.linspace(-5,-2,num=20):
             injection_temp = injection_in.copy()
-            injection_temp[-1] = cc
+            injection_temp[-1] = cc**2/4
             data_temp = wave_gen(*injection_temp, **emri_kwargs)
             
             Overlap = inner_product([data_channels[0], data_channels[1]],[data_temp[0], data_temp[1]],normalize=True,**inner_kw)
@@ -458,10 +454,10 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy") # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
+        cov = np.load("covariance.npy") * 2.38**2 /ndim # np.cov(np.load("samples.npy"),rowvar=False) * 2.38**2 / ndim
         # increase the size of the covariance only along the last direction
-        tmp = draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps)
-        tmp[:,-1] = np.sign(tmp[:,-1]) * tmp[:,-1]**2 / 4
+        tmp = draw_initial_points(emri_injection_params_in, cov/10., nwalkers*ntemps)
+        # tmp[:,-1] = np.sign(tmp[:,-1]) * tmp[:,-1]**2 / 4
         # create a function to find the 1 sigma contour of the likelihood is each direction
         # set one to the true value
         tmp[0] = emri_injection_params_in.copy()
@@ -547,7 +543,7 @@ def run_emri_pe(
     
     moves = [
         (StretchMove(use_gpu=use_gpu),0.5),
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start, abs_value=abs_value),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.5),
         # (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start, abs_value=abs_value),0.4),
         # (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
     ]
@@ -769,13 +765,13 @@ if __name__ == "__main__":
     )
     print("new p0 fixed by Tobs, p0=", p0)
     tic = time.time()
-    tvec = traj(M, mu, a, p0, e0, x0, charge,T=10.0)[0]/YRSID_SI
+    tvec = traj(M, mu, a, p0, e0, x0, charge*charge/4.,T=10.0)[0]/YRSID_SI
     print("finalt ",tvec[-1],len(tvec))
     toc = time.time()
     print("traj timing",toc - tic)
 
     logprior = False
-    folder = "./mcmc_runs/"
+    folder = "./paper_runs/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"
@@ -785,7 +781,7 @@ if __name__ == "__main__":
     else:
         fp = folder + args["outname"] + f"_noise{args['noise']}_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
 
-    tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
+    tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge*charge/4,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))
     fig, axes = plt.subplots(2, 3)
     plt.subplots_adjust(wspace=0.3)
