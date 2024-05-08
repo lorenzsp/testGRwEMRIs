@@ -534,9 +534,10 @@ def run_emri_pe(
     # # MCMC moves (move, percentage of draws)
     indx_list.append(get_True_vec([5,6,7,8,9,10,11]))
     indx_list.append(get_True_vec([0,1,2,3,4,12]))
-    for el in np.arange(ndim-1):
-        indx_list.append(get_True_vec([el,12]))
-        indx_list.append(get_True_vec(np.arange(ndim)))
+    indx_list.append(get_True_vec(np.arange(ndim)))
+    # for el in np.arange(ndim-1):
+    #     indx_list.append(get_True_vec([el,12]))
+    #     indx_list.append(get_True_vec(np.arange(ndim)))
 
     gibbs_setup_start = [("emri",el[None,:] ) for el in indx_list]
     # gibbs_setup_start = None
@@ -546,20 +547,20 @@ def run_emri_pe(
     
     moves = [
         (StretchMove(use_gpu=use_gpu),0.5),
-        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, indx_list=gibbs_setup_start, abs_value=abs_value),0.5),
+        (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start, abs_value=abs_value),0.5),
         # (GaussianMove({"emri": cov}, mode="Gaussian", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start, abs_value=abs_value),0.4),
         # (GaussianMove({"emri": cov}, mode="DE", factor=100.0, sky_periodic=sky_periodic),0.2),
     ]
 
     def stopping_fn(i, res, samp):
         current_it = samp.iteration
-        discard = int(current_it*0.2)
+        discard = int(current_it*0.5)
         check_it = 1000
         update_it = 1000
         max_it_update = int(1e4)
         
         # use current state
-        # samp.moves[-1].use_current_state = True
+        samp.moves[1].use_current_state = True
         
         # do not use DE in the first update_it
         # if (current_it<update_it):
@@ -625,7 +626,7 @@ def run_emri_pe(
             # update DE chain
             # create 10000 random indices
             # inds = np.random.randint(0,to_cov.shape[0],10000)
-            # samp.moves[-1].chain = to_cov.copy()
+            samp.moves[1].chain = to_cov.copy()
             # update cov and svd
             samp_cov = np.cov(to_cov,rowvar=False) * 2.38**2 / ndim
             svd = np.linalg.svd(samp_cov)
@@ -646,7 +647,7 @@ def run_emri_pe(
             samp.moves[1].all_proposal['emri'].svd = svd
             samp.moves[1].all_proposal['emri'].scale = samp_cov.copy()
             # get DE chain
-            # samp.moves[-1].chain = np.load(fp[:-3] + "_samples.npy").copy()
+            samp.moves[1].chain = np.load(fp[:-3] + "_samples.npy").copy()
             # chain = samp.get_chain(discard=discard)['emri']
             # inds = samp.get_inds(discard=discard)['emri']
             # to_cov = chain[inds]
