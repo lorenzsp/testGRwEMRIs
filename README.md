@@ -2,7 +2,7 @@
 
 This repository provides the code and data analysis tools to reproduce the results of the paper. To reproduce the paper's results, you need to install the `FastEMRIWaveform` package, as well as `Eryn` and `LISAanalysistools`, which can be installed using `python setup.py install`.
 
-# Markov Chain Monte Carlo (MCMC) Analysis
+## Markov Chain Monte Carlo (MCMC) Analysis
 
 To obtain the constraints presented in the paper, you need to run the `mcmc.py` code located in the `./DataAnalysis/` directory. Please note that this code is designed to be run on Graphics Processing Units (GPUs).
 
@@ -33,7 +33,7 @@ where:
 
 To reproduce the systems considered in the paper, you can also directly run `bash run_mcmc.sh`.
 
-# Posterior samples and paper plots
+## Posterior samples and paper plots
 The posterior samples and paper plots can be generated using the code provided in the repository. After running the MCMC analysis code, the posterior samples will be available for further analysis and visualization.
 
 
@@ -41,7 +41,7 @@ Author:
 -------
 Lorenzo Speri (lorenzo.speri@aei.mpg.de)
 
-# few: Fast EMRI Waveforms installation
+## few: Fast EMRI Waveforms installation
 
 This package contains the highly modular framework for fast and accurate extreme mass ratio inspiral (EMRI) waveforms from [arxiv.org/2104.04582](https://arxiv.org/abs/2104.04582) and [arxiv.org/2008.06071](https://arxiv.org/abs/2008.06071). The waveforms in this package combine a variety of separately accessible modules to form EMRI waveforms on both CPUs and GPUs. Generally, the modules fall into four categories: trajectory, amplitudes, summation, and utilities. Please see the [documentation](https://bhptoolkit.org/FastEMRIWaveforms/) for further information on these modules. The code can be found on Github [here](https://github.com/BlackHolePerturbationToolkit/FastEMRIWaveforms). The data necessary for various modules in this package will automatically download the first time it is needed. If you would like to view the data, it can be found on [Zenodo](https://zenodo.org/record/3981654#.XzS_KRNKjlw). The current and all past code release zip files can also be found on Zenodo [here](https://zenodo.org/record/4005001).
 
