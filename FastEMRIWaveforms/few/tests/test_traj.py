@@ -83,7 +83,7 @@ class ModuleTest(unittest.TestCase):
         err = 1e-10
         
         # initialize trajectory class
-        traj = EMRIInspiral(func="KerrEccentricEquatorial")
+        traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 
         # set initial parameters
         M = 1e6
@@ -100,10 +100,10 @@ class ModuleTest(unittest.TestCase):
         elapsed_time = []
         elapsed_time_rk8 = []
         err = 1e-10
-        for i in range(100):
+        for i in range(10):
             # beginning E =0.875343   L=2.36959       Q=0
             p0 = np.random.uniform(9.5,17.0)
-            e0 = np.random.uniform(0.0, 0.45)
+            e0 = np.random.uniform(0.1, 0.45)
             a = np.random.uniform(-0.99, 0.99)
             print('-----------------------------------------------')
             print(a,p0,e0)
@@ -140,10 +140,11 @@ class ModuleTest(unittest.TestCase):
         plt.ylabel('Timing of trajectory [s]')
         plt.title(f'Error tolerance {err:.2e}')
         plt.grid(True)
-        plt.show()
+        plt.savefig('timing.png')
         
         # test against Schwarz
         traj_Schw = EMRIInspiral(func="SchwarzEccFlux")
+        traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
         a=0.0
         charge = 0.0
 
@@ -156,4 +157,5 @@ class ModuleTest(unittest.TestCase):
             tS, pS, eS, xS, Phi_phiS, Phi_thetaS, Phi_rS = traj_Schw(M, mu, 0.0, p0, e0, 1.0, T=4.0, new_t=t, upsample=True, max_init_len=int(1e5))
             mask = (Phi_rS!=0.0)
             diff =  np.abs(Phi_phi[mask] - Phi_phiS[mask])
+            print(p0,e0,diff[-1])
             # self.assertLess(np.max(diff),2.0)

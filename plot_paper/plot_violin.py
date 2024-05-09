@@ -48,7 +48,7 @@ mpl.rcParams.update({
 ########################################################################
 from scipy.stats import gaussian_kde
 
-init_name = '../DataAnalysis/results/*'
+init_name = '../DataAnalysis/paper_runs/*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 # # sort datasets by charge
@@ -70,14 +70,16 @@ for filename,el in zip(datasets,pars_inj):
     repo_name
     truths = np.load(el)
     toplot = np.load(repo_name + '/samples.npy')
-
+    mask = (toplot[:,-1]>0.0)
+    Lambda = np.sqrt(4*toplot[mask,-1])
+    weights = np.ones_like(Lambda) / np.sqrt(Lambda)
     # add to the following labels the log10 of the savage-dickey ratio
-    kde = gaussian_kde(toplot[:,-1], bw_method='scott')
+    kde = gaussian_kde(Lambda, bw_method='scott', weights=weights)
     kde_list.append(kde)
     
     med = np.median(toplot,axis=0)
     if truths[-1]!=0.0:
-        density_at_zero = kde.evaluate(toplot[:,-1].min())
+        density_at_zero = kde.evaluate(Lambda.min())
     else:
         density_at_zero = kde.evaluate(0.0)
     
@@ -144,7 +146,7 @@ plt.figure(figsize=(10, 6))
 # can you annotate on top of the violin plot the log10 of the savage-dickey ratio?
 # plot the violin plot with a specific list of colors that I specify ith colors
 
-
+# add weights to the violin plot
 sns.violinplot(data=samples, orient='h', bw_method='scott', palette=palette)# 'colorblind'
 plt.xlabel(r"Scalar charge $d$",size=20)
 # # Set the y-axis labels to the system parameters
@@ -154,4 +156,4 @@ plt.yticks(range(len(labels)), labels)
 plt.ylabel(r'$(M, \mu, a, e_0, \log_{10} {\rm BF})$', rotation=0,size=20)
 plt.gca().yaxis.set_label_coords(-0.25,0.98)
 plt.tight_layout()
-plt.savefig(f'./figures/violin.pdf')
+plt.savefig(f'./figures/violin_new.pdf')

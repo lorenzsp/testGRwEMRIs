@@ -18,6 +18,270 @@
 
 using namespace std;
 using namespace std::chrono;
+// ----------------------------------------------------------------------------
+// define new elliptic pi function from Scott
+
+// Reasonable maximum
+template<class NUMBER>
+inline NUMBER Max(const NUMBER a, const NUMBER b) {
+  return (a > b ? a : b);
+};
+
+#define DMAX(a,b) Max(a,b)
+#define FMAX(a,b) Max(a,b)
+#define LMAX(a,b) Max(a,b)
+#define IMAX(a,b) Max(a,b)
+
+// Reasonable minimum
+template<class NUMBER>
+inline NUMBER Min(const NUMBER a, const NUMBER b) {
+  return (a < b ? a : b);
+};
+
+#define DMIN(a,b) Min(a,b)
+#define FMIN(a,b) Min(a,b)
+#define LMIN(a,b) Min(a,b)
+#define IMIN(a,b) Min(a,b)
+
+void Die(const char error_text[])
+{
+  cerr << error_text << endl;
+  exit(0);
+}
+
+double rf(const double x, const double y, const double z)
+{
+    // Define constants inside the function
+    const double ERRTOL = 0.0025;
+    const double TINY = 1.5e-38;
+    const double BIG = 3.0e37;
+    const double THIRD = 1.0/3.0;
+    const double C1 = 1.0/24.0;
+    const double C2 = 0.1;
+    const double C3 = 3.0/44.0;
+    const double C4 = 1.0/14.0;
+
+    double alamb, ave, delx, dely, delz, e2, e3, sqrtx, sqrty, sqrtz,
+    xt, yt, zt;
+
+    if (DMIN(DMIN(x, y), z) < 0.0 || DMIN(DMIN(x + y, x + z), y + z) < TINY ||
+        DMAX(DMAX(x, y), z) > BIG) Die("invalid arguments in rf");
+    xt = x;
+    yt = y;
+    zt = z;
+    do {
+        sqrtx = sqrt(xt);
+        sqrty = sqrt(yt);
+        sqrtz = sqrt(zt);
+        alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
+        xt = 0.25*(xt + alamb);
+        yt = 0.25*(yt + alamb);
+        zt = 0.25*(zt + alamb);
+        ave = THIRD*(xt + yt + zt);
+        delx = (ave - xt)/ave;
+        dely = (ave - yt)/ave;
+        delz = (ave - zt)/ave;
+    } while (DMAX(DMAX(fabs(delx), fabs(dely)), fabs(delz)) > ERRTOL);
+    e2 = delx*dely - delz*delz;
+    e3 = delx*dely*delz;
+    return (1.0 + (C1*e2 - C2 - C3*e3)*e2 + C4*e3)/sqrt(ave);
+}
+
+double rc(const double x, const double y)
+{
+    // Define constants inside the function
+    const double ERRTOL = 0.0012;
+    const double TINY = 1.69e-38;
+    const double SQRTNY = 1.3e-19;
+    const double BIG = 3.e37;
+    const double TNBG = (TINY*BIG);
+    const double COMP1 = (2.236/SQRTNY);
+    const double COMP2 = (TNBG*TNBG/25.0);
+    const double THIRD = 1.0/3.0;
+    const double C1 = 0.3;
+    const double C2 = 1.0/7.0;
+    const double C3 = 0.375;
+    const double C4 = 9.0/22.0;
+
+    double alamb, ave, s, w, xt, yt;
+    if (x < 0.0 || y == 0.0 || (x+fabs(y)) < TINY || (x + fabs(y)) > BIG ||
+        (y < -COMP1 && x > 0.0 && x < COMP2)) Die("invalid arguments in rc");
+    if (y > 0.0) {
+        xt = x;
+        yt = y;
+        w = 1.0;
+    } else {
+        xt = x-y;
+        yt = -y;
+        w = sqrt(x)/sqrt(xt);
+    }
+    do {
+        alamb = 2.0*sqrt(xt)*sqrt(yt) + yt;
+        xt = 0.25*(xt + alamb);
+        yt = 0.25*(yt + alamb);
+        ave = THIRD*(xt + yt + yt);
+        s = (yt - ave)/ave;
+    } while (fabs(s) > ERRTOL);
+    return w*(1.0 + s*s*(C1 + s*(C2 + s*(C3 + s*C4))))/sqrt(ave);
+}
+
+double rj(const double x, const double y, const double z, const double p)
+{
+    // Define constants inside the function
+    const double ERRTOL = 0.0015;
+    const double TINY = 2.5e-13;
+    const double BIG = 9.0e11;
+    const double C1 = 3.0/14.0;
+    const double C2 = 1.0/3.0;
+    const double C3 = 3.0/22.0;
+    const double C4 = 3.0/26.0;
+    const double C5 = 0.75*C3;
+    const double C6 = 1.5*C4;
+    const double C7 = 0.5*C2;
+    const double C8 = C3 + C3;
+
+    double a, alamb, alpha, ans, ave, b, beta, delp, delx, dely, delz, 
+    ea, eb, ec, ed, ee, fac, pt, rcx, rho, sqrtx, sqrty, sqrtz, sum,
+    tau, xt, yt, zt;
+
+    if (DMIN(DMIN(x, y), z) < 0.0 || DMIN(DMIN(x + y, x + z),
+                    DMIN(y + z, fabs(p))) < TINY
+      || DMAX(DMAX(x, y), DMAX(z, fabs(p))) > BIG)
+    Die("invalid arguments in rj");
+    sum = 0.0;
+    fac = 1.0;
+    if (p > 0.0) {
+    xt = x;
+    yt = y;
+    zt = z;
+    pt = p;
+    } else {
+    xt = DMIN(DMIN(x, y), z);
+    zt = DMAX(DMAX(x, y), z);
+    yt = x + y + z - xt - zt;
+    a = 1.0/(yt - p);
+    b = a*(zt - yt)*(yt - xt);
+    pt = yt + b;
+    rho = xt*zt/yt;
+    tau = p*pt/yt;
+    rcx = rc(rho, tau);
+    }
+    do {
+    sqrtx = sqrt(xt);
+    sqrty = sqrt(yt);
+    sqrtz = sqrt(zt);
+    alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
+    alpha = (pt*(sqrtx + sqrty + sqrtz) + sqrtx*sqrty*sqrtz)*(pt*(sqrtx + sqrty + sqrtz) + sqrtx*sqrty*sqrtz);
+    beta = pt*(pt + alamb)*(pt + alamb);
+    sum +=  fac*rc(alpha, beta);
+    fac = 0.25*fac;
+    xt = 0.25*(xt + alamb);
+    yt = 0.25*(yt + alamb);
+    zt = 0.25*(zt + alamb);
+    pt = 0.25*(pt + alamb);
+    ave = 0.2*(xt + yt + zt + pt + pt);
+    delx = (ave - xt)/ave;
+    dely = (ave - yt)/ave;
+    delz = (ave - zt)/ave;
+    delp = (ave - pt)/ave;
+    } while (DMAX(DMAX(fabs(delx), fabs(dely)), 
+            DMAX(fabs(delz), fabs(delp))) > ERRTOL);
+    ea = delx*(dely + delz) + dely*delz;
+    eb = delx*dely*delz;
+    ec = delp*delp;
+    ed = ea - 3.0*ec;
+    ee = eb + 2.0*delp*(ea - ec);
+    ans = 3.0*sum + fac*(1.0 + ed*(-C1 + C5*ed - C6*ee) +
+               eb*(C7 + delp*(-C8 + delp*C4))
+               + delp*ea*(C2 - delp*C3) - C2*delp*ec)/(ave*sqrt(ave));
+    if (p <= 0.0) ans = a*(b*ans + 3.0*(rcx - rf(xt, yt, zt)));
+    return ans;
+}
+
+double rd(const double x, const double y, const double z)
+{
+    // Define constants inside the function
+    const double ERRTOL = 0.0015;
+    const double TINY = 1.0e-25;
+    const double BIG = 4.5e21;
+    const double C1 = 3.0/14.0;
+    const double C2 = 1.0/6.0;
+    const double C3 = 9.0/22.0;
+    const double C4 = 3.0/26.0;
+    const double C5 = 0.25*C3;
+    const double C6 = 1.5*C4;
+
+    double alamb, ave, delx, dely, delz, ea, eb, ec, ed, ee, fac,
+    sqrtx, sqrty, sqrtz, sum, xt, yt, zt;
+
+    if (DMIN(x, y) < 0.0 || DMIN(x + y, z) < TINY || DMAX(DMAX(x, y), z) > BIG)
+    Die("invalid arguments in rd");
+    xt = x;
+    yt = y;
+    zt = z;
+    sum = 0.0;
+    fac = 1.0;
+    do {
+    sqrtx = sqrt(xt);
+    sqrty = sqrt(yt);
+    sqrtz = sqrt(zt);
+    alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
+    sum += fac/(sqrtz*(zt + alamb));
+    fac = 0.25*fac;
+    xt = 0.25*(xt + alamb);
+    yt = 0.25*(yt + alamb);
+    zt = 0.25*(zt + alamb);
+    ave = 0.2*(xt + yt + 3.0*zt);
+    delx = (ave - xt)/ave;
+    dely = (ave - yt)/ave;
+    delz = (ave - zt)/ave;
+    } while (DMAX(DMAX(fabs(delx), fabs(dely)), fabs(delz)) > ERRTOL);
+    ea = delx*dely;
+    eb = delz*delz;
+    ec = ea-eb;
+    ed = ea-6.0*eb;
+    ee = ed+ec+ec;
+    return 3.0*sum + fac*(1.0 + ed*(-C1 + C5*ed - C6*delz*ee)
+            + delz*(C2*ee + delz*(-C3*ec + delz*C4*ea)))/(ave*sqrt(ave));
+}
+
+double ellpi(const double phi, const double en, const double ak)
+{
+    double rf(const double x, const double y, const double z);
+    double rj(const double x, const double y, const double z, const double p);
+
+    const double cc = cos(phi)*cos(phi);
+    const double s = sin(phi);
+    const double enss = en * s * s;
+    const double q = (1.0 - s * ak) * (1.0 + s * ak);
+
+    return s * (rf(cc, q, 1.0) - enss * rj(cc, q, 1.0, 1.0 + enss) / 3.0);
+}
+
+double elle(const double phi, const double ak)
+{
+    double rd(const double x, const double y, const double z);
+    double rf(const double x, const double y, const double z);
+  
+    const double s = sin(phi);
+    const double cc = pow(cos(phi), 2);
+    const double q = (1.0 - s * ak) * (1.0 + s * ak);
+
+    return s * (rf(cc, q, 1.0) - pow(s * ak, 2) * rd(cc, q, 1.0) / 3.0);
+}
+
+double ellf(const double phi, const double ak)
+{
+    double rf(const double x, const double y, const double z);
+    const double s = sin(phi);
+
+    if (phi > M_PI/2.)
+        return (-1.*s*rf(pow(cos(phi), 2), (1.0-s*ak)*(1.0+s*ak), 1.0) + 2.*rf(0.,(1.0-ak)*(1.0+ak), 1.0));
+    else
+        return s*rf(pow(cos(phi), 2), (1.0-s*ak)*(1.0+s*ak), 1.0);
+}
+// ----------------------------------------------------------------------------
+
 
 int sanity_check(double a, double p, double e, double Y)
 {
@@ -111,7 +375,6 @@ double EllipticPi(double n, double k)
     }
     return result.val;
 }
-// define new elliptic pi function from Scott
 
 double EllipticPiIncomp(double n, double phi, double k)
 {
