@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import corner
 import os
 from few.utils.constants import *
+from few.trajectory.inspiral import EMRIInspiral
 import matplotlib as mpl
 import re
 import sys
@@ -46,8 +47,15 @@ mpl.rcParams.update({
 # "axes.formatter.offset_threshold": 10
 })
 
-
-import matplotlib.lines as mlines
+traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
+def get_Ncycles_Dephasing(logM,logmu,a,p0,e0, charge):
+    M = np.exp(logM)
+    mu = np.exp(logmu)
+    x0 = 1.0
+    Lambda = charge**2 /4.
+    Phi_phi = traj(M, mu, a, p0, e0, x0, Lambda, T=2.0, dt=10.0)[4]
+    Phi_phi_zero = traj(M, mu, a, p0, e0, x0, 0.0, T=2.0, dt=10.0)[4]
+    return Phi_phi_zero[-1]/(2*np.pi), Phi_phi[-1]-Phi_phi_zero[-1]
 
 def get_normalisation_weight(len_current_samples, len_of_longest_samples):
     return np.ones(len_current_samples) * (len_of_longest_samples / len_current_samples)
@@ -70,7 +78,7 @@ CORNER_KWARGS = dict(
     plot_datapoints=False,
     fill_contours=False,
     show_titles=False,
-    max_n_ticks=4,
+    max_n_ticks=3,
     truth_color='k',
     labelpad=0.3,
 )
@@ -246,6 +254,7 @@ ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
 
 list_chains,labs = [], []
 list_dict = []
+list_cyc_precision = []
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -277,7 +286,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     
     # Create a DataFrame with the parameter information
     data = {
-        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'precision 68%'],
+        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'one sigma relative precision'],
         'ln M': [truths[0], med[0], low[0], high[0], np.std(temp_samp, axis=0)[0] / np.mean(temp_samp, axis=0)[0]],
         'ln mu': [truths[1], med[1], low[1], high[1], np.std(temp_samp, axis=0)[1] / np.mean(temp_samp, axis=0)[1]],
         'a': [truths[2], med[2], low[2], high[2], np.std(temp_samp, axis=0)[2] / np.mean(temp_samp, axis=0)[2]],
@@ -300,7 +309,14 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'percentile 95 perc'],
         'sqrtalpha': [true_sqrtalpha, sqrtalpha_quantiles[1], sqrtalpha_quantiles[0], sqrtalpha_quantiles[2], sqrtalpha_quantiles[3]],
         'charge': [true_charge, charge_quantiles[1], charge_quantiles[0], charge_quantiles[2], charge_quantiles[3]],
+        'Delta Phi_phi': ['None', 'None', 'None', 'None', 'None'],
+        'Ncycles vacuum': ['None', 'None', 'None', 'None', 'None'],
     }
+    # dephasing information 
+    Ncyc, Deph = get_Ncycles_Dephasing(truths[0],truths[1],truths[2],truths[3],truths[4],data_alpha["charge"][-1])
+
+    data_alpha['Delta Phi_phi'][-1] = Deph
+    data_alpha['Ncycles vacuum'][0] = Ncyc
 
     df = pd.DataFrame(data)
     # Save the DataFrame as a LaTeX table
@@ -333,7 +349,8 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         label += f", $0.0$"
     else:
         label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
-    
+    # add another lable for the cycles
+    label += f", {Ncyc:.2f}"
     label += ')'
     print(params_dict)
     # update dict with med and 95% CI
@@ -344,16 +361,50 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     list_dict.append(params_dict)
     
     labs.append(label)
+    
+    # append to list the precision on the intrinsic parameter and the number of cycles
+    precision = np.std(temp_samp, axis=0)[:5] / np.mean(temp_samp, axis=0)[:5]
+    precision[:2] *= np.mean(temp_samp, axis=0)[:2]
+    list_cyc_precision.append(np.append(precision,Ncyc))
 
 ########################### plot all #############################################
-# create a txt and store the information in list_dict
+# plot corner plots
+# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, N_{\rm cycles})$')
 
-overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda)$')
-# indintr = np.asarray([0,1,2,3,4,10,11,12])
-# c_kw = CORNER_KWARGS.copy()
-# c_kw['labels'] = [labels[i] for i in indintr]
-# overlaid_corner(  [el[:,indintr] for el in list_chains], labs, './plot_paper/intr_parameters_posteriors', corn_kw=c_kw, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
-# c_kw = CORNER_KWARGS.copy()
-# indext = np.asarray([5,6,7,8,9,])
-# c_kw['labels'] = [labels[i] for i in indext]
-# overlaid_corner(  [el[:,indext] for el in list_chains], labs, './plot_paper/extr_parameters_posteriors', corn_kw=c_kw, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+# plot the precision as a function of the number of cycles
+list_cyc_precision = np.asarray(list_cyc_precision)
+
+cmap = plt.cm.get_cmap('Set1',)
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+plt.rcParams.update({
+    "text.usetex": True,
+    "pgf.texsystem": 'pdflatex',
+    "pgf.rcfonts": False,
+    "font.family": "serif",
+    "figure.figsize": [246.0*px, inv_golden * 246.0*px],
+    'legend.fontsize': 12,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.title_fontsize' : 12,
+})
+
+plt.figure()
+var_list = [r"$M$", r"$\mu$", r"$a$", r"$p_0$", r"$e_0$"]
+run_list = np.arange(5)
+marker_list = ['o','s','^','D','P']
+for var in range(5):
+    for run_ind in run_list:
+        plt.scatter(list_cyc_precision[run_ind,-1], list_cyc_precision[run_ind,:-1][var], label=var_list[var], color=colors[run_ind], marker=marker_list[var],alpha=0.7)
+plt.yscale('log')
+plt.xlabel(r'$N_{\rm cycles}$', fontsize=20)
+plt.ylabel(r'$\Delta \theta / \theta$', fontsize=20)
+# define custom legend with markers only
+legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', markerfacecolor='black', markersize=10),
+                   plt.Line2D([0], [0], marker='s', color='w', label=r'$\mu$', markerfacecolor='black', markersize=10),
+                   plt.Line2D([0], [0], marker='^', color='w', label=r'$a$', markerfacecolor='black', markersize=10),
+                   plt.Line2D([0], [0], marker='D', color='w', label=r'$p_0$', markerfacecolor='black', markersize=10),
+                   plt.Line2D([0], [0], marker='P', color='w', label=r'$e_0$', markerfacecolor='black', markersize=10)]
+# now add the labels of labs
+plt.legend(handles=legend_elements, loc='upper right')
+plt.tight_layout()
+plt.savefig('./figures/plot_precision_vs_Ncycles.pdf')
