@@ -29,7 +29,7 @@ parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, def
 parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
 parser.add_argument("-zerolike", "--zerolike", help="zero likelihood test", required=False, type=int, default=0)
 parser.add_argument("-noise", "--noise", help="noise injection on=1, off=0", required=False, type=float, default=0.0)
-parser.add_argument("-vacuum", "--vacuum", help="mcmc in vacuum, no sampling over the charge", required=False, type=int, default=0)
+parser.add_argument("-vacuum", "--vacuum", help="mcmc in vacuum, vacuum=0 no sampling over the charge", required=False, type=int, default=0)
 
 args = vars(parser.parse_args())
 
@@ -226,16 +226,18 @@ def run_emri_pe(
         e0, 
         x0,
         dist, 
-        qS, # 7
+        qS,
         phiS,
         qK, 
         phiK, 
         Phi_phi0, 
         Phi_theta0, 
         Phi_r0,
-        charge
+        Lambda
     ) = emri_injection_params
-
+    injection_values = np.asarray([M, mu, a, p0, e0, x0, dist, qS, phiS, qK, phiK, Phi_phi0, Phi_theta0, Phi_r0, Lambda])
+    
+    # emri_injection_params are the sampling parameters
     # get the sampling parameters
     emri_injection_params[0] = np.log(emri_injection_params[0])
     emri_injection_params[1] = np.log(emri_injection_params[1])
@@ -247,15 +249,14 @@ def run_emri_pe(
     emri_injection_params[10] = emri_injection_params[10] % (2 * np.pi)
     
     if vacuum:
-        emri_injection_params[-1] == 0.0
+        # in the vacuum case we do not sample over Lambda and emri_injection_params is fixed to zero, which means a vacuum signal
+        emri_injection_params[-1] = 0.0
         fill_dict = {
             "ndim_full": 15,
             "fill_values": emri_injection_params[np.array([ 5, 12, 14])], # inclination and Phi_theta and charge
             "fill_inds": np.array([ 5, 12, 14]),
             }
     else:
-        # transform charge value into gamma value
-        emri_injection_params[-1] = emri_injection_params[-1]**2 / 4.0
         prior_charge = uniform_dist(-0.6, 0.6)
 
     # transforms from pe to waveform generation
@@ -283,13 +284,11 @@ def run_emri_pe(
     
     # remove three we are not sampling from (need to change if you go to adding spin)
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
-    # get injected parameters after transformation
-    injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
     
-    # get AE
+    # get SNR
     temp_emri_kwargs = emri_kwargs.copy()
     temp_emri_kwargs['T'] = Tplunge
-    temp_data_channels = few_gen(*injection_in, **temp_emri_kwargs)
+    temp_data_channels = few_gen(*injection_values, **temp_emri_kwargs)
     temp_data_channels = [el*xp.asarray(tukey(len(temp_data_channels[0]),alpha=0.005)) for el in temp_data_channels]
 
     ############################## distance based on SNR ########################################################
@@ -297,17 +296,15 @@ def run_emri_pe(
 
     dist_factor = check_snr.get() / source_SNR
     emri_injection_params[6] *= dist_factor
-    
+    injection_values[6] *= dist_factor
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     print("new distance based on SNR", emri_injection_params[6])
-
-    # get injected parameters after transformation
-    injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
-    
-    # get AE
-    data_channels = wave_gen(*injection_in, **emri_kwargs)
+    ##########################################################################################    
+    print("difference between injected and transform", injection_values - transform_fn.both_transforms(emri_injection_params_in))
+    # get injection
+    data_channels = wave_gen(*injection_values, **emri_kwargs)
     tic = time.perf_counter()
-    [wave_gen(*injection_in, **emri_kwargs) for _ in range(10)]
+    [wave_gen(*injection_values, **emri_kwargs) for _ in range(10)]
     toc = time.perf_counter()
     print("timing",(toc-tic)/10, "len vec", len(data_channels[0]))
     
@@ -410,6 +407,7 @@ def run_emri_pe(
     ndim = 13
     if vacuum:
         ndim = 12
+    print('Sampling in ',ndim,' dimensions')
     ############################## plots ########################################################
     if use_gpu:
         get_spectrogram(data_channels[0],dt,fp[:-3] + "_spectrogram.pdf")
@@ -436,7 +434,7 @@ def run_emri_pe(
         
         plt.figure()
         for cc in 10**np.linspace(-5,-2,num=20):
-            injection_temp = injection_in.copy()
+            injection_temp = injection_values.copy()
             injection_temp[-1] = cc**2/4
             data_temp = wave_gen(*injection_temp, **emri_kwargs)
             
@@ -709,6 +707,7 @@ if __name__ == "__main__":
     # sqrt_alpha = 0.4 * np.sqrt( 16 * np.pi**0.5 )
     # d = (sqrt_alpha/(mu*MRSUN_SI/1e3))**2 / 2
     # d = (0.4 * np.sqrt( 16 * np.pi**0.5 )/(mu*MRSUN_SI/1e3))**2 / 2
+    Lambda = args['charge']**2/4
     charge = args['charge']
     # flag for vacuum runs
     vacuum = bool(args["vacuum"])
@@ -785,7 +784,7 @@ if __name__ == "__main__":
         Phi_phi0, 
         Phi_theta0, 
         Phi_r0,
-        charge
+        Lambda
     ])
 
     waveform_kwargs = {
