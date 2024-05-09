@@ -3,7 +3,7 @@
 #include <gsl/gsl_sf_ellint.h>
 #include <fstream>
 #include <cmath>
-
+#include <iomanip>
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_sf_ellint.h>
 #include <gsl/gsl_math.h>
@@ -55,17 +55,16 @@ double EllipticPi(double n, double k)
     return result.val;
 }
 
-void generate_spline(const char* function_name, double (*function)(double), const char* filename) {
+void generate_spline(const char* function_name, double (*function)(double), const char* filename)
+{
     // Step 1: Generate data points for the function
-    int num_points = 100;
+    int num_points = 10000;
     double x_vals[num_points];
     double y_vals[num_points];
     for (int i = 0; i < num_points; ++i) {
         double x = 1e-10 + (0.99999 - 1e-10) * i / (num_points - 1);  // x goes from 1e-10 to 0.99999
         x_vals[i] = x;
-        gsl_sf_result result;
-        function(x);
-        y_vals[i] = result.val;
+        y_vals[i] = function(x);
     }
 
     // Step 2: Use these data points to create a cubic spline
@@ -81,7 +80,7 @@ void generate_spline(const char* function_name, double (*function)(double), cons
     double first_x = x_vals[0];
     double spacing = x_vals[1] - x_vals[0];  // Assuming regular spacing
 
-    file << "    int index = static_cast<int>((x - " << first_x << ") / " << spacing << ");\n";
+    file << std::setprecision(15) << "    int index = static_cast<int>((x - " << first_x << ") / " << spacing << ");\n";
     file << "    switch (index) {\n";
 
     for (int i = 0; i < num_points - 1; ++i) {
@@ -92,7 +91,7 @@ void generate_spline(const char* function_name, double (*function)(double), cons
         double ci = gsl_spline_eval_deriv2(spline, xi, NULL) / 2.0;
         double di = (gsl_spline_eval_deriv2(spline, xi1, NULL) - gsl_spline_eval_deriv2(spline, xi, NULL)) / (6.0 * (xi1 - xi));
         file << "        case " << i << ":\n";
-        file << "            return " << ai << " + " << bi << " * (x - " << xi << ") + " << ci << " * pow(x - " << xi << ", 2) + " << di << " * pow(x - " << xi << ", 3);\n";
+        file << std::setprecision(15) << "            return " << ai << " + " << bi << " * (x - " << xi << ") + " << ci << " * pow(x - " << xi << ", 2) + " << di << " * pow(x - " << xi << ", 3);\n";
     }
 
     file << "        default:\n";
@@ -105,7 +104,8 @@ void generate_spline(const char* function_name, double (*function)(double), cons
     gsl_spline_free(spline);
 }
 
-void generate_bicubic_spline(const char* function_name, double (*function)(double, double), const char* filename) {
+void generate_bicubic_spline(const char* function_name, double (*function)(double, double), const char* filename)
+{
     // Step 1: Generate data points for the function
     int num_points = 100;
     double x_vals[num_points];
@@ -118,9 +118,7 @@ void generate_bicubic_spline(const char* function_name, double (*function)(doubl
         for (int j = 0; j < num_points; ++j) {
             double y = 1e-10 + (0.99999 - 1e-10) * j / (num_points - 1);  // y goes from 1e-10 to 0.99999
             y_vals[j] = y;
-            gsl_sf_result result;
-            function(x, y);
-            z_vals[i * num_points + j] = result.val;
+            z_vals[i * num_points + j] = function(x, y);
         }
     }
 
@@ -139,8 +137,8 @@ void generate_bicubic_spline(const char* function_name, double (*function)(doubl
     double spacing_x = x_vals[1] - x_vals[0];  // Assuming regular spacing
     double spacing_y = y_vals[1] - y_vals[0];  // Assuming regular spacing
 
-    file << "    int index_x = static_cast<int>((x - " << first_x << ") / " << spacing_x << ");\n";
-    file << "    int index_y = static_cast<int>((y - " << first_y << ") / " << spacing_y << ");\n";
+    file << std::setprecision(15) << "    int index_x = static_cast<int>((x - " << first_x << ") / " << spacing_x << ");\n";
+    file << std::setprecision(15) << "    int index_y = static_cast<int>((y - " << first_y << ") / " << spacing_y << ");\n";
     file << "    switch (index_x * " << num_points << " + index_y) {\n";
 
     // Create the gsl_interp_accel objects
@@ -152,7 +150,7 @@ void generate_bicubic_spline(const char* function_name, double (*function)(doubl
             double xi = x_vals[i];
             double yj = y_vals[j];
             double z = gsl_spline2d_eval(spline, xi, yj, xacc, yacc);
-            file << "        case " << (i * num_points + j) << ":\n";
+            file << std::setprecision(15) << "        case " << (i * num_points + j) << ":\n";
             file << "            return " << z << ";\n";
         }
     }
