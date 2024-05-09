@@ -111,6 +111,7 @@ double EllipticPi(double n, double k)
     }
     return result.val;
 }
+// define new elliptic pi function from Scott
 
 double EllipticPiIncomp(double n, double phi, double k)
 {
@@ -280,8 +281,8 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     double CapitalUpsilonr = (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) / (2 * EllipticK(pow(kr, 2))); //(*Eq.(15)*)
     double CapitalUpsilonTheta = (M_PI * L * sqrt(Epsilon0zp)) / (2 * EllipticK(pow(kTheta, 2)));                   //(*Eq.(15)*)
 
-    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
-    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
+    double rp = M + sqrt(1.0 - pow(a, 2));
+    double rm = M - sqrt(1.0 - pow(a, 2));
 
     double hr = (r1 - r2) / (r1 - r3);
     double hp = ((r1 - r2) * (r3 - rp)) / ((r1 - r3) * (r2 - rp));
@@ -290,7 +291,7 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     // (*Eq. (21)*)
     double CapitalUpsilonPhi = (2 * CapitalUpsilonTheta) / (M_PI * sqrt(Epsilon0zp)) * EllipticPi(zm, pow(kTheta, 2)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2))));
 
-    double CapitalGamma = 4 * pow(M, 2) * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
+    double CapitalGamma = 4 * 1.0 * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * 1.0 * En - a * L) * rp - 2 * M * pow(a, 2) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * 1.0 * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
 
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
@@ -344,14 +345,16 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
     // get radial roots
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
-
-    double Epsilon0 = pow(a, 2) * (1 - pow(En, 2)) / pow(L, 2);
+    double a_squared = a*a;
+    double En_squared = En*En;
+    double L_squared = L*L;
+    double Epsilon0 = a_squared * (1 - En_squared) / L_squared;
     // double zm = 0;
-    double a2zp = (pow(L, 2) + pow(a, 2) * (-1 + pow(En, 2)) * (-1)) / ((-1 + pow(En, 2)) * (-1));
+    double a2zp = (L_squared + a_squared * (-1 + En_squared) * (-1)) / ((-1 + En_squared) * (-1));
 
-    double Epsilon0zp = -((pow(L, 2) + pow(a, 2) * (-1 + pow(En, 2)) * (-1)) / (pow(L, 2) * (-1)));
+    double Epsilon0zp = -((L_squared + a_squared * (-1 + En_squared) * (-1)) / (L_squared * (-1)));
 
-    double zp = pow(a, 2) * (1 - pow(En, 2)) + pow(L, 2);
+    double zp = a_squared * (1 - En_squared) + L_squared;
 
     double arg_kr = (r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4);
 
@@ -364,11 +367,12 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
         printf("r1 r2 r3 r4 %e %e %e %e\n", r1, r2, r3, r4);
         printf("a p e %e %e %e\n", a,p,e);
     }
-    double CapitalUpsilonr = (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2))) / (2 * EllipticK(kr2)); //(*Eq.(15)*)
+    double elK = EllipticK(kr2);
+    double CapitalUpsilonr = (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2))) / (2 * elK); //(*Eq.(15)*)
     double CapitalUpsilonTheta = x * pow(zp, 0.5);                                                             //(*Eq.(15)*)
 
-    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
-    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
+    double rp = M + sqrt(1.0 - a_squared);
+    double rm = M - sqrt(1.0 - a_squared);
 
     // this check was introduced to avoid round off errors
     // if (r3 - rp==0.0){
@@ -381,20 +385,23 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
 
     // (*Eq. (21)*)
     // This term is zero when r3 - rp == 0.0
-    double prob1 = (2 * M * En * rp - a * L) * (EllipticK(kr2) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, kr2));
+    double elPi = EllipticPi(hp, kr2);
+    double elPi_hm = EllipticPi(hm, kr2);
+    double elPi_hr = EllipticPi(hr, kr2);
+    double prob1 = (2 * M * En * rp - a * L) * (elK - (r2 - r3) / (r2 - rp) * elPi);
     if (abs(prob1) != 0.0)
     {
         prob1 = prob1 / (r3 - rp);
     }
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(kr2) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, kr2)));
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm));
 
     // This term is zero when r3 - rp == 0.0
-    double prob2 = ((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) * (EllipticK(kr2) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, kr2));
+    double prob2 = ((4 * 1.0 * En - a * L) * rp - 2 * M * a_squared * En) * (elK - (r2 - r3) / (r2 - rp) * elPi);
     if (abs(prob2) != 0.0)
     {
         prob2 = prob2 / (r3 - rp);
     }
-    double CapitalGamma = 4 * pow(M, 2) * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(kr2) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, kr2) + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * EllipticK(kr2) + (r2 - r3) * EllipticPi(hr, kr2)) + (2 * M) / (rp - rm) * (prob2 - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(kr2) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, kr2))));
+    double CapitalGamma = 4 * 1.0 * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * elK + (r2 - r3) * (r1 + r2 + r3 + r4) * elPi_hr + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * elK + (r2 - r3) * elPi_hr) + (2 * M) / (rp - rm) * (prob2 - ((4 * 1.0 * En - a * L) * rm - 2 * M * a_squared * En) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm)));
 
     // This check makes sure that the problematic terms are zero when r3-rp is zero
     // if (r3 - rp==0.0){
@@ -1244,8 +1251,8 @@ void KerrEqSpinFrequenciesCorrection(double *deltaOmegaR_, double *deltaOmegaPhi
     double kr = (r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4); // convention without the sqrt
     double hr = (r1 - r2) / (r1 - r3);
 
-    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
-    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
+    double rp = M + sqrt(1.0 - pow(a, 2));
+    double rm = M - sqrt(1.0 - pow(a, 2));
 
     double hp = ((r1 - r2) * (r3 - rp)) / ((r1 - r3) * (r2 - rp));
     double hm = ((r1 - r2) * (r3 - rm)) / ((r1 - r3) * (r2 - rm));
