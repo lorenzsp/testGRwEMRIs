@@ -109,19 +109,6 @@ def weighted_quantile(values, quantiles, sample_weight=None,
         weighted_quantiles /= np.sum(sample_weight)
     return np.interp(quantiles, weighted_quantiles, values)
 
-init_name = '../DataAnalysis/results/*charge0.0_*'
-datasets = sorted(glob.glob(init_name + '.h5'))
-pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-# sort datasets by charge
-# datasets = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', ]
-# create the list of injected parameters
-# pars_inj = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy',  ]
-
-# for ii in range(len(datasets)):
-#     datasets[ii] = '../DataAnalysis/' +  datasets[ii]
-#     pars_inj[ii] = '../DataAnalysis/' +  pars_inj[ii]
-    
-print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
 colors = ['#377eb8', '#ff7f00', '#4daf4a',
                   '#f781bf', '#a65628', '#984ea3',
@@ -129,29 +116,14 @@ colors = ['#377eb8', '#ff7f00', '#4daf4a',
 
 
 colors = sns.color_palette('colorblind')
-# colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
-ls = ['-','--','-.',':',(0, (2, 2)),(0, (1, 2))]
-# provide custom line styles
-ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1))]
 ########################################################################
 from scipy.stats import gaussian_kde
 
-init_name = '../DataAnalysis/results/*'
+init_name = '../DataAnalysis/paper_runs/*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-# # sort datasets by charge
-# datasets = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1.h5', ]
-# # create the list of injected parameters
-# pars_inj = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', ]
-# for ii in range(len(datasets)):
-#     datasets[ii] = '../DataAnalysis/' +  datasets[ii]
-#     pars_inj[ii] = '../DataAnalysis/' +  pars_inj[ii]
+
 print("len names", len(datasets),len(pars_inj))
-# cmap = plt.cm.get_cmap('Set1',)
-# colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
-ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
-# can you find a better way to plot the lines?
-#
 ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (1, 3))]
 
 # Scalar plot
@@ -159,29 +131,30 @@ plt.figure()
 for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     label, toplot, truths = get_labels_chains(el)
 
-    # add to the following labels the log10 of the savage-dickey ratio
-    kde = gaussian_kde(toplot[:,-1], bw_method='scott')
-    med = np.median(toplot,axis=0)
-    if truths[-1]!=0.0:
-        density_at_zero = kde.evaluate(toplot[:,-1].min())
-    else:
-        density_at_zero = kde.evaluate(0.0)
+    # # add to the following labels the log10 of the savage-dickey ratio
+    # kde = gaussian_kde(toplot[:,-1], bw_method='scott')
+    # med = np.median(toplot,axis=0)
+    # if truths[-1]!=0.0:
+    #     density_at_zero = kde.evaluate(toplot[:,-1].min())
+    # else:
+    #     density_at_zero = kde.evaluate(0.0)
     
-    prior = 1 / 0.2
-    savage_dickey = np.log10(prior / density_at_zero)[0]
-    print(f"log10 SD-Ratio: {savage_dickey}")
-
-    plt.hist(toplot[:,-1], bins=40, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
+    # prior = 1 / 0.2
+    # savage_dickey = np.log10(prior / density_at_zero)[0]
+    # print(f"log10 SD-Ratio: {savage_dickey}")
+    Lambda = toplot[:,-1]
+    Lambda = Lambda[Lambda>0.0]
+    charge = np.sqrt(4 * Lambda)
+    plt.hist(charge, weights=1/np.sqrt(Lambda), bins=40, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
     # plot kde of the last parameter
     # plt.plot(np.linspace(toplot[:,-1].min(),toplot[:,-1].max(),100),kde.evaluate(np.linspace(toplot[:,-1].min(),toplot[:,-1].max(),100)),color=cc,linestyle=ll,label=label, linewidth=3,)
 
 plt.tight_layout()
 plt.xlabel(r'$d$',size=22)
-vpos = 0.8
 plt.ticklabel_format(style='sci')
-plt.legend(title='\t \t'+r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \log_{10} {\rm BF})$',loc='upper right')# bbox_to_anchor=(0.0, 0.5)
+plt.legend(title='\t \t'+r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$',loc='upper right')# bbox_to_anchor=(0.0, 0.5)
 # plt.legend()
-plt.ylim(0.0,1970)
+# plt.ylim(0.0,1970)
 plt.savefig(f'./figures/bound_charge.pdf', bbox_inches='tight')
 
 #####################################
@@ -190,13 +163,16 @@ labels = [r'$\Delta \ln (M/{\rm M}_\odot$)', r'$\Delta \ln (\mu / M_{\odot})$', 
             r"$\Delta \cos \theta_S$",r"$\Delta \phi_S$",
             r"$\Delta \cos \theta_K$",r"$\Delta \phi_K$",
         r'$\Delta \Phi_{\varphi 0}$', r'$\Delta \Phi_{r 0}$',
-            r"$d$",
+            r"$\Lambda$",
         ]
 for var in range(5):
     plt.figure()
     for filename,el in zip(datasets,pars_inj):
         label, toplot, truths = get_labels_chains(el)        
-        plt.hist(toplot[:,var]-truths[var], bins=40, histtype='step', density=True, label=label, linewidth=3)
+        # mask for positive Lambda
+        Lambda = toplot[:,-1]
+        mask = (Lambda>0.0)
+        plt.hist(toplot[mask,var]-truths[var], bins=40, histtype='step', density=True, label=label, linewidth=3)
 
     plt.tight_layout()
     plt.xlabel(labels[var],size=22)
@@ -204,11 +180,3 @@ for var in range(5):
     plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
     # plt.legend()
     plt.savefig(f'./figures/bound_variable_{var}.pdf', bbox_inches='tight')
-
-#####################################
-
-
-init_name = 'results_paper/mcmc_rndStart_M*_charge0.0_*seed2601*'
-datasets = sorted(glob.glob(init_name + '.h5'))
-pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-print("len names", len(datasets),len(pars_inj))

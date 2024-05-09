@@ -57,7 +57,7 @@ labels = [r'$\Delta \ln M$', r'$\Delta \ln \mu$', r'$\Delta a$', r'$\Delta p_0 \
             r"$\Delta \cos \theta_S$",r"$\Delta \phi_S$",
             r"$\Delta \cos \theta_K$",r"$\Delta \phi_K$",
         r'$\Delta \Phi_{\varphi 0}$', r'$\Delta \Phi_{r 0}$',
-            r"$\Delta d$",
+            r"$\Delta \Lambda$",
         ]
 
 CORNER_KWARGS = dict(
@@ -235,17 +235,9 @@ def weighted_quantile(values, quantiles, sample_weight=None,
     return np.interp(quantiles, weighted_quantiles, values)
 
 ########################### preparation of the data #############################################
-init_name = '../DataAnalysis/results/*'
+init_name = '../DataAnalysis/paper_runs/*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-# # sort datasets by charge
-# datasets = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1.h5', ]
-# # create the list of injected parameters
-# pars_inj = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0025_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', ]
-
-# for ii in range(len(datasets)):
-#     datasets[ii] = '../DataAnalysis/' +  datasets[ii]
-#     pars_inj[ii] = '../DataAnalysis/' +  pars_inj[ii]
     
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
@@ -264,18 +256,25 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     
     # Load MCMC samples
     temp_samp = np.load(repo_name + '/samples.npy')
+    Lambda = temp_samp[:,-1]
+    temp_samp = temp_samp[Lambda>0.0]
     list_chains.append(temp_samp - truths[None,:])
     # obtain median and 95% credible interval from the samples
     med = np.median(temp_samp, axis=0)
     low = np.percentile(temp_samp, 2.5, axis=0)
     high = np.percentile(temp_samp, 97.5, axis=0)
-    # add information about log10alpha and weight
-    charge_d = np.abs(temp_samp[:,-1])
-    mask = (charge_d!=0)
-    log10alpha, w_log10, sqrtalpha, w_sqrtalpha = get_log10alpha_weights(temp_samp[:,1][mask], charge_d[mask])
-    # obtain the quantiles 
-    log10alpha_quantiles = weighted_quantile(log10alpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=w_log10)
-    sqrtalpha_quantiles = weighted_quantile(sqrtalpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=w_sqrtalpha)
+    # add information
+    Lambda = temp_samp[:,-1]
+    charge = np.sqrt(4 * Lambda)
+    mu = np.exp(temp_samp[:,1])
+    sqrt_alpha = 2*np.sqrt(2)*mu*MRSUN_SI/1e3*Lambda**(1/4)
+    weights = mu * Lambda**(-3/4) * np.sqrt(2)/4
+
+    sqrtalpha_quantiles = weighted_quantile(sqrt_alpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights)
+    charge = np.sqrt(4 * Lambda)
+    weights_ch=1/np.sqrt(Lambda)
+    charge_quantiles = weighted_quantile(charge, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights_ch)
+    
     # Create a DataFrame with the parameter information
     data = {
         'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'precision 68%'],
@@ -291,15 +290,18 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         'phiK': [truths[9], med[9], low[9], high[9], np.std(temp_samp, axis=0)[9] / np.mean(temp_samp, axis=0)[9]],
         'Phivarphi0': [truths[10], med[10], low[10], high[10], np.std(temp_samp, axis=0)[10] / np.mean(temp_samp, axis=0)[10]],
         'Phir0': [truths[11], med[11], low[11], high[11], np.std(temp_samp, axis=0)[11] / np.mean(temp_samp, axis=0)[11]],
-        'd': [truths[12], med[12], low[12], high[12], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
+        'Lambda': [truths[12], med[12], low[12], high[12], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
     }
+    
+    true_charge = np.sqrt(4 * truths[12])
+    true_sqrtalpha = np.sqrt(2*true_charge)*np.exp(truths[1])*MRSUN_SI/1e3
     # another table only for the alpha contraints
     data_alpha = {
         'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'percentile 95 perc'],
-        'log10alpha': [np.log10(np.sqrt(2*truths[12])*truths[1]*MRSUN_SI/1e3), log10alpha_quantiles[1], log10alpha_quantiles[0], log10alpha_quantiles[2], log10alpha_quantiles[3]],
-        'sqrtalpha': [np.sqrt(2*truths[12])*truths[1]*MRSUN_SI/1e3, sqrtalpha_quantiles[1], sqrtalpha_quantiles[0], sqrtalpha_quantiles[2], sqrtalpha_quantiles[3]],
+        'sqrtalpha': [true_sqrtalpha, sqrtalpha_quantiles[1], sqrtalpha_quantiles[0], sqrtalpha_quantiles[2], sqrtalpha_quantiles[3]],
+        'charge': [true_charge, charge_quantiles[1], charge_quantiles[0], charge_quantiles[2], charge_quantiles[3]],
     }
-    
+
     df = pd.DataFrame(data)
     # Save the DataFrame as a LaTeX table
     df.to_markdown('./posterior_summary/table_'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
@@ -346,7 +348,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 ########################### plot all #############################################
 # create a txt and store the information in list_dict
 
-# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, d)$')
+overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda)$')
 # indintr = np.asarray([0,1,2,3,4,10,11,12])
 # c_kw = CORNER_KWARGS.copy()
 # c_kw['labels'] = [labels[i] for i in indintr]

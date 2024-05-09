@@ -86,7 +86,7 @@ M = 1e6
 mu = 10
 e0 = 0.4
 p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
 # Plot the first trajectory
 
@@ -97,7 +97,7 @@ M = 1e6
 mu = 10
 e0 = 0.1
 p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
 # Plot the second trajectory
 plt.plot(p, e, '-.', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
@@ -107,7 +107,7 @@ M = 1e6
 mu = 5
 e0 = 0.4
 p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
 # Plot the third trajectory
 plt.plot(p, e, ':', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
@@ -118,7 +118,7 @@ M = 5e5
 mu = 10
 e0 = 0.4
 p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatrix(a, e0, x0) + 0.1, 30.0])
-t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge, T=3.0, dt=10.0)
+t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
  
 # Plot the third trajectory
