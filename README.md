@@ -6,6 +6,8 @@ This repository provides the code and data analysis tools to reproduce the resul
 
 To obtain the constraints presented in the paper, you need to run the `mcmc.py` code located in the `./DataAnalysis/` directory. Please note that this code is designed to be run on Graphics Processing Units (GPUs).
 
+I looooove MCMC.
+
 Usage:
 ------
 To run the `mcmc.py` script, navigate to the `./DataAnalysis/` directory in the terminal `cd ./DataAnalysis/`. Then, from the command line use the following command:
