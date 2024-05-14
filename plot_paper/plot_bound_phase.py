@@ -114,14 +114,7 @@ def weighted_quantile(values, quantiles, sample_weight=None,
 init_name = '../DataAnalysis/paper_runs/MCMC*T2.0*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-# sort datasets by charge
-# datasets = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1.h5', ]
-# create the list of injected parameters
-# pars_inj = ['results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu1e+01_a0.95_p8.4_e0.1_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M1e+06_mu5.0_a0.95_p6.9_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy', 'results_paper/mcmc_rndStart_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw16_nt1_injected_pars.npy',  ]
 
-# for ii in range(len(datasets)):
-#     datasets[ii] = '../DataAnalysis/' +  datasets[ii]
-#     pars_inj[ii] = '../DataAnalysis/' +  pars_inj[ii]
     
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
@@ -147,6 +140,20 @@ def get_dphi(params):
     t, p, e, x, Phi_phi, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, charge, Phi_phi0=PhiP0, Phi_r0=PhiR0,  T=2.0, dt=10.0)
     v = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
     interp = CubicSpline(v, Phi_phi)
+    t_0, p, e, x, Phi_phi_0, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, 0.0,  Phi_phi0=PhiP0, Phi_r0=PhiR0, T=2.0, dt=10.0)
+    v_0 = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
+    interp_0 = CubicSpline(v_0, Phi_phi_0)
+    sym_mass_ratio = mu*M / (mu+M)**2
+    new_v = np.linspace(v[0],v[-1],100)
+    # delta phi  * 3/(128 * sym_mass_ratio * v**(-7)) is the difference in phase
+    factor = 3/(128 * sym_mass_ratio * v**(-7))
+    return np.mean(np.abs(1-interp(new_v) / interp_0(new_v)) * new_v**(2))
+
+def get_dphi_vacuum(params):
+    lnM,lnmu,a,p0,e0,D_L,_,_,_,_,PhiP0,PhiR0 = params
+    x0 = 1.0
+    M = np.exp(lnM)
+    mu = np.exp(lnmu)
     t_0, p, e, x, Phi_phi_0, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, 0.0,  Phi_phi0=PhiP0, Phi_r0=PhiR0, T=2.0, dt=10.0)
     v_0 = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
     interp_0 = CubicSpline(v_0, Phi_phi_0)
@@ -193,7 +200,7 @@ def get_delta_Edot(M, mu, a, p0, e0, x0, charge):
     return delta, B
 
 
-Nsamp = int(1e3)
+Nsamp =int(5e4)
 
 #----------------------------- delta phi ------------------------------------
 
@@ -213,10 +220,11 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     newvar[:,-1] = charge
     
     # use multiprocessing to obtain the results for dphi
-    with mp.Pool(mp.cpu_count()) as pool:
+    with mp.Pool(32) as pool:
         results = pool.map(get_dphi, newvar[:Nsamp])
-    
-    plt.hist(results, weights=1/charge, bins=30, color=cc, label=label, histtype='step', linestyle=ll)
+    results = np.asarray(results)
+    bins = np.linspace(0.0005, 0.003,40)
+    plt.hist(results, weights=1/results, bins=bins, color=cc, label=label, histtype='step', linestyle=ll, density=True)
 
 
 # plt.tight_layout()

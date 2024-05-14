@@ -63,7 +63,7 @@ def get_labels_chains(el):
     # labels
     label = '('
 
-    
+    # label += f"{params_dict.get('T')}"
     label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
     if int(params_dict.get('mu'))==5:
         label += f", $\, \, \,${int(params_dict.get('mu'))}"
@@ -71,7 +71,6 @@ def get_labels_chains(el):
         label += f", {int(params_dict.get('mu'))}"
     label += f", {params_dict.get('a'):.2f}"
     label += f", {params_dict.get('e')}"
-    label += f", {params_dict.get('T')}"
     label += ')'
     
     return label, toplot, truths
@@ -111,45 +110,58 @@ def weighted_quantile(values, quantiles, sample_weight=None,
         weighted_quantiles /= np.sum(sample_weight)
     return np.interp(quantiles, weighted_quantiles, values)
 
-init_name = '../DataAnalysis/paper_runs/MCMC*'
+init_name = '../DataAnalysis/paper_runs/*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
     
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
+colors = ['#377eb8', '#ff7f00', '#4daf4a',
+                  '#f781bf', '#a65628', '#984ea3',
+                  '#999999', '#e41a1c', '#dede00']
+
+
 colors = sns.color_palette('colorblind')
-# colors = ['#377eb8', '#ff7f00', '#4daf4a','#f781bf', '#a65628', '#984ea3','#999999', '#e41a1c', '#dede00']
-colors = [cmap(i) for i in range(len(datasets))]
+# colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
+ls = ['-','--','-.',':',(0, (2, 2)),(0, (1, 2))]
 # provide custom line styles
 ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1)),'-']
-ls = ['-'  for i in range(len(datasets))]
 ########################################################################
 # Alpha plot
+list_sqrt_alpha,list_lnmu = np.asarray([]),np.asarray([])
+list_weights = np.asarray([])
 plt.figure()
 for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     label, toplot, truths = get_labels_chains(el)
-    # # obtain the eigenvectors of the covariance matrix from the samples toplot
-    # mean_samp = np.mean(toplot,axis=0)
-    # zero_mean_samp = toplot - mean_samp
-    # cov = np.cov(zero_mean_samp,rowvar=False)
-    # eigenvalues, eigenvectors = mpmath.eig(mpmath.matrix(cov))
+    # alpha bound
+    # lnmu = toplot[:,1] - np.median(toplot[:,1]) + truths[1]
+    # d = np.abs(toplot[:,-1] - np.median(toplot[:,-1]))
+    # lnmu = lnmu[d!=0.0]
+    # d = d[d!=0.0]
+    # log10alpha, w = get_log10alpha_weights(lnmu,d)
+    # bins = np.linspace(-1.5,0.3,num=25)+ np.random.uniform(-0.05,-0.0001)
+    # obtain the eigenvectors of the covariance matrix from the samples toplot
+    mean_samp = np.mean(toplot,axis=0)
+    zero_mean_samp = toplot - mean_samp
+    cov = np.cov(zero_mean_samp,rowvar=False)
+    eigenvalues, eigenvectors = mpmath.eig(mpmath.matrix(cov))
 
-    # eigenvalues = np.array([float(e) for e in eigenvalues])
-    # eigenvectors = np.asarray(eigenvectors,dtype=float).reshape(cov.shape)
-    # print((cov @ eigenvectors[:,-1])/(eigenvalues[-1]*eigenvectors[:,-1]))
+    eigenvalues = np.array([float(e) for e in eigenvalues])
+    eigenvectors = np.asarray(eigenvectors,dtype=float).reshape(cov.shape)
+    print((cov @ eigenvectors[:,-1])/(eigenvalues[-1]*eigenvectors[:,-1]))
     
-    # # Assuming `plane` is your plane and `toplot` are your samples
-    # normal_vector = np.eye(toplot.shape[1])[-1] # eigenvectors[:, -1] #  U[-1] # 
-    # sign_sides = np.sum(zero_mean_samp * normal_vector[None,:],axis=1)
-    # positive = (sign_sides>0.0)
-    # negative = (sign_sides<0.0)
-    # # Compute the reflection matrix
-    # reflection_matrix = np.eye(zero_mean_samp.shape[1]) - 2 * np.outer(normal_vector, normal_vector)
-    # # Apply the reflection matrix to the samples
+    # Assuming `plane` is your plane and `toplot` are your samples
+    normal_vector = np.eye(toplot.shape[1])[-1] # eigenvectors[:, -1] #  U[-1] # 
+    sign_sides = np.sum(zero_mean_samp * normal_vector[None,:],axis=1)
+    positive = (sign_sides>0.0)
+    negative = (sign_sides<0.0)
+    # Compute the reflection matrix
+    reflection_matrix = np.eye(zero_mean_samp.shape[1]) - 2 * np.outer(normal_vector, normal_vector)
+    # Apply the reflection matrix to the samples
     
-    # flipped_samp = np.dot(zero_mean_samp[negative], reflection_matrix.T).copy()
-    # flipped_samp[:,-1] *= -1
-    # zero_mean_samp[negative] = -flipped_samp.copy()
+    flipped_samp = np.dot(zero_mean_samp[negative], reflection_matrix.T).copy()
+    flipped_samp[:,-1] *= -1
+    zero_mean_samp[negative] = -flipped_samp.copy()
     # now we need to flip around the zer
     # produce corner of samples
     # figure = corner.corner(zero_mean_samp[-10000:]); figure.savefig('corner.png')
@@ -157,27 +169,46 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
 
     Lambda = toplot[:,-1]
     mask = (Lambda>0.0)
-    toplot = toplot[mask]
+    toplot=toplot[mask]
     Lambda = Lambda[mask]
     mu = np.exp(toplot[:,1])
     # d = np.sqrt(4*toplot[:,-1])#np.abs(toplot[:,-1] - np.median(toplot[:,-1]))
     # mu = mu[d!=0.0]
     # d = d[d!=0.0]
-    sqrt_alpha = 2*mu*MRSUN_SI/1e3*Lambda**(1/4)
-    weights = mu * Lambda**(-3/4) * 0.5
-    xlow = 0.0
-    bins = np.linspace(xlow,5.0,num=30)#+ np.random.uniform(-0.05,-0.0001)
-    # 
-    plt.hist(sqrt_alpha, weights=weights, bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
-    # create a function for the quantile of alpha and put in in summary
-    # upp95 = weighted_quantile(np.log10(y),[0.95],sample_weight=w/y)
-    # plt.axvline(np.quantile(np.log10(y),0.975),color=cc)
+    sqrt_alpha = 2*np.sqrt(2)*mu*MRSUN_SI/1e3*Lambda**(1/4)
+    weights = mu * Lambda**(-3/4) * np.sqrt(2)/4
+    xlow = 0.2
+    # append list of samples and weights
+    list_sqrt_alpha = np.append(list_sqrt_alpha,sqrt_alpha)
+    list_lnmu = np.append(list_lnmu,toplot[:,1])
+    list_weights = np.append(list_weights,weights)
 
-plt.tight_layout()
-plt.xlabel(r'$\sqrt{\alpha}  [{\rm km}]$',size=22)
-plt.ticklabel_format(style='sci')
 
-# from Maselli, to be updated with Elise's paper
+CORNER_KWARGS = dict(
+    bins=40,
+    label_kwargs=dict(fontsize=35),
+    levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
+    plot_density=False,
+    plot_datapoints=False,
+    fill_contours=False,
+    show_titles=False,
+    max_n_ticks=3,
+    labelpad=0.3,
+)
+inp =np.asarray([list_lnmu[0],list_sqrt_alpha[0]])
+breakpoint()
+fig = corner.corner(inp,**CORNER_KWARGS)
+for ii,el1,el2 in enumerate(zip(list_lnmu[1:],list_sqrt_alpha[1:])):
+    fig = corner.corner(np.asarray([el1,el2]),fig=fig, color=colors[ii],**CORNER_KWARGS)
+# bins = np.linspace(xlow,6.0,num=30)#+ np.random.uniform(-0.05,-0.0001)
+# breakpoint()
+# plt.hist(list_sqrt_alpha, weights=list_weights, bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)
+
+# plt.tight_layout()
+# plt.xlabel(r'$\sqrt{\alpha}  [{\rm km}]$',size=22)
+# plt.ticklabel_format(style='sci')
+
+# # from Maselli, to be updated with Elise's paper
 
 # vpos = 10**0.8
 # # Create a bar
@@ -185,23 +216,22 @@ plt.ticklabel_format(style='sci')
 # plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
 # plt.text(vpos+0.1, ylev+0.05, 'LVK current\nconstraint', ha='left', va='center', fontsize=12)
 
-# from figure 21 https://arxiv.org/pdf/2010.09010
-Nsource_3g = 1e6
-vpos = 0.37 * np.sqrt(16*np.pi**0.5)
-ylev = 1.0
-plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
-plt.text(vpos+0.1, ylev+0.05, r'LVK constraint', ha='left', va='center', fontsize=12)
+# # from figure 21 https://arxiv.org/pdf/2010.09010
+# Nsource_3g = 1e6
+# vpos = 0.4 * np.sqrt(16*np.pi**0.5)
+# ylev = 1.0
+# plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
+# plt.text(vpos+0.1, ylev+0.05, 'Projected best event\nLIGO Voyager 08/09', ha='left', va='center', fontsize=12)
 
 # vpos = 5e-2 * np.sqrt(16*np.pi**0.5)
 # ylev = 1.2
 # plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
 # plt.text(vpos+0.1, ylev+0.05, 'Projected cumulative constraint\n LIGO Voyager 08/09', ha='left', va='center', fontsize=12)
 
-plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0,T [{\rm yrs}])$',loc='upper right')#,ncol=2)
+# plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$',loc='upper right')#,ncol=2)
 
-# plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
-# plt.legend()
-plt.xlim(xlow,7.6)
-plt.ylim(0.0,1.9)
-plt.savefig(f'./figures/bound_alpha.pdf', bbox_inches='tight')
-
+# # plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
+# # plt.legend()
+# plt.xlim(xlow,7.6)
+# plt.ylim(0.0,1.9)
+plt.savefig(f'./figures/combined_bound_alpha.pdf', bbox_inches='tight')
