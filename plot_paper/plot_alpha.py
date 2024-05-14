@@ -125,7 +125,7 @@ colors = sns.color_palette('colorblind')
 # colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
 ls = ['-','--','-.',':',(0, (2, 2)),(0, (1, 2))]
 # provide custom line styles
-ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1))]
+ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1)),'-']
 ########################################################################
 # Alpha plot
 plt.figure()
@@ -173,10 +173,10 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     # d = np.sqrt(4*toplot[:,-1])#np.abs(toplot[:,-1] - np.median(toplot[:,-1]))
     # mu = mu[d!=0.0]
     # d = d[d!=0.0]
-    sqrt_alpha = 2*np.sqrt(2)*mu*MRSUN_SI/1e3*Lambda**(1/4)
-    weights = mu * Lambda**(-3/4) * np.sqrt(2)/4
-    xlow = 0.2
-    bins = np.linspace(xlow,6.0,num=30)#+ np.random.uniform(-0.05,-0.0001)
+    sqrt_alpha = 2*mu*MRSUN_SI/1e3*Lambda**(1/4)
+    weights = mu * Lambda**(-3/4) * 0.5
+    xlow = 0.0
+    bins = np.linspace(xlow,5.0,num=30)#+ np.random.uniform(-0.05,-0.0001)
     # 
     plt.hist(sqrt_alpha, weights=weights, bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
     # create a function for the quantile of alpha and put in in summary
@@ -189,11 +189,11 @@ plt.ticklabel_format(style='sci')
 
 # from Maselli, to be updated with Elise's paper
 
-vpos = 10**0.8
-# Create a bar
-ylev = 0.8
-plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
-plt.text(vpos+0.1, ylev+0.05, 'LVK current\nconstraint', ha='left', va='center', fontsize=12)
+# vpos = 10**0.8
+# # Create a bar
+# ylev = 0.8
+# plt.broken_barh([(xlow, vpos-xlow)], (ylev,0.1), edgecolor='black')#, facecolors='none')
+# plt.text(vpos+0.1, ylev+0.05, 'LVK current\nconstraint', ha='left', va='center', fontsize=12)
 
 # from figure 21 https://arxiv.org/pdf/2010.09010
 Nsource_3g = 1e6

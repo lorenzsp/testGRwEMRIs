@@ -70,7 +70,7 @@ class GaussianMove(MHMove):
     def __init__(self, cov_all, mode="AM", factor=None, indx_list=None, sky_periodic=None, abs_value=None, prop=None, **kwargs):
 
         self.all_proposal = {}
-        
+        self.list_prop = []
         for name, cov in cov_all.items():
             # Parse the proposal type.
             try:
@@ -86,13 +86,21 @@ class GaussianMove(MHMove):
                 elif len(cov.shape) == 2 and cov.shape[0] == cov.shape[1]:
                     # The full, square covariance matrix was given.
                     ndim = cov.shape[0]
+                    list_mode = mode.split(",")
                     
-                    if mode=="Gaussian":
-                        proposal = _proposal(cov, factor,"vector")
-                    if mode=="AM":
-                        proposal = AM_proposal(cov, factor, "vector")
-                    if mode=="DE":
-                        proposal = DE_proposal(cov, factor, "vector", prop=prop)
+                    if len(list_mode)>1:
+                        
+                        # function that propose randomly from AM and DE, make a list where you append proposal
+                        for el in list_mode:
+
+                            if el=="Gaussian":
+                                proposal = _proposal(cov, factor,"vector")
+                            if el=="AM":
+                                proposal = AM_proposal(cov, factor, "vector")
+                            if el=="DE":
+                                proposal = DE_proposal(cov, factor, "vector", prop=prop)
+                            self.list_prop.append(proposal)
+                        
                         
 
                 else:
@@ -151,8 +159,9 @@ class GaussianMove(MHMove):
             # get new points
             new_coords_tmp = coords[inds_here].copy()
             new_coords = coords[inds_here].copy()
-            
-            new_coords_tmp = proposal_fn(coords[inds_here], random)[0]
+            # random choice from list of proposal
+            proposal_fn = np.random.choice(self.list_prop, size=1)
+            new_coords_tmp = proposal_fn[0](coords[inds_here], random)[0]
             
             # swap walkers, this helps for the search phase
             if self.indx_list is not None:

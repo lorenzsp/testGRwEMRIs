@@ -39,7 +39,7 @@ labels = [r'$\ln (M/{\rm M}_\odot$)', r'$\ln (\mu / M_{\odot})$', r'$a$', r'$p_0
             r"$\cos \theta_S$",r"$\phi_S$",
             r"$\cos \theta_K$",r"$\phi_K$",
         r'$\Phi_{\varphi 0}$', r'$\Phi_{r 0}$',
-            r"$\gamma=d^2/4$",
+            r"$\Lambda$",
             "loglike"
         ]
 
@@ -210,7 +210,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = 'paper_runs/*'#'results_paper//mcmc_rndStart_M5e+05_mu5.0*'#
+init_name = './paper_runs/*'# './paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -238,8 +238,10 @@ for filename,el in zip(datasets,pars_inj):
     create_folder(repo_name)
     
     # --- select based on loglike ---
-    ll = file.get_log_like(discard=burn, thin=thin)[-1,temp]
-    mask = (ll<10.0)
+    ll = file.get_log_like(discard=burn, thin=thin)[:,temp]
+    # mask based on median like
+    mask = np.delete(np.arange(file.nwalkers),[4,9])
+    # mask = (ll<10.0)
     # mask = (ll>np.max(ll)-20)
     print("maximum likelihood",ll)
     
@@ -249,7 +251,7 @@ for filename,el in zip(datasets,pars_inj):
     samp = file.get_chain(discard=burn, thin=thin)['emri'][:,temp,mask,...]
     inds = file.get_inds(discard=burn, thin=thin)['emri'][:,temp,mask,...]
     toplot = samp[inds]
-    ll_plot = file.get_log_like(discard=burn, thin=thin)[:,temp].flatten()
+    ll_plot = file.get_log_like(discard=burn, thin=thin)[:,temp,mask].flatten()
     
     # ------ Covariance Evolution ----------
     samp_cov = np.cov(toplot,rowvar=False) * 2.38**2 / 13
@@ -268,8 +270,8 @@ for filename,el in zip(datasets,pars_inj):
     plt.tight_layout()
     plt.savefig(repo_name+'/covariance_trace.png')
     
-    # # np.save(repo_name+'_covariance.npy', samp_cov) 
-    # # np.save(repo_name + '_samples',toplot)
+    # np.save(repo_name+'_covariance.npy', samp_cov) 
+    # np.save(repo_name + '_samples',toplot)
     
     # ------ Log like ----------
     # detCov = np.linalg.det(np.cov(toplot,rowvar=False))
@@ -301,7 +303,6 @@ for filename,el in zip(datasets,pars_inj):
     
     overlaid_corner([np.hstack((toplot,ll_plot[:,None]))], [''], name_save=repo_name + f'/corner_{temp}', corn_kw=CORNER_KWARGS)
     np.save(repo_name + '/samples',toplot)
-    
     
 
     plt.close()

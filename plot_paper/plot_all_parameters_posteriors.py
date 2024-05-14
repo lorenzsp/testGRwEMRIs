@@ -276,8 +276,8 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     Lambda = temp_samp[:,-1]
     charge = np.sqrt(4 * Lambda)
     mu = np.exp(temp_samp[:,1])
-    sqrt_alpha = 2*np.sqrt(2)*mu*MRSUN_SI/1e3*Lambda**(1/4)
-    weights = mu * Lambda**(-3/4) * np.sqrt(2)/4
+    sqrt_alpha = 2*mu*MRSUN_SI/1e3*Lambda**(1/4)
+    weights = mu * Lambda**(-3/4) * 0.5
 
     sqrtalpha_quantiles = weighted_quantile(sqrt_alpha, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights)
     charge = np.sqrt(4 * Lambda)
@@ -369,7 +369,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 
 ########################### plot all #############################################
 # plot corner plots
-# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, N_{\rm cycles})$')
+overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, N_{\rm cycles})$')
 
 # plot the precision as a function of the number of cycles
 list_cyc_precision = np.asarray(list_cyc_precision)
@@ -397,7 +397,7 @@ for var in range(5):
         plt.scatter(list_cyc_precision[run_ind,-1], list_cyc_precision[run_ind,:-1][var], label=var_list[var], color=colors[run_ind], marker=marker_list[var],alpha=0.7)
 plt.yscale('log')
 plt.xlabel(r'$N_{\rm cycles}$', fontsize=20)
-plt.ylabel(r'$\Delta \theta / \theta$', fontsize=20)
+plt.ylabel(r'$\sigma_\theta / \theta$', fontsize=20)
 # define custom legend with markers only
 legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', markerfacecolor='black', markersize=10),
                    plt.Line2D([0], [0], marker='s', color='w', label=r'$\mu$', markerfacecolor='black', markersize=10),
@@ -407,4 +407,5 @@ legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', mar
 # now add the labels of labs
 plt.legend(handles=legend_elements, loc='upper right')
 plt.tight_layout()
+plt.grid()
 plt.savefig('./figures/plot_precision_vs_Ncycles.pdf')

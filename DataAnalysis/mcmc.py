@@ -2,8 +2,7 @@
 # python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 7 -nwalkers 26 -ntemps 1 -nsteps 1000 -outname test -vacuum 0
 # test with zero likelihood
 # python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
-# select the plunge time
-Tplunge = 2.0
+
 
 import argparse
 import os
@@ -29,9 +28,12 @@ parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, def
 parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
 parser.add_argument("-zerolike", "--zerolike", help="zero likelihood test", required=False, type=int, default=0)
 parser.add_argument("-noise", "--noise", help="noise injection on=1, off=0", required=False, type=float, default=0.0)
-parser.add_argument("-vacuum", "--vacuum", help="mcmc in vacuum, vacuum=0 no sampling over the charge", required=False, type=int, default=0)
-
+parser.add_argument("-vacuum", "--vacuum", help="mcmc in vacuum, vacuum=1 sampling with a vacuum template", required=False, type=int, default=0)
+parser.add_argument("-Tplunge", "--Tplunge", help="Time to plunge in years to set p0", required=False, type=float, default=2.0)
 args = vars(parser.parse_args())
+
+# select the plunge time
+Tplunge = args["Tplunge"]
 
 os.system("CUDA_VISIBLE_DEVICES="+str(args['dev']))
 os.environ["CUDA_VISIBLE_DEVICES"] = str(args['dev'])
@@ -308,6 +310,7 @@ def run_emri_pe(
     toc = time.perf_counter()
     print("timing",(toc-tic)/10, "len vec", len(data_channels[0]))
     
+    
     check_snr = snr([data_channels[0], data_channels[1]],**inner_kw)
     
     print("SNR",check_snr)
@@ -537,7 +540,7 @@ def run_emri_pe(
     gibbs_setup_start = [("emri",el[None,:] ) for el in indx_list]
     
     moves = [
-        (StretchMove(use_gpu=use_gpu),0.5),
+        (StretchMove(use_gpu=use_gpu, live_dangerously=True),0.5),
         (GaussianMove({"emri": cov}, mode="AM", sky_periodic=sky_periodic, factor=100.0, indx_list=gibbs_setup_start),0.5),
     ]
 
