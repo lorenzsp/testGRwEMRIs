@@ -100,7 +100,14 @@ class GaussianMove(MHMove):
                             if el=="DE":
                                 proposal = DE_proposal(cov, factor, "vector", prop=prop)
                             self.list_prop.append(proposal)
-                        
+                    else:
+                        if mode=="Gaussian":
+                            proposal = _proposal(cov, factor, "vector")
+                        if mode=="AM":
+                            proposal = AM_proposal(cov, factor, "vector")
+                        if mode=="DE":
+                            proposal = DE_proposal(cov, factor, "vector", prop=prop)
+                        self.list_prop.append(proposal)
                         
 
                 else:

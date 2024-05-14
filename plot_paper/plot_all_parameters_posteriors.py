@@ -243,13 +243,13 @@ def weighted_quantile(values, quantiles, sample_weight=None,
     return np.interp(quantiles, weighted_quantiles, values)
 
 ########################### preparation of the data #############################################
-init_name = '../DataAnalysis/paper_runs/*'
+init_name = '../DataAnalysis/paper_runs/MCMC*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
     
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
-colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
+colors = [cmap(i) for i in range(len(datasets))]
 ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
 
 list_chains,labs = [], []
@@ -285,21 +285,16 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     charge_quantiles = weighted_quantile(charge, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights_ch)
     
     # Create a DataFrame with the parameter information
+    # add correlation coefficient
+    corrcoef = np.corrcoef(temp_samp.T)
     data = {
-        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'one sigma relative precision'],
-        'ln M': [truths[0], med[0], low[0], high[0], np.std(temp_samp, axis=0)[0] / np.mean(temp_samp, axis=0)[0]],
-        'ln mu': [truths[1], med[1], low[1], high[1], np.std(temp_samp, axis=0)[1] / np.mean(temp_samp, axis=0)[1]],
-        'a': [truths[2], med[2], low[2], high[2], np.std(temp_samp, axis=0)[2] / np.mean(temp_samp, axis=0)[2]],
-        'p0': [truths[3], med[3], low[3], high[3], np.std(temp_samp, axis=0)[3] / np.mean(temp_samp, axis=0)[3]],
-        'e0': [truths[4], med[4], low[4], high[4], np.std(temp_samp, axis=0)[4] / np.mean(temp_samp, axis=0)[4]],
-        'DL': [truths[5], med[5], low[5], high[5], np.std(temp_samp, axis=0)[5] / np.mean(temp_samp, axis=0)[5]],
-        'costhetaS': [truths[6], med[6], low[6], high[6], np.std(temp_samp, axis=0)[6] / np.mean(temp_samp, axis=0)[6]],
-        'phiS': [truths[7], med[7], low[7], high[7], np.std(temp_samp, axis=0)[7] / np.mean(temp_samp, axis=0)[7]],
-        'costhetaK': [truths[8], med[8], low[8], high[8], np.std(temp_samp, axis=0)[8] / np.mean(temp_samp, axis=0)[8]],
-        'phiK': [truths[9], med[9], low[9], high[9], np.std(temp_samp, axis=0)[9] / np.mean(temp_samp, axis=0)[9]],
-        'Phivarphi0': [truths[10], med[10], low[10], high[10], np.std(temp_samp, axis=0)[10] / np.mean(temp_samp, axis=0)[10]],
-        'Phir0': [truths[11], med[11], low[11], high[11], np.std(temp_samp, axis=0)[11] / np.mean(temp_samp, axis=0)[11]],
-        'Lambda': [truths[12], med[12], low[12], high[12], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
+        'variable': ['ln M', 'ln mu', 'a', 'p0', 'e0', 'DL', 'costhetaS', 'phiS', 'costhetaK', 'phiK', 'Phivarphi0', 'Phir0', 'Lambda'],
+        'median': [med[0], med[1], med[2], med[3], med[4], med[5], med[6], med[7], med[8], med[9], med[10], med[11], med[12]],
+        'true': [truths[0], truths[1], truths[2], truths[3], truths[4], truths[5], truths[6], truths[7], truths[8], truths[9], truths[10], truths[11], truths[12]],
+        'percentile 2.5 perc': [low[0], low[1], low[2], low[3], low[4], low[5], low[6], low[7], low[8], low[9], low[10], low[11], low[12]],
+        'percentile 97.5 perc': [high[0], high[1], high[2], high[3], high[4], high[5], high[6], high[7], high[8], high[9], high[10], high[11], high[12]],
+        'one sigma relative precision': [np.std(temp_samp, axis=0)[0] / np.mean(temp_samp, axis=0)[0], np.std(temp_samp, axis=0)[1] / np.mean(temp_samp, axis=0)[1], np.std(temp_samp, axis=0)[2] / np.mean(temp_samp, axis=0)[2], np.std(temp_samp, axis=0)[3] / np.mean(temp_samp, axis=0)[3], np.std(temp_samp, axis=0)[4] / np.mean(temp_samp, axis=0)[4], np.std(temp_samp, axis=0)[5] / np.mean(temp_samp, axis=0)[5], np.std(temp_samp, axis=0)[6] / np.mean(temp_samp, axis=0)[6], np.std(temp_samp, axis=0)[7] / np.mean(temp_samp, axis=0)[7], np.std(temp_samp, axis=0)[8] / np.mean(temp_samp, axis=0)[8], np.std(temp_samp, axis=0)[9] / np.mean(temp_samp, axis=0)[9], np.std(temp_samp, axis=0)[10] / np.mean(temp_samp, axis=0)[10], np.std(temp_samp, axis=0)[11] / np.mean(temp_samp, axis=0)[11], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
+        'correlation coefficient with Lambda': [corrcoef[-1,0], corrcoef[-1,1], corrcoef[-1,2], corrcoef[-1,3], corrcoef[-1,4], corrcoef[-1,5], corrcoef[-1,6], corrcoef[-1,7], corrcoef[-1,8], corrcoef[-1,9], corrcoef[-1,10], corrcoef[-1,11], corrcoef[-1,12]],
     }
     
     true_charge = np.sqrt(4 * truths[12])
@@ -337,7 +332,6 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # labels
     label = '('
 
-    # label += f"{params_dict.get('T')}"
     label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
     if int(params_dict.get('mu'))==5:
         label += f", $\, \, \,${int(params_dict.get('mu'))}"
@@ -349,6 +343,8 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         label += f", $0.0$"
     else:
         label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
+    
+    label += f",{params_dict.get('T')}"
     # add another lable for the cycles
     label += f", {Ncyc:.2f}"
     label += ')'
@@ -369,43 +365,43 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 
 ########################### plot all #############################################
 # plot corner plots
-overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, N_{\rm cycles})$')
+# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, T [{\rm yrs}], N_{\rm cycles})$')
 
-# plot the precision as a function of the number of cycles
-list_cyc_precision = np.asarray(list_cyc_precision)
+# # plot the precision as a function of the number of cycles
+# list_cyc_precision = np.asarray(list_cyc_precision)
 
-cmap = plt.cm.get_cmap('Set1',)
-colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-plt.rcParams.update({
-    "text.usetex": True,
-    "pgf.texsystem": 'pdflatex',
-    "pgf.rcfonts": False,
-    "font.family": "serif",
-    "figure.figsize": [246.0*px, inv_golden * 246.0*px],
-    'legend.fontsize': 12,
-    'xtick.labelsize': 18,
-    'ytick.labelsize': 18,
-    'legend.title_fontsize' : 12,
-})
+# cmap = plt.cm.get_cmap('Set1',)
+# colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+# plt.rcParams.update({
+#     "text.usetex": True,
+#     "pgf.texsystem": 'pdflatex',
+#     "pgf.rcfonts": False,
+#     "font.family": "serif",
+#     "figure.figsize": [246.0*px, inv_golden * 246.0*px],
+#     'legend.fontsize': 12,
+#     'xtick.labelsize': 18,
+#     'ytick.labelsize': 18,
+#     'legend.title_fontsize' : 12,
+# })
 
-plt.figure()
-var_list = [r"$M$", r"$\mu$", r"$a$", r"$p_0$", r"$e_0$"]
-run_list = np.arange(5)
-marker_list = ['o','s','^','D','P']
-for var in range(5):
-    for run_ind in run_list:
-        plt.scatter(list_cyc_precision[run_ind,-1], list_cyc_precision[run_ind,:-1][var], label=var_list[var], color=colors[run_ind], marker=marker_list[var],alpha=0.7)
-plt.yscale('log')
-plt.xlabel(r'$N_{\rm cycles}$', fontsize=20)
-plt.ylabel(r'$\sigma_\theta / \theta$', fontsize=20)
-# define custom legend with markers only
-legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', markerfacecolor='black', markersize=10),
-                   plt.Line2D([0], [0], marker='s', color='w', label=r'$\mu$', markerfacecolor='black', markersize=10),
-                   plt.Line2D([0], [0], marker='^', color='w', label=r'$a$', markerfacecolor='black', markersize=10),
-                   plt.Line2D([0], [0], marker='D', color='w', label=r'$p_0$', markerfacecolor='black', markersize=10),
-                   plt.Line2D([0], [0], marker='P', color='w', label=r'$e_0$', markerfacecolor='black', markersize=10)]
-# now add the labels of labs
-plt.legend(handles=legend_elements, loc='upper right')
-plt.tight_layout()
-plt.grid()
-plt.savefig('./figures/plot_precision_vs_Ncycles.pdf')
+# # plt.figure()
+# # var_list = [r"$M$", r"$\mu$", r"$a$", r"$p_0$", r"$e_0$"]
+# # run_list = np.arange(5)
+# # marker_list = ['o','s','^','D','P']
+# # for var in range(5):
+# #     for run_ind in run_list:
+# #         plt.scatter(list_cyc_precision[run_ind,-1], list_cyc_precision[run_ind,:-1][var], label=var_list[var], color=colors[run_ind], marker=marker_list[var],alpha=0.7)
+# # plt.yscale('log')
+# # plt.xlabel(r'$N_{\rm cycles}$', fontsize=20)
+# # plt.ylabel(r'$\sigma_\theta / \theta$', fontsize=20)
+# # # define custom legend with markers only
+# # legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', markerfacecolor='black', markersize=10),
+# #                    plt.Line2D([0], [0], marker='s', color='w', label=r'$\mu$', markerfacecolor='black', markersize=10),
+# #                    plt.Line2D([0], [0], marker='^', color='w', label=r'$a$', markerfacecolor='black', markersize=10),
+# #                    plt.Line2D([0], [0], marker='D', color='w', label=r'$p_0$', markerfacecolor='black', markersize=10),
+# #                    plt.Line2D([0], [0], marker='P', color='w', label=r'$e_0$', markerfacecolor='black', markersize=10)]
+# # # now add the labels of labs
+# # plt.legend(handles=legend_elements, loc='upper right')
+# # plt.tight_layout()
+# # plt.grid()
+# # plt.savefig('./figures/plot_precision_vs_Ncycles.pdf')

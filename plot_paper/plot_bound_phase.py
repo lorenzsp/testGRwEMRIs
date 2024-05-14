@@ -10,8 +10,8 @@ import matplotlib.style as style
 import seaborn as sns
 # style.use('tableau-colorblind10')
 from few.trajectory.inspiral import EMRIInspiral
-from few.utils.utility import get_kerr_geo_constants_of_motion
-
+from few.utils.utility import get_kerr_geo_constants_of_motion, get_fundamental_frequencies
+import multiprocessing as mp
 default_width = 5.78853 # in inches
 default_ratio = (np.sqrt(5.0) - 1.0) / 2.0 # golden mean
 
@@ -111,7 +111,7 @@ def weighted_quantile(values, quantiles, sample_weight=None,
         weighted_quantiles /= np.sum(sample_weight)
     return np.interp(quantiles, weighted_quantiles, values)
 
-init_name = '../DataAnalysis/paper_runs/*T2.0*'
+init_name = '../DataAnalysis/paper_runs/MCMC*T2.0*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 # sort datasets by charge
@@ -125,13 +125,9 @@ pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
     
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
-colors = ['#377eb8', '#ff7f00', '#4daf4a',
-                  '#f781bf', '#a65628', '#984ea3',
-                  '#999999', '#e41a1c', '#dede00']
-
-
 colors = sns.color_palette('colorblind')
-# colors = [cmap(i) for i in range(len(datasets))]#['black','red', 'royalblue']#
+colors = [cmap(i) for i in range(len(datasets))]
+
 ls = ['-','--','-.',':',(0, (2, 2)),(0, (1, 2))]
 # provide custom line styles
 ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1))]
@@ -143,11 +139,22 @@ trajELQ = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 #import cubic spline from scipy
 from scipy.interpolate import CubicSpline
 
-def get_dphi(M, mu, a, p0, e0, x0, charge):
-    t, p, e, x, Phi_phi, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, charge, T=2.0, dt=10.0)
-    t_0, p, e, x, Phi_phi_0, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, 0.0, T=2.0, dt=10.0)
-    interp = CubicSpline(t_0, Phi_phi_0)
-    return np.abs(1-Phi_phi/interp(t))[1:-1] * (p0/(1-e0**2))
+def get_dphi(params):
+    lnM,lnmu,a,p0,e0,D_L,_,_,_,_,PhiP0,PhiR0,charge = params
+    x0 = 1.0
+    M = np.exp(lnM)
+    mu = np.exp(lnmu)
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, charge, Phi_phi0=PhiP0, Phi_r0=PhiR0,  T=2.0, dt=10.0)
+    v = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
+    interp = CubicSpline(v, Phi_phi)
+    t_0, p, e, x, Phi_phi_0, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, 0.0,  Phi_phi0=PhiP0, Phi_r0=PhiR0, T=2.0, dt=10.0)
+    v_0 = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
+    interp_0 = CubicSpline(v_0, Phi_phi_0)
+    sym_mass_ratio = mu*M / (mu+M)**2
+    new_v = np.linspace(v[0],v[-1],100)
+    # delta phi  * 3/(128 * sym_mass_ratio * v**(-7)) is the difference in phase
+    factor = 3/(128 * sym_mass_ratio * v**(-7))
+    return np.mean(np.abs(1-interp(new_v) / interp_0(new_v)) * new_v**(2))
 
 def get_Edot(M, mu, a, p0, e0, x0, charge):
     trajELQ.inspiral_generator.moves_check = 0
@@ -186,32 +193,31 @@ def get_delta_Edot(M, mu, a, p0, e0, x0, charge):
     return delta, B
 
 
-Nsamp = int(1e2)
+Nsamp = int(1e3)
 
 #----------------------------- delta phi ------------------------------------
 
-
+plt.figure()
 for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     label, toplot, truths = get_labels_chains(el)
     
     # alpha bound
     Lambda = toplot[:,-1]
     mask = (Lambda>0)
+    # new samples
     toplot = toplot[mask]
     
     Lambda = toplot[:,-1]
     charge = np.sqrt(4*Lambda)
-    newvar = toplot[:,:7].copy() - np.median(toplot[:,:7],axis=0) + truths[:7]
-    newvar[:,0],newvar[:,1] = np.exp(newvar[:,0]), np.exp(newvar[:,1])
-    newvar[:,5] = np.ones_like(newvar[:,6])
-    newvar[:,6] = charge
+    newvar = toplot.copy()
+    newvar[:,-1] = charge
     
-    y = [get_dphi(*newvar[ii]) for ii in range(Nsamp)]
-    plt.figure()
-    [plt.semilogy(el) for el in y]
-    plt.savefig(f'./figures/bound_deltaphi.pdf', bbox_inches='tight')
-    breakpoint()
-    # plt.axvline(np.quantile(np.log10(y),0.975),color=cc)
+    # use multiprocessing to obtain the results for dphi
+    with mp.Pool(mp.cpu_count()) as pool:
+        results = pool.map(get_dphi, newvar[:Nsamp])
+    
+    plt.hist(results, weights=1/charge, bins=30, color=cc, label=label, histtype='step', linestyle=ll)
+
 
 # plt.tight_layout()
 # plt.xlabel(r'$\log_{10} \delta \phi $',size=22)# {\dot{E}}
@@ -222,8 +228,9 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
 #              arrowprops=dict(facecolor='black', shrink=0.001),
 #              fontsize=12, ha='center')
 
-# plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
-# # plt.legend()
+plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
+plt.savefig(f'./figures/bound_deltaphi.pdf', bbox_inches='tight')
+# plt.legend()
 # plt.xlim(-11.0,-6.0)
 # plt.ylim(0.0,1.3)
 
