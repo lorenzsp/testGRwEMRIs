@@ -1,0 +1,4 @@
+[submodule "Ollie_Data_Analysis/FastEMRIWaveforms_Kerr"]
+	path = Ollie_Data_Analysis/FastEMRIWaveforms_Kerr
+	url = https://github.com/BlackHolePerturbationToolkit/FastEMRIWaveforms.git
+	branch = Kerr_Equatorial_Eccentric
