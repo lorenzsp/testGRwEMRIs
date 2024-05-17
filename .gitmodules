@@ -2,3 +2,7 @@
 	path = Ollie_Data_Analysis/FastEMRIWaveforms_Kerr
 	url = https://github.com/BlackHolePerturbationToolkit/FastEMRIWaveforms.git
 	branch = Kerr_Equatorial_Eccentric
+[submodule "Ollie_Data_Analysis/EMRI_PE"]
+	path = Ollie_Data_Analysis/EMRI_PE
+	url = https://github.com/OllieBurke/EMRI_PE.git
+    branch = tgr_EMRIs
