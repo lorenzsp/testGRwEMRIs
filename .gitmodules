@@ -6,3 +6,7 @@
 	path = Ollie_Data_Analysis/EMRI_PE
 	url = https://github.com/OllieBurke/EMRI_PE.git
     branch = tgr_EMRIs
+[submodule "Ollie_Data_Analysis/StableEMRIFisher"]
+	path = Ollie_Data_Analysis/StableEMRIFisher
+	url = https://github.com/perturber/StableEMRIFisher.git
+	branch = KerrEquatorial
