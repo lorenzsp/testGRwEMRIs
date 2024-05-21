@@ -145,23 +145,10 @@ def get_dphi(params):
     interp_0 = CubicSpline(v_0, Phi_phi_0)
     sym_mass_ratio = mu*M / (mu+M)**2
     new_v = np.linspace(v[0],v[-1],100)
-    # delta phi  * 3/(128 * sym_mass_ratio * v**(-7)) is the difference in phase
-    factor = 3/(128 * sym_mass_ratio * v**(-7))
-    return np.mean(np.abs(1-interp(new_v) / interp_0(new_v)) * new_v**(2))
+    # delta phi  * 3/(128 * sym_mass_ratio * new_v**(7)) is the difference in phase
+    factor = 3/(128 * sym_mass_ratio * new_v**(7))
+    return np.median(np.abs(1-interp(new_v)/interp_0(new_v)) * new_v**(2) )
 
-def get_dphi_vacuum(params):
-    lnM,lnmu,a,p0,e0,D_L,_,_,_,_,PhiP0,PhiR0 = params
-    x0 = 1.0
-    M = np.exp(lnM)
-    mu = np.exp(lnmu)
-    t_0, p, e, x, Phi_phi_0, Phi_theta, Phi_r = trajELQ(M, mu, a, p0, e0, x0, 0.0,  Phi_phi0=PhiP0, Phi_r0=PhiR0, T=2.0, dt=10.0)
-    v_0 = get_fundamental_frequencies(a, p, e, x)[0]**(1/3) # which is approximately p0**(-0.5)
-    interp_0 = CubicSpline(v_0, Phi_phi_0)
-    sym_mass_ratio = mu*M / (mu+M)**2
-    new_v = np.linspace(v[0],v[-1],100)
-    # delta phi  * 3/(128 * sym_mass_ratio * v**(-7)) is the difference in phase
-    factor = 3/(128 * sym_mass_ratio * v**(-7))
-    return np.mean(np.abs(1-interp(new_v) / interp_0(new_v)) * new_v**(2))
 
 def get_Edot(M, mu, a, p0, e0, x0, charge):
     trajELQ.inspiral_generator.moves_check = 0
@@ -200,7 +187,7 @@ def get_delta_Edot(M, mu, a, p0, e0, x0, charge):
     return delta, B
 
 
-Nsamp =int(5e4)
+Nsamp =int(1e3)
 
 #----------------------------- delta phi ------------------------------------
 
@@ -237,7 +224,7 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
 #              fontsize=12, ha='center')
 
 plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
-plt.savefig(f'./figures/bound_deltaphi.pdf', bbox_inches='tight')
+plt.savefig(f'./figures/bound_phase.pdf', bbox_inches='tight')
 # plt.legend()
 # plt.xlim(-11.0,-6.0)
 # plt.ylim(0.0,1.3)

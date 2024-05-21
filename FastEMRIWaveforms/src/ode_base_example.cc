@@ -512,3 +512,121 @@ KerrEccentricEquatorialAPEX::~KerrEccentricEquatorialAPEX()
 
     // delete Sep_interp;
 }
+
+// -----------------------------------------------------------------------------
+// Bumpy Black Holes
+KerrEccentricEquatorialBumpy::KerrEccentricEquatorialBumpy(std::string few_dir)
+{
+    std::string fp;
+}
+
+// #define KerrEccentricEquatorialBumpy_Y
+#define KerrEccentricEquatorialBumpy_equatorial
+#define KerrEccentricEquatorialBumpy_num_add_args 2
+__deriv__ void KerrEccentricEquatorialBumpy::deriv_func(double ydot[], const double y[], double epsilon, double a, double *additional_args)
+{
+
+    double p = y[0];
+    double e = y[1];
+    double x = y[2];
+
+    double p_sep = get_separatrix(a, e, x);
+    // make sure we do not step into separatrix
+    if ((e < 0.0) || (p < p_sep+0.1))
+    {
+        ydot[0] = 0.0;
+        ydot[1] = 0.0;
+        ydot[2] = 0.0;
+        ydot[3] = 0.0;
+        ydot[4] = 0.0;
+        ydot[5] = 0.0;
+        return;
+    }
+    double Omega_phi, Omega_theta, Omega_r;
+    double pdot, edot, xdot;
+
+    KerrGeoEquatorialCoordinateFrequencies(&Omega_phi, &Omega_theta, &Omega_r, a, p, e, x); // shift to avoid problem in fundamental frequencies
+
+    
+    double r,Omega_phi_sep_circ;
+    // reference frequency
+    
+    Omega_phi_sep_circ = 1.0/ (a*copysign(1.0,x) + pow(p_sep/( 1.0 + e ), 1.5) );
+    r = pow(abs(Omega_phi)/ Omega_phi_sep_circ, 2.0/3.0 ) * (1.0 + e);
+    
+    if (isnan(r)){
+        cout << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
+        cout << "omegaphi circ " <<  Omega_phi_sep_circ << " omegaphi " <<  Omega_phi << " omegar " <<  Omega_r <<endl;
+        throw std::exception();
+        }
+
+    
+    double risco = get_separatrix(a, 0.0, x);
+    double one_minus_e2 = 1. - pow(e,2);
+    double Edot, Ldot, Qdot, pdot_here, edot_here, xdot_here, E_here, L_here, Q_here;
+    KerrGeoConstantsOfMotion(&E_here, &L_here, &Q_here, a, p, e, x);
+    double pdot_out, edot_out, xdot_out;
+
+    double theta_tp = PI/2.0;
+    
+    double Edot_correction, Ldot_correction;
+    if (additional_args[1]==2.0){
+        Edot_correction = delta_E_B2(1.0, p, e, additional_args[0]);
+        Ldot_correction = delta_L_B2(1.0, p, e, theta_tp, additional_args[0]);
+    }
+    else if (additional_args[1]==3.0){
+        Edot_correction = delta_E_B3(1.0, p, e, additional_args[0]);
+        Ldot_correction = delta_L_B3(1.0, p, e, theta_tp, additional_args[0]);
+    }
+    else if (additional_args[1]==4.0){
+        Edot_correction = delta_E_B4(1.0, p, e, additional_args[0]);
+        Ldot_correction = delta_L_B4(1.0, p, e, theta_tp, additional_args[0]);
+    }
+    else if (additional_args[1]==5.0){
+        Edot_correction = delta_E_B5(1.0, p, e, additional_args[0]);
+        Ldot_correction = delta_L_B5(1.0, p, e, theta_tp, additional_args[0]);
+    }
+    else{
+        
+        Edot_correction = delta_E_CS(1.0, additional_args[0], a, p, e, theta_tp);
+        Ldot_correction = delta_L_CS(1.0, additional_args[0], a, p, e, theta_tp);
+    }
+
+    Edot = Edot_correction+Edot_GR(a*copysign(1.0,x),e,r,p);
+    Ldot = Ldot_correction*copysign(1.0,x)+Ldot_GR(a*copysign(1.0,x),e,r,p)*copysign(1.0,x);
+    Qdot = 0.0;
+
+    Jac(a, p, e, x, E_here, L_here, Q_here, -Edot, -Ldot, Qdot, pdot_out, edot_out, xdot_out);
+    // pdot_edot_from_fluxes(pdot_out, edot_out, -Edot_GR(a,e,r,p), -Ldot_GR(a,e,r,p), a, e, p);
+
+    // needs adjustment for validity
+    if (e > 1e-8)
+    {
+        // the scalar flux is d^2 /4
+        pdot = epsilon * pdot_out;
+        edot = epsilon * edot_out;
+    }
+    else{
+        
+        edot = 0.0;
+        pdot = epsilon * pdot_out;
+    }
+
+    xdot = 0.0;
+    
+    ydot[0] = pdot;
+    ydot[1] = edot;
+    ydot[2] = xdot;
+    ydot[3] = Omega_phi;
+    ydot[4] = Omega_theta;
+    ydot[5] = Omega_r;
+    // delete GKR;
+    return;
+}
+
+KerrEccentricEquatorialBumpy::~KerrEccentricEquatorialBumpy()
+{
+
+    // delete Sep_interp;
+}
+

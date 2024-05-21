@@ -59,3 +59,20 @@ public:
     ~KerrEccentricEquatorialAPEX();
 
 };
+
+
+class KerrEccentricEquatorialBumpy{
+public:
+
+    bool equatorial = true;
+    int background = KERR;
+    bool circular = false;
+    bool integrate_constants_of_motion = false;
+    bool integrate_phases = true;
+
+    KerrEccentricEquatorialBumpy(std::string few_dir);
+
+    void deriv_func(double ydot[], const double y[], double epsilon, double a, double *additional_args);
+    ~KerrEccentricEquatorialBumpy();
+
+};

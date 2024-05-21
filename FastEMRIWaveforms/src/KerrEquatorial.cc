@@ -1612,3 +1612,64 @@ int main()
     printf("%e\n", dpdt);
 }
 */
+
+// equations 267 from https://arxiv.org/pdf/1106.6313 
+double delta_E_B2(double eta, double p, double e, double gamma_12_plus_2_gamma_42) {
+    return -96.0/5.0 * eta/std::pow(p, 6) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_12_plus_2_gamma_42) * (1 + 13.0/3.0 * std::pow(e, 2) + 11.0/8.0 * std::pow(e, 4));
+}
+
+double delta_L_B2(double eta, double p, double e, double theta_tp, double gamma_12_plus_2_gamma_42) {
+    return -16. * eta * std::sin(theta_tp)/std::pow(p, 4.5) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_12_plus_2_gamma_42) * (1. + 63.0/40.0 * std::pow(e, 2) + std::pow(e, 4)/20.0);
+}
+
+double delta_Q_B2(double eta, double p, double e, double theta_tp, double gamma_12_plus_2_gamma_42) {
+    return -8.0/5.0 * eta/std::pow(p, 3.5) * std::pow(std::cos(theta_tp), 2) * std::pow(1 - std::pow(e, 2), 1.5) * (24. + 35 * std::pow(e, 2) + std::pow(e, 4)) * (gamma_12_plus_2_gamma_42);
+}
+
+double delta_E_B3(double eta, double p, double e, double gamma_13_plus_2_gamma_43) {
+    return -144.0/5.0 * eta/std::pow(p, 7) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_13_plus_2_gamma_43) * (1 + 461.0/72.0 * std::pow(e, 2) + 1345.0/288.0 * std::pow(e, 4) + 251.0/864.0 * std::pow(e, 6));
+}
+
+double delta_L_B3(double eta, double p, double e, double theta_tp, double gamma_13_plus_2_gamma_43) {
+    return -24. * eta/std::pow(p, 5.5) * std::sin(theta_tp) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_13_plus_2_gamma_43) * (1 + 361.0/120.0 * std::pow(e, 2) + 7.0/10.0 * std::pow(e, 4));
+}
+
+double delta_Q_B3(double eta, double p, double e, double theta_tp, double gamma_13_plus_2_gamma_43) {
+    return -288.0/5.0 * eta/std::pow(p, 5) * std::pow(std::cos(theta_tp), 2) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_13_plus_2_gamma_43) * (1 + 65.0/24.0 * std::pow(e, 2) + 91.0/144.0 * std::pow(e, 4));
+}
+
+double delta_E_B4(double eta, double p, double e, double gamma_14_plus_2_gamma_44) {
+    return -208.0/5.0 * eta/std::pow(p, 8) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_14_plus_2_gamma_44) * (1 + 2701.0/312.0 * std::pow(e, 2) + 3155.0/312.0 * std::pow(e, 4) + 3779.0/2496.0 * std::pow(e, 6) - 96.0/1248.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 73.0/24.0 * std::pow(e, 2) + 37.0/96.0 * std::pow(e, 4)));
+}
+
+double delta_L_B4(double eta, double p, double e, double theta_tp, double gamma_14_plus_2_gamma_44) {
+    return -176.0/5.0 * eta/std::pow(p, 6.5) * std::sin(theta_tp) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_14_plus_2_gamma_44) * (1 + 409.0/88.0 * std::pow(e, 2) + 757.0/352.0 * std::pow(e, 4) + 3.0/88.0 * std::pow(e, 6) - 1.0/11.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 7.0/8.0 * std::pow(e, 2)));
+}
+
+double delta_Q_B4(double eta, double p, double e, double theta_tp, double gamma_14_plus_2_gamma_44) {
+    return -416.0/5.0 * eta/std::pow(p, 6) * std::pow(std::cos(theta_tp), 2) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_14_plus_2_gamma_44) * (1 + 439.0/104.0 * std::pow(e, 2) + 3.0/104.0 * std::pow(e, 6) + 813.0/416.0 * std::pow(e, 4) - 1.0/13.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 7.0/8.0 * std::pow(e, 2)));
+}
+
+double delta_E_B5(double eta, double p, double e, double gamma_15_plus_2_gamma_45) {
+    return -288.0/5.0 * eta/std::pow(p, 9) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_15_plus_2_gamma_45) * (1 + 791.0/72.0 * std::pow(e, 2) + 31805.0/1728.0 * std::pow(e, 4) + 19277.0/3456.0 * std::pow(e, 6) + 2617.0/13824.0 * std::pow(e, 8) - 1.0/6.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 73.0/24.0 * std::pow(e, 2) + 37.0/96.0 * std::pow(e, 4)));
+}
+
+double delta_L_B5(double eta, double p, double e, double theta_tp, double gamma_15_plus_2_gamma_45) {
+    return -248.0/5.0 * eta/std::pow(p, 7.5) * std::sin(theta_tp) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_15_plus_2_gamma_45) * (1 + 1585.0/248.0 * std::pow(e, 2) + 2493.0/496.0 * std::pow(e, 4) + 237.0/496.0 * std::pow(e, 6) - 6.0/31.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 7.0/8.0 * std::pow(e, 2)));
+}
+
+double delta_Q_B5(double eta, double p, double e, double theta_tp, double gamma_15_plus_2_gamma_45) {
+    return -576.0/5.0 * eta/std::pow(p, 7) * std::pow(std::cos(theta_tp), 2) * std::pow(1 - std::pow(e, 2), 1.5) * (gamma_15_plus_2_gamma_45) * (1 + 425.0/72.0 * std::pow(e, 2) + 883.0/192.0 * std::pow(e, 4) + 251.0/576.0 * std::pow(e, 6) - 1.0/6.0 * std::pow(1 - std::pow(e, 2), 1.5) * (1 + 7.0/8.0 * std::pow(e, 2)));
+}
+
+double delta_E_CS(double eta, double zeta, double a, double p, double e, double theta_tp) {
+    return -72. * eta * zeta * a / std::pow(p, 19.0/2.0) * std::pow(1 - std::pow(e, 2), 3.0/2.0) * std::sin(theta_tp) * (1 + 97.0/8.0 * std::pow(e, 2) + 15065.0/576.0 * std::pow(e, 4) + 1865.0/144.0 * std::pow(e, 6) + 31555.0/27648.0 * std::pow(e, 8) - 1.0/3.0 * std::pow(1 - std::pow(e, 2), 3.0/2.0) * (1 + std::pow(e, 2)/4.0) * (1 + 73.0/24.0 * std::pow(e, 2) + 37.0/96.0 * std::pow(e, 4)));
+}
+
+double delta_L_CS(double eta, double zeta, double a, double p, double e, double theta_tp) {
+    return -64. * eta * zeta * a / std::pow(p, 8) * std::pow(1 - std::pow(e, 2), 3.0/2.0) * ((1 + 121.0/16.0 * std::pow(e, 2) + 4585.0/512.0 * std::pow(e, 4) + 1039.0/512.0 * std::pow(e, 6) + 3.0/128.0 * std::pow(e, 8)) - 3.0/8.0 * std::pow(1 - std::pow(e, 2), 3.0/2.0) * (1 + std::pow(e, 2)/4.0) * std::pow(std::sin(theta_tp), 2) * (1 + 7.0/8.0 * std::pow(e, 2)) - 69.0/64.0 * std::pow(std::cos(theta_tp), 2) * (1 + 715.0/92.0 * std::pow(e, 2) + 223.0/24.0 * std::pow(e, 4) + 4597.0/2208.0 * std::pow(e, 6) + 9.0/368.0 * std::pow(e, 8)));
+}
+
+double delta_Q_CS(double eta, double zeta, double a, double p, double e, double theta_tp) {
+    return 1.0/16.0 * eta * zeta * a / std::pow(p, 15.0/2.0) * std::pow(std::cos(theta_tp), 2) / std::sin(theta_tp) * std::pow(1 - std::pow(e, 2), 3.0/2.0) * (-2432 * (1 + 1069.0/152.0 * std::pow(e, 2) + 4961.0/608.0 * std::pow(e, 4) + 1123.0/608.0 * std::pow(e, 6) + 3.0/152.0 * std::pow(e, 8)) + 2592 * std::pow(std::cos(theta_tp), 2) * (1 + 2347.0/324.0 * std::pow(e, 2) + 1835.0/216.0 * std::pow(e, 4) + 4933.0/2592.0 * std::pow(e, 6) + std::pow(e, 8)/48.0) + 768 * std::pow(1 - std::pow(e, 2), 3.0/2.0) * std::pow(std::sin(theta_tp), 2) * (1 + std::pow(e, 2)/4.0) * (1 + 7.0/8.0 * std::pow(e, 2)));
+}

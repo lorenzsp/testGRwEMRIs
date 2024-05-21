@@ -707,7 +707,7 @@ if __name__ == "__main__":
     # LVK bound from paper sqrt(alpha) = 1.1 km 
     # bound in our scaling sqrt(alpha) = 1.1*np.sqrt(16*np.pi**0.5)
     # 0.4 extremal bound from Fig 21 https://arxiv.org/pdf/2010.09010.pdf
-    # sqrt_alpha = 0.4 * np.sqrt( 16 * np.pi**0.5 )
+    # sqrt_alpha = 0.3 * np.sqrt( 16 * np.pi**0.5 )
     # d = (sqrt_alpha/(mu*MRSUN_SI/1e3))**2 / 2
     # d = (0.4 * np.sqrt( 16 * np.pi**0.5 )/(mu*MRSUN_SI/1e3))**2 / 2
     Lambda = args['charge']**2/4

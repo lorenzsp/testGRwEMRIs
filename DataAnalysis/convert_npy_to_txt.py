@@ -11,6 +11,7 @@ npy_files = glob.glob('paper_runs/*/*.npy')
 list_txt = []
 # Convert each file to a .txt file
 for npy_file in npy_files:
+    print(npy_file)
     # Load the numpy array
     array = np.load(npy_file)
 
@@ -53,6 +54,7 @@ for npy_file in npy_files:
     
     list_txt += [npy_file.replace('.npy', '.txt')]
     
+print(list_txt)
 
 # Run the zip command
 subprocess.run(['zip', '-r', 'samples.zip', *list_txt])

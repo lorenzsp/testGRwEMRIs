@@ -365,7 +365,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 
 ########################### plot all #############################################
 # plot corner plots
-# overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, T [{\rm yrs}], N_{\rm cycles})$')
+overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, T [{\rm yrs}], N_{\rm cycles})$')
 
 # # plot the precision as a function of the number of cycles
 # list_cyc_precision = np.asarray(list_cyc_precision)

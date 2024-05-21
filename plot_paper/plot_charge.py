@@ -60,17 +60,19 @@ def get_labels_chains(el):
         params_dict[key] = value
 
     # labels
-    label = '('
+    label = ''
 
     # label += f"{params_dict.get('T')}"
-    label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
+    # M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0
+    label += r"$M \, [{\rm M}_\odot]=$"+fr"{params_dict.get('M')/1e6}$\times 10^6$"
     if int(params_dict.get('mu'))==5:
-        label += f", $\, \, \,${int(params_dict.get('mu'))}"
+        label += r", $ \mu \, [{\rm M}_\odot] =$"+ f"$\, \, \,${int(params_dict.get('mu'))}"
     else:
-        label += f", {int(params_dict.get('mu'))}"
-    label += f", {params_dict.get('a'):.2f}"
-    label += f", {params_dict.get('e')}"
-    label += ')'
+        label += r", $ \mu \, [{\rm M}_\odot] =$"+ f" {int(params_dict.get('mu'))}"
+    label += r", $ a =$"+ f"{params_dict.get('a'):.2f}"
+    label += r", $ e_0 =$"+ f"{params_dict.get('e')}"
+    label += r", $T [{\rm yrs}]=$"+f"{params_dict.get('T')}"
+    label += ''
     
     return label, toplot, truths
 
@@ -124,39 +126,45 @@ datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 
 print("len names", len(datasets),len(pars_inj))
-ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (1, 3))]
+ls = ['-'  for i in range(len(datasets))]
 
+# determine masses and order datasets based on masses
+order_mass = []
+for filename, el, cc, ll in zip(datasets, pars_inj, colors, ls):
+    label, toplot, truths = get_labels_chains(el)
+    order_mass.append((truths[0], filename))
+
+order_mass.sort(key=lambda x: x[0])
+datasets = [x[1] for x in order_mass]
+pars_inj = [x[1].replace('.h5','_injected_pars.npy') for x in order_mass]
 # Scalar plot
-plt.figure()
-for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
+# set the fig size to fir a column in Phys. Rev. D
+fig, axs = plt.subplots(len(datasets), 1, sharex=True, figsize=(default_width, default_width * default_ratio*2))
+for ax, filename, el, cc, ll in zip(axs, datasets, pars_inj, colors, ls):
     label, toplot, truths = get_labels_chains(el)
 
-    # # add to the following labels the log10 of the savage-dickey ratio
-    # kde = gaussian_kde(toplot[:,-1], bw_method='scott')
-    # med = np.median(toplot,axis=0)
-    # if truths[-1]!=0.0:
-    #     density_at_zero = kde.evaluate(toplot[:,-1].min())
-    # else:
-    #     density_at_zero = kde.evaluate(0.0)
-    
-    # prior = 1 / 0.2
-    # savage_dickey = np.log10(prior / density_at_zero)[0]
-    # print(f"log10 SD-Ratio: {savage_dickey}")
-    Lambda = toplot[:,-1]
-    Lambda = Lambda[Lambda>0.0]
+    Lambda = toplot[:, -1]
+    Lambda = Lambda[Lambda > 0.0]
     charge = np.sqrt(4 * Lambda)
-    plt.hist(charge, weights=1/np.sqrt(Lambda), bins=40, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
-    # plot kde of the last parameter
-    # plt.plot(np.linspace(toplot[:,-1].min(),toplot[:,-1].max(),100),kde.evaluate(np.linspace(toplot[:,-1].min(),toplot[:,-1].max(),100)),color=cc,linestyle=ll,label=label, linewidth=3,)
+    outhist = ax.hist(charge, weights=1 / np.sqrt(Lambda), bins=40, histtype='step', density=True, label=label, linewidth=3, ls=ll, color=cc)
+    ax.tick_params(axis='y', which='both', left=False, right=False, labelleft=False)
 
-plt.tight_layout()
-plt.xlabel(r'$d$',size=22)
+    # Calculate 95% credible interval
+    quantiles = [0.68, 0.95]
+    ci = weighted_quantile(charge, quantiles, sample_weight=1 / np.sqrt(Lambda))
+
+    # Add shaded region
+    ax.axvline(ci[0], color=cc, linestyle='--')    
+    ax.axvline(ci[1], color=cc, linestyle=':')  
+    ax.set_ylim(0,outhist[0].max()*2.2) 
+    ax.legend(fontsize=10, loc='upper center')
+
+# plt.tight_layout()
+plt.xlabel(r'$d$', size=22)
 plt.ticklabel_format(style='sci')
-plt.legend(title='\t \t'+r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$',loc='upper right')# bbox_to_anchor=(0.0, 0.5)
-# plt.legend()
-# plt.ylim(0.0,1970)
+plt.xlim(0,0.06)
+# plt.legend(title='\t \t' + r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$', loc='upper right')
 plt.savefig(f'./figures/bound_charge.pdf', bbox_inches='tight')
-
 #####################################
 labels = [r'$\Delta \ln (M/{\rm M}_\odot$)', r'$\Delta \ln (\mu / M_{\odot})$', r'$\Delta a$', r'$\Delta p_0 \, [M]$', r'$\Delta e_0$', 
             r'$\Delta D_L \, [{\rm Gpc}]$',

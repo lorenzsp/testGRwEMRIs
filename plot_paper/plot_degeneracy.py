@@ -284,7 +284,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 
 # plot corner plots
 CORNER_KWARGS['truths'] = truths[np.asarray([0,1,2,3,4])]
-overlaid_corner([el[:,np.asarray([0,1,2,3,4])] for el in list_chains], ['Scalar', 'Vacuum'], './figures/plot_degeneracy', corn_kw=CORNER_KWARGS,)
+overlaid_corner([el[:,np.asarray([0,1,2,3,4])] for el in list_chains], ['Scalar', 'Vacuum'], './figures/plot_degeneracy_scalar_vacuum', corn_kw=CORNER_KWARGS,)
 
 ########################### plot all #############################################
 init_name = '../DataAnalysis/paper_runs/MCMC*'
@@ -328,6 +328,6 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
 
 ########################### plot all #############################################
 # plot corner plots
-# CORNER_KWARGS['truths'] = truths[np.asarray([1,12])]*0.0
-# overlaid_corner([el[:,np.asarray([1,14])] for el in list_chains], ['' for el in list_chains], './figures/plot_degeneracy', corn_kw=CORNER_KWARGS,
-#                 weights=[el[:,13] for el in list_chains])
+CORNER_KWARGS['truths'] = truths[np.asarray([1,12])]*0.0
+overlaid_corner([el[:,np.asarray([1,14])] for el in list_chains], ['' for el in list_chains], './figures/plot_degeneracy', corn_kw=CORNER_KWARGS,
+                weights=[el[:,13] for el in list_chains])
