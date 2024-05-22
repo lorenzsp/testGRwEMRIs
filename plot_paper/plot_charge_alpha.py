@@ -111,11 +111,6 @@ def weighted_quantile(values, quantiles, sample_weight=None,
         weighted_quantiles /= np.sum(sample_weight)
     return np.interp(quantiles, weighted_quantiles, values)
 
-cmap = plt.cm.get_cmap('tab10',)
-colors = ['#377eb8', '#ff7f00', '#4daf4a',
-                  '#f781bf', '#a65628', '#984ea3',
-                  '#999999', '#e41a1c', '#dede00']
-
 ########################################################################
 from scipy.stats import gaussian_kde
 
@@ -137,12 +132,20 @@ pars_inj =['../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.4_e0.2_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T4.0_seed2601_nw26_nt1_injected_pars.npy'
 ]
+
 print("len names", len(datasets),len(pars_inj))
 ls = ['-'  for i in range(len(datasets))]
-colors = [cmap(i) for i in range(len(datasets))]
-# colors = sns.color_palette('colorblind')
+
+colors = sns.color_palette('colorblind')
+# cmap = plt.cm.get_cmap('tableau-colorblind10',)
+# colors = ['#377eb8', '#ff7f00', '#4daf4a',
+#                   '#f781bf', '#a65628', '#984ea3',
+#                   '#999999', '#e41a1c', '#dede00']
+# colors = [cmap(i) for i in range(len(datasets))]
 
 fig, axs = plt.subplots(1, 2, figsize=(default_width*2, default_width * default_ratio))
+plt.subplots_adjust(wspace=0.05)
+
 ii = 0
 for filename,el in zip(datasets, pars_inj):
     label, toplot, truths = get_labels_chains(el)
@@ -163,8 +166,8 @@ for filename,el in zip(datasets, pars_inj):
     hist,bin_edges = np.histogram(charge, bins=np.linspace(0.0,0.04,num=30), weights=w_charge, density=True)
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs[0].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.5,label=label)
-    axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
+    axs[0].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8,label=label)
+    axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle=':')
     axs[0].set_xlabel(r'$d$', size=22)
 
     # sqrt alpha 
@@ -175,8 +178,8 @@ for filename,el in zip(datasets, pars_inj):
     hist,bin_edges = np.histogram(sqrt_alpha, bins=np.linspace(0.1,4.1,num=40), weights=w_sqrta, density=True)
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs[1].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.5)
-    axs[1].vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
+    axs[1].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8)
+    axs[1].vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle=':')
     axs[1].set_xlabel(r'$\sqrt{\alpha}  [{\rm km}]$',size=22)
     # remove yticks
     axs[0].set_yticks([])
