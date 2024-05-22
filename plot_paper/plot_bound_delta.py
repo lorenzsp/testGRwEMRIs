@@ -191,58 +191,6 @@ plt.loglog(pvec,[np.abs(get_delta_Edot(1e6, 10., 0.95, pp, 0.4, 1.0, 1e-2)) for 
 plt.savefig(f'./figures/check_charge_scaling.pdf', bbox_inches='tight')
 
 Nsamp = int(1e4)
-
-# #------------------------- delta plot ---------------------------------
-# plt.figure()
-# for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
-#     label, toplot, truths = get_labels_chains(el)
-    
-#     Lambda = toplot[:,-1]
-#     mask = (Lambda>0.0)
-#     toplot = toplot[mask]
-#     Lambda = Lambda[mask]
-
-#     mu = np.exp(toplot[:,1])
-#     M = np.exp(toplot[:,0])
-#     a = toplot[:,2]
-#     p0 = toplot[:,3]
-#     e0 = toplot[:,4]
-#     x0 = np.ones_like(e0)
-
-#     # charge
-#     charge = np.sqrt(4 * Lambda)
-#     w_charge = 1 / np.sqrt(Lambda)
-    
-#     y = np.abs(np.asarray([get_delta_Edot(M[ii], mu[ii], a[ii], p0[ii], e0[ii], x0[ii], charge[ii])[0] for ii in range(Nsamp)]))
-#     bins = np.linspace(-11.5,-1.0,num=30) #+ np.random.uniform(-0.05,-0.0001)
-#     mask = (y!=0.0)
-#     plt.hist(np.log10(y[mask]),weights=1/newvar[:Nsamp,6][mask], bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
-#     # 
-#     # plt.axvline(np.quantile(np.log10(y),0.975),color=cc)
-
-# plt.tight_layout()
-# plt.xlabel(r'$\log_{10} \delta $',size=22)# {\dot{E}}
-# vpos = np.log10(6e-4) # binary J1141-6545 from https://arxiv.org/pdf/1603.04075
-# # approximately 60 000 orbits in  https://journals.aps.org/prx/pdf/10.1103/PhysRevX.11.041050
-# vpos = np.log10(1-0.999963) # binary PSR J0737–3039 from https://journals.aps.org/prx/pdf/10.1103/PhysRevX.11.041050
-# plt.ticklabel_format(style='sci')
-# plt.annotate('Bound from binary \npulsar J0737–3039', xy=(vpos, 0.0), xytext=(vpos, 0.1),
-#              arrowprops=dict(facecolor='black', shrink=0.001),
-#              fontsize=12, ha='center')
-
-# plt.legend(title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0)$')
-# # plt.legend()
-# plt.xlim(-11.0,-2.0)
-# # plt.ylim(0.0,1.3)
-# plt.savefig(f'./figures/bound_delta.pdf', bbox_inches='tight')
-
-# estimate period of the binary using the fundamental frequencies
-# from few.utils.utility import get_fundamental_frequencies
-# MTSUN_SI
-# M,mu,a,p0,e0,x0=np.median(newvar,axis=0)[:6]
-# frequency = get_fundamental_frequencies(a,p0,e0,x0)[0] / (2*np.pi*M*MTSUN_SI)
-# period = 1/frequency
-# breakpoint()
 #------------------------- delta Edot ---------------------------------
 plt.figure()
 for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
@@ -263,17 +211,18 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     charge = np.sqrt(4 * Lambda)
     w_charge = 1 / np.sqrt(Lambda)
     
-    
     def calculate_delta_Edot(index):
         Lambda = charge**2/4
         Edot_tot = get_Edot(M[index], mu[index], a[index], p0[index], e0[index], x0[index], charge[index]**2 /4)
         Edot_grav = get_Edot(M[index], mu[index], a[index], p0[index], e0[index], x0[index], 0.0)
         Edot_scal = Edot_tot - Edot_grav
         omphi = get_fundamental_frequencies(a[index], p0[index], e0[index], x0[index])[0]
-        B = (Edot_scal/Edot_grav) * (omphi)**(2/3)# / p0
-        q = -1.0 # power in B (1/r)^q
+        # eq 28 of https://arxiv.org/pdf/1603.08955
+        q = -1.0 # power in B (1/r)^q or B * v^(2q)
+        v = omphi**(1/3)
+        B = (Edot_scal/Edot_grav) * (v)**(-2*q)
         eta = mu[index] * M[index] / (mu[index] + M[index])**2 # symmetric mass ratio
-        beta = -15/64 * 1/(4-q) * 1/(5-2*q) * B * eta**(-2*q/5) # https://arxiv.org/pdf/1204.2585 also eq 29 of https://arxiv.org/pdf/1603.08955
+        beta = -15/32 * 1/(4-q) * 1/(5-2*q) * B * eta**(-2*q/5) # https://arxiv.org/pdf/1204.2585 also eq 29 of https://arxiv.org/pdf/1603.08955
         # beta(phi_n) eq 10 of https://arxiv.org/pdf/1603.08955
         b = 2*q-5 # power ppE
         delta_phi = 128/3 * beta * eta**(-2/5) # eq 21 https://arxiv.org/pdf/2002.02030
@@ -295,9 +244,9 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     # 95% upper bounds on B,beta,delta_phi
     print(np.quantile(B,0.95), np.quantile(beta,0.95), np.quantile(delta_phi,0.95), np.quantile(sqrt_alpha_edgb,0.95))
 
-    bins = 30#np.linspace(-7.,-3.0,num=30) #+ np.random.uniform(-0.05,-0.0001)
+    bins = 30 # np.linspace(-7.,-3.0,num=30) #+ np.random.uniform(-0.05,-0.0001)
     
-    plt.hist(np.log10(sqrt_alpha_edgb), weights=1/Lambda[:Nsamp], bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
+    plt.hist(np.log10(B), weights=1/Lambda[:Nsamp], bins=bins, histtype='step', density=True, label=label, linewidth=3, ls=ll)#, color=cc)
 
 plt.tight_layout()
 plt.xlabel(r'$\log_{10} \delta \dot{E} $',size=22)# {\dot{E}}
