@@ -167,7 +167,7 @@ for filename,el in zip(datasets, pars_inj):
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     axs[0].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8,label=label)
-    axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle=':')
+    axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
     axs[0].set_xlabel(r'$d$', size=22)
 
     # sqrt alpha 
@@ -179,13 +179,17 @@ for filename,el in zip(datasets, pars_inj):
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
     axs[1].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8)
-    axs[1].vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle=':')
+    axs[1].vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
     axs[1].set_xlabel(r'$\sqrt{\alpha}  [{\rm km}]$',size=22)
     # remove yticks
     axs[0].set_yticks([])
     axs[1].set_yticks([])
     ii+=1
 
+axs[1].axvline(0.3 * np.sqrt(16*np.pi**0.5), color='k',linestyle=':',label='GW230529')
+axs[0].axvline(-0.01, color='k',linestyle=':',label='GW230529')
+axs[0].set_xlim(0.0,0.035)
+axs[1].set_xlim(0.0,4.1)
 axs[0].legend(bbox_to_anchor=(0.05, 1.45), ncols=3, loc='upper left',
               title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0,T [{\rm yrs}])$',
               )

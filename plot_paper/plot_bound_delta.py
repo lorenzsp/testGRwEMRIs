@@ -75,7 +75,7 @@ mpl.rcParams.update({
     "pgf.rcfonts": False,
     "font.family": "serif",
     "figure.figsize": [246.0*px, inv_golden * 246.0*px],
-  'legend.fontsize': 11,
+  'legend.fontsize': 12,
   'xtick.labelsize': 16,
   'ytick.labelsize': 16,
   'legend.title_fontsize' : 10,
@@ -181,6 +181,14 @@ def get_beta_dphi_from_B(B, pn_order, M, mu, a):
     delta_phi = 128/3 * beta * eta**(2*pn_order/5) / get_phi_n(pn_order, M, mu, M+mu, eta, a, 0.0) # eq 21 https://arxiv.org/pdf/2002.02030
     return beta, delta_phi
 
+def get_dphi_from_beta(beta, pn_order, M, mu, a):
+    # from eq 21 of https://arxiv.org/pdf/2002.02030
+    eta = mu * M / (mu + M)**2 # symmetric mass ratio
+    # beta(phi_n) eq 10 of https://arxiv.org/pdf/1603.08955
+    b = 2*pn_order-5 # power ppE
+    delta_phi = 128/3 * beta * eta**(2*pn_order/5) / get_phi_n(pn_order, M, mu, M+mu, eta, a, 0.0) # eq 21 https://arxiv.org/pdf/2002.02030
+    return delta_phi
+
 def transform_Edot_to_constraints(pn_order, delta_Edot, Edot_grav, M, mu, a, p0, e0, x0):
     omphi = get_fundamental_frequencies(a, p0, e0, x0)[0]
     # eq 28 of https://arxiv.org/pdf/1603.08955
@@ -224,8 +232,8 @@ pars_inj =['../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.4_e0.2_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T4.0_seed2601_nw26_nt1_injected_pars.npy'
 ]
-datasets = ['../DataAnalysis/paper_runs/vacuumMCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_vacuum.h5','../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',] 
-pars_inj = ['../DataAnalysis/paper_runs/vacuumMCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_vacuum_injected_pars.npy','../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',]
+datasets += ['../DataAnalysis/paper_runs/vacuumMCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_vacuum.h5']#,'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',] 
+pars_inj += ['../DataAnalysis/paper_runs/vacuumMCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_vacuum_injected_pars.npy']#,'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',]
    
 print("len names", datasets,pars_inj)
 
@@ -251,7 +259,7 @@ B_list = []
 beta_list = []
 delta_phi_list = []
 
-for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
+for filename,el,cc in zip(datasets,pars_inj,colors):
     label, toplot, truths = get_labels_chains(el)
     Lambda = toplot[:,-1]
     mask = (Lambda>-100.0)
@@ -335,19 +343,18 @@ for filename,el,cc,ll in zip(datasets,pars_inj,colors,ls):
     B_list.append(B)
     beta_list.append(beta)
     delta_phi_list.append(delta_phi)
-    
-    # 95% upper bounds on B,beta,delta_phi
-    # print("B ",np.quantile(B,0.95,axis=1), "\n",np.quantile(beta,0.95,axis=1), np.quantile(delta_phi,0.95,axis=1))
+
 
 from matplotlib.ticker import LogLocator
-
+delta_phi_list = np.asarray(delta_phi_list)
 # create two subplots one for the beta and one for PN order
-fig, axs = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio))
-axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], np.quantile(delta_phi_list[0],0.95,axis=0),'o',label='EMRI vacuum mapping',alpha=0.5,ms=10)
-axs.semilogy(["-1"], np.quantile(np.abs(delta_phi_list[1]),0.95,axis=0)[0],'P',label='EMRI scalar charge mapping',alpha=0.5,ms=10)
+fig, axs = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio*1.5))
+axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], np.quantile(delta_phi_list[-1],0.95,axis=0),'o',label='EMRI vacuum mapping',alpha=0.5,ms=10)
+run_constraints = np.quantile(delta_phi_list[:-1,:,0],0.95,axis=1)
+axs.semilogy(["-1"], run_constraints[4],'P',label='EMRI scalar charge mapping',alpha=0.5,ms=10)
 
 axs.set_xlabel(r'PN order',fontsize=22)
-axs.set_ylabel(r'$|\delta \phi_i|$',fontsize=22)
+axs.set_ylabel(r'$|\delta \varphi|$',fontsize=22)
 
 
 axs.grid(axis='y')
@@ -357,6 +364,8 @@ axs.grid(axis='y')
 # axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], dphi_lvk,'*',label='LVK')
 axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [2e-5, 3e-1, 7e-2, 1e-1, 0.25, 3],'*',label='GW170817',alpha=0.5,ms=20)
 axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [7e-3, 6e-1, 1.5e-1, 1e-1, 8e-1, 0.4],'D',label='GWTC-3',alpha=0.5,ms=10)
+axs.yaxis.set_major_locator(LogLocator(base=10.0,numticks=20))  # Set the number of y-axis ticks
+
 # pulsar bounds # # https://journals.aps.org/prx/pdf/10.1103/PhysRevX.11.041050
 beta2 = 4e-6
 Pdot_precision = 1.3e-4
@@ -391,6 +400,13 @@ plt.savefig(f'./figures/bound_delta_phi.pdf', bbox_inches='tight')
 # # Terrestrial from https://arxiv.org/pdf/2010.09010 fig 7
 # #           ["-1", "0",   "0.5", "1",  "1.5", "2"]
 # beta_terr = [1e-10, 5e-7, 0.5e-6, 5e-6, 1e-4, 5e-3]
+# from bilby.gw.conversion import *
+
+# q = np.random.uniform(0,1,size=1000)
+# Mc = 10**np.random.uniform(np.log10(5),2,size=1000)
+# m1, m2 = chirp_mass_and_mass_ratio_to_component_masses(Mc, q)
+
+# [get_dphi_from_beta(bb, pno, m1, m2, 0.0) for bb,pno in zip(beta_terr,[-1, 0, 0.5, 1, 1.5, 2])]
 # axs[1].semilogy(["-1", "0",   "0.5", "1",  "1.5", "2"], beta_terr,'X',label='Future ground based detectors')
 # # bounds from papers
 
