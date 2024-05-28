@@ -255,6 +255,9 @@ ls = ['-','--','-.',':',(0, (3, 1, 1, 1, 3))]
 list_chains,labs = [], []
 list_dict = []
 list_cyc_precision = []
+
+# Comparison
+table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha']}
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -362,11 +365,17 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     precision = np.std(temp_samp, axis=0)[:5] / np.mean(temp_samp, axis=0)[:5]
     precision[:2] *= np.mean(temp_samp, axis=0)[:2]
     list_cyc_precision.append(np.append(precision,Ncyc))
+    # construct a table where the first axis is the
+    table_comparison[repo_name.split('_noise0.0_')[-1].split('_seed')[0]] = [charge_quantiles[3], sqrtalpha_quantiles[3]]
+
+table_comparison
+pd.DataFrame(table_comparison).T.to_markdown('./posterior_summary/comparison_table_for_bounds.md', floatfmt=".10e")
 
 ########################### plot all #############################################
 # plot corner plots
 overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, T [{\rm yrs}], N_{\rm cycles})$')
 
+# pl
 # # plot the precision as a function of the number of cycles
 # list_cyc_precision = np.asarray(list_cyc_precision)
 
