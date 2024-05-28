@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import corner
 import os
 from few.utils.constants import *
+from few.utils.utility import get_fundamental_frequencies
 from few.trajectory.inspiral import EMRIInspiral
 import matplotlib as mpl
 import re
@@ -244,9 +245,23 @@ def weighted_quantile(values, quantiles, sample_weight=None,
 
 ########################### preparation of the data #############################################
 init_name = '../DataAnalysis/paper_runs/MCMC*'
-datasets = sorted(glob.glob(init_name + '.h5'))
-pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
-    
+datasets = ['../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.4_e0.2_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T4.0_seed2601_nw26_nt1.h5'
+]
+
+pars_inj =['../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu1e+01_a0.95_p1.2e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.8_p8.7_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.4_e0.2_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T4.0_seed2601_nw26_nt1_injected_pars.npy'
+]
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
 colors = [cmap(i) for i in range(len(datasets))]
@@ -257,7 +272,7 @@ list_dict = []
 list_cyc_precision = []
 
 # Comparison
-table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha']}
+table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha', 'dimensionless velocity' ,'Ncycles vacuum']}
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -366,7 +381,9 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     precision[:2] *= np.mean(temp_samp, axis=0)[:2]
     list_cyc_precision.append(np.append(precision,Ncyc))
     # construct a table where the first axis is the
-    table_comparison[repo_name.split('_noise0.0_')[-1].split('_seed')[0]] = [charge_quantiles[3], sqrtalpha_quantiles[3]]
+    v = get_fundamental_frequencies(truths[2], truths[3], truths[4], 1.0)[0]**(1/3)
+    print(v**(-2))
+    table_comparison[repo_name.split('_noise0.0_')[-1].split('_seed')[0]] = [charge_quantiles[3], sqrtalpha_quantiles[3],v,Ncyc]
 
 table_comparison
 pd.DataFrame(table_comparison).T.to_markdown('./posterior_summary/comparison_table_for_bounds.md', floatfmt=".10e")

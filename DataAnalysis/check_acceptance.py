@@ -210,7 +210,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = './paper_runs/vacuum*'# './paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1*'
+init_name = './paper_runs/devGR*'# './paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
@@ -228,7 +228,7 @@ for filename,el in zip(datasets,pars_inj):
     print("acceptance:")
     print(file.get_move_info())
     
-    burn, thin = int(file.iteration*0.1), 1
+    burn, thin = int(file.iteration*0.2), 1
     # burn,thin = file.get_autocorr_thin_burn()
     autocorr_time = file.get_autocorr_time(discard=burn, thin=thin)['emri']
     print("autocorrelation", autocorr_time, "\n correlation time N/50",(file.iteration-burn)/50)
@@ -240,9 +240,9 @@ for filename,el in zip(datasets,pars_inj):
     # --- select based on loglike ---
     ll = file.get_log_like(discard=burn, thin=thin)[:,temp]
     # mask based on median like
-    mask = np.delete(np.arange(file.nwalkers),[4,9])
-    # mask = (ll<10.0)
-    # mask = (ll>np.max(ll)-20)
+    # mask = np.delete(np.arange(file.nwalkers),[4,9])
+    # mask = (ll[-1]<10.0)
+    mask = (ll[-1]>np.max(ll[-1])-20)
     print("maximum likelihood",ll)
     
     # ------ Import samples ----------
