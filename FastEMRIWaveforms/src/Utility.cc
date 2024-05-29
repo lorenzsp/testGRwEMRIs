@@ -457,7 +457,7 @@ double KerrGeoEnergy(double a, double p, double e, double x)
         double denom = (-4.*(a*a)*((-1 + (e*e))*(-1 + (e*e))) + ((3 + (e*e) - p)*(3 + (e*e) - p))*p);
         double numer = ((-1 + (e*e))*((a*a)*(1 + 3*(e*e) + p) + p*(-3 - (e*e) + p - x*2*sqrt(((a*a*a*a*a*a)*((-1 + (e*e))*(-1 + (e*e))) + (a*a)*(-4*(e*e) + ((-2 + p)*(-2 + p)))*(p*p) + 2*(a*a*a*a)*p*(-2 + p + (e*e)*(2 + p)))/(p*p*p)))));
         double ratio;
-            if ( abs(denom)<1e-15){
+            if ( abs(denom)<1e-14 || abs(numer)<1e-14){
                 ratio = 0.0;
             }
             else{

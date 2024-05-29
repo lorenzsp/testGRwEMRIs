@@ -6,6 +6,7 @@ from matplotlib.patches import FancyArrowPatch
 from mpl_toolkits.mplot3d import proj3d
 import numpy as np
 from eryn.moves.gaussian import reflect_cosines_array
+import corner
 
 try:
     import cupy as xp
@@ -184,3 +185,115 @@ def get_sensitivity_stas(f, **kwargs):
     
 def get_fft(sig1, dt):
     return xp.fft.fft(xp.asarray(sig1),axis=1)*dt
+
+def get_normalisation_weight(len_current_samples, len_of_longest_samples):
+    return np.ones(len_current_samples) * (len_of_longest_samples / len_current_samples)
+
+def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, title=None, ylim=None, weights=None,):
+    """
+    Plots multiple corners on top of each other.
+
+    Parameters:
+    - samples_list: list of numpy arrays
+        List of MCMC samples for each corner plot.
+    - sample_labels: list of strings
+        List of labels for each set of samples.
+    - name_save: string, optional
+        Name of the file to save the plot. If not provided, the plot will be displayed.
+    - corn_kw: dict, optional
+        Additional keyword arguments to pass to the corner.corner function.
+    - title: string, optional
+        Title for the plot.
+    - ylim: tuple, optional
+        The y-axis limits for the marginalized corners.
+
+    Returns:
+    - None (if name_save is not provided) or saves the plot as a PDF file.
+
+    """
+    import matplotlib.pyplot as plt
+    import matplotlib.lines as mlines
+
+    # Get some constants
+    n = len(samples_list)
+    _, ndim = samples_list[0].shape
+    max_len = max([len(s) for s in samples_list])
+    cmap = plt.cm.get_cmap('Set1',)
+    colors = [cmap(i) for i in range(n)]
+    colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+    # Define the plot range for each dimension
+    plot_range = []
+    for dim in range(ndim):
+        plot_range.append(
+            [
+                min([min(samples_list[i].T[dim]) for i in range(n)]),
+                max([max(samples_list[i].T[dim]) for i in range(n)]),
+            ]
+        )
+
+    # Update corner plot keyword arguments
+    corn_kw = corn_kw or {}
+    corn_kw.update(range=plot_range)
+    list_maxy = []
+    
+    if weights is None:
+        weights = [get_normalisation_weight(len(samples_list[idx]), max_len) for idx in range(0, n)]
+    else:
+        weights = [get_normalisation_weight(len(samples_list[idx]), max_len)*weights[idx] for idx in range(0, n)]
+    # Create the first corner plot
+    fig = corner.corner(
+        samples_list[0],
+        color=colors[0],
+        weights=weights[0],
+        **corn_kw
+    )
+    axes = np.array(fig.axes).reshape((ndim, ndim))
+    maxy = [axes[i, i].get_ybound()[-1] for i in range(ndim)]
+    # append maxy
+    list_maxy.append(maxy)
+    
+    # Overlay the remaining corner plots
+    for idx in range(1, n):
+        fig = corner.corner(
+            samples_list[idx],
+            fig=fig,
+            weights=weights[idx],
+            color=colors[idx],
+            **corn_kw
+        )
+        axes = np.array(fig.axes).reshape((ndim, ndim))
+        maxy = [axes[i, i].get_ybound()[-1] for i in range(ndim)]
+        # append maxy
+        list_maxy.append(maxy)
+    list_maxy =np.asarray(list_maxy)
+
+
+    # Set y-axis limits for the marginalized corners
+    axes = np.array(fig.axes).reshape((ndim, ndim))
+    for i in range(ndim):
+        axes[i, i].set_ylim((0.0,np.max(list_maxy,axis=0)[i]))
+
+    # Add legend
+    plt.legend(
+        handles=[
+            mlines.Line2D([], [], color=colors[i], label=sample_labels[i])
+            for i in range(n)
+        ],
+        fontsize=35,
+        frameon=False,
+        bbox_to_anchor=(0.5, ndim+1),
+        loc="upper right",
+        title=title,
+        title_fontsize=35,
+    )
+
+    # Adjust plot layout
+    plt.subplots_adjust(left=-0.1, bottom=-0.1, right=None, top=None, wspace=None, hspace=0.15)
+
+
+    # Save or display the plot
+    if name_save is not None:
+        plt.savefig(name_save+".pdf", pad_inches=0.2, bbox_inches='tight')
+    else:
+        plt.show()
