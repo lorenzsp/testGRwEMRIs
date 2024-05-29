@@ -16,7 +16,7 @@ nsteps=500000
 noise=0.0
 outname=MCMC
 # ---------------------------------------------------------
-dev=0
+dev=7
 # Create a dynamic output filename
 output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 

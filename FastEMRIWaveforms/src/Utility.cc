@@ -397,17 +397,17 @@ double CapitalDelta(double r, double a)
 
 double f(double r, double a, double zm)
 {
-    return pow(r, 4) + (a*a) * (r * (r + 2) + (zm*zm) * CapitalDelta(r, a));
+    return r*r*r*r + (a*a) * (r * (r + 2) + (zm*zm) * CapitalDelta(r, a));
 }
 
 double g(double r, double a, double zm)
 {
-    return 2 * a * r;
+    return 2. * a * r;
 }
 
 double h(double r, double a, double zm)
 {
-    return r * (r - 2) + (zm*zm) / (1 - (zm*zm)) * CapitalDelta(r, a);
+    return r * (r - 2.) + (zm*zm) / (1.- (zm*zm)) * CapitalDelta(r, a);
 }
 
 double d(double r, double a, double zm)
@@ -418,12 +418,12 @@ double d(double r, double a, double zm)
 double fdot(double r, double a, double zm)
 {
     double zm2 = (zm*zm);
-    return 4. * (r*r*r) + (a*a) * (2. * r * (1. + zm2) + 2. * (1 - zm2));
+    return 4. * (r*r*r) + (a*a) * (2. * r * (1. + zm2) + 2. * (1.- zm2));
 }
 
 double gdot(double r, double a, double zm)
 {
-    return 2 * a;
+    return 2. * a;
 }
 
 double hdot(double r, double a, double zm)
@@ -453,6 +453,17 @@ double KerrGeoEnergy(double a, double p, double e, double x)
         Rho = f(r, a, zm) * hdot(r, a, zm) - h(r, a, zm) * fdot(r, a, zm);
         Eta = f(r, a, zm) * gdot(r, a, zm) - g(r, a, zm) * fdot(r, a, zm);
         Sigma = g(r, a, zm) * hdot(r, a, zm) - h(r, a, zm) * gdot(r, a, zm);
+    }else if (abs(x)==1.0){
+        double denom = (-4.*(a*a)*((-1 + (e*e))*(-1 + (e*e))) + ((3 + (e*e) - p)*(3 + (e*e) - p))*p);
+        double numer = ((-1 + (e*e))*((a*a)*(1 + 3*(e*e) + p) + p*(-3 - (e*e) + p - x*2*sqrt(((a*a*a*a*a*a)*((-1 + (e*e))*(-1 + (e*e))) + (a*a)*(-4*(e*e) + ((-2 + p)*(-2 + p)))*(p*p) + 2*(a*a*a*a)*p*(-2 + p + (e*e)*(2 + p)))/(p*p*p)))));
+        double ratio;
+            if ( abs(denom)<1e-15){
+                ratio = 0.0;
+            }
+            else{
+                ratio = numer/denom;
+            }
+        return sqrt(1. - ((1. - (e*e))*(1. + ratio))/p);
     }
     else {
         double r1 = p / (1. - e);
@@ -466,22 +477,23 @@ double KerrGeoEnergy(double a, double p, double e, double x)
     }
 
     return sqrt((Kappa * Rho + 2. * Epsilon * Sigma - x * 2. * sqrt(Sigma * (Sigma * Epsilon*Epsilon+ Rho * Epsilon * Kappa - Eta * Kappa*Kappa) / (x*x))) / (Rho*Rho + 4. * Eta * Sigma));
+
 }
 
 double KerrGeoAngularMomentum(double a, double p, double e, double x, double En)
 {
-    double r1 = p / (1 - e);
+    double r1 = p / (1.- e);
 
-    double zm = sqrt(1 - (x*x));
+    double zm = sqrt(1.- (x*x));
+    return (-En * g(r1, a, zm) + x * sqrt((-d(r1, a, zm) * h(r1, a, zm) + (En*En) * ((g(r1, a, zm)*g(r1, a, zm)) + f(r1, a, zm) * h(r1, a, zm))) / (x*x))) / h(r1, a, zm);
 
-    return (-En * g(r1, a, zm) + x * sqrt((-d(r1, a, zm) * h(r1, a, zm) + (En*En) * (pow(g(r1, a, zm), 2) + f(r1, a, zm) * h(r1, a, zm))) / (x*x))) / h(r1, a, zm);
 }
 
 double KerrGeoCarterConstant(double a, double p, double e, double x, double En, double L)
 {
-    double zm = sqrt(1 - (x*x));
+    double zm = sqrt(1.- (x*x));
 
-    return (zm*zm) * ((a*a) * (1 - (En*En)) + (L*L) / (1 - (zm*zm)));
+    return (zm*zm) * ((a*a) * (1.- (En*En)) + (L*L) / (1.- (zm*zm)));
 }
 
 void KerrGeoConstantsOfMotion(double *E_out, double *L_out, double *Q_out, double a, double p, double e, double x)
@@ -507,9 +519,9 @@ void KerrGeoRadialRoots(double *r1_, double *r2_, double *r3_, double *r4_, doub
     double M = 1.0;
     double r1 = p / (1. - e);
     double r2 = p / (1. + e);
-    double AplusB = (2. * M) / (1 - (En*En)) - (r1 + r2);
-    double AB = ((a*a) * Q) / ((1 - (En*En)) * r1 * r2);
-    double r3 = (AplusB + sqrt(pow(AplusB, 2) - 4. * AB)) / 2;
+    double AplusB = (2. * M) / (1.- (En*En)) - (r1 + r2);
+    double AB = ((a*a) * Q) / ((1.- (En*En)) * r1 * r2);
+    double r3 = (AplusB + sqrt(AplusB*AplusB - 4. * AB)) / 2.;
     double r4 = AB / r3;
 
     *r1_ = r1;
@@ -531,17 +543,17 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
 
-    double Epsilon0 = (a*a) * (1 - (En*En)) / (L*L);
-    double zm = 1 - (x*x);
-    double a2zp = ((L*L) + (a*a) * (-1 + (En*En)) * (-1 + zm)) / ((-1 + (En*En)) * (-1 + zm));
+    double Epsilon0 = (a*a) * (1.- (En*En)) / (L*L);
+    double zm = 1.- (x*x);
+    double a2zp = ((L*L) + (a*a) * (-1.+ (En*En)) * (-1.+ zm)) / ((-1.+ (En*En)) * (-1.+ zm));
 
-    double Epsilon0zp = -(((L*L) + (a*a) * (-1 + (En*En)) * (-1 + zm)) / ((L*L) * (-1 + zm)));
+    double Epsilon0zp = -(((L*L) + (a*a) * (-1.+ (En*En)) * (-1.+ zm)) / ((L*L) * (-1.+ zm)));
 
-    double zmOverZp = zm / (((L*L) + (a*a) * (-1 + (En*En)) * (-1 + zm)) / ((a*a) * (-1 + (En*En)) * (-1 + zm)));
+    double zmOverZp = zm / (((L*L) + (a*a) * (-1.+ (En*En)) * (-1.+ zm)) / ((a*a) * (-1.+ (En*En)) * (-1.+ zm)));
 
     double kr = sqrt((r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4));                                                //(*Eq.(13)*)
     double kTheta = sqrt(zmOverZp);                                                                                 //(*Eq.(13)*)
-    double CapitalUpsilonr = (M_PI * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) / (2 * EllipticK(pow(kr, 2))); //(*Eq.(15)*)
+    double CapitalUpsilonr = (M_PI * sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4))) / (2 * EllipticK(pow(kr, 2))); //(*Eq.(15)*)
     double CapitalUpsilonTheta = (M_PI * L * sqrt(Epsilon0zp)) / (2 * EllipticK(pow(kTheta, 2)));                   //(*Eq.(15)*)
 
     double rp = M + sqrt(1.0 - (a*a));
@@ -552,9 +564,9 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     double hm = ((r1 - r2) * (r3 - rm)) / ((r1 - r3) * (r2 - rm));
 
     // (*Eq. (21)*)
-    double CapitalUpsilonPhi = (2 * CapitalUpsilonTheta) / (M_PI * sqrt(Epsilon0zp)) * EllipticPi(zm, pow(kTheta, 2)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2))));
+    double CapitalUpsilonPhi = (2 * CapitalUpsilonTheta) / (M_PI * sqrt(Epsilon0zp)) * EllipticPi(zm, pow(kTheta, 2)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2))));
 
-    double CapitalGamma = 4 * 1.0 * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * 1.0 * En - a * L) * rp - 2 * M * (a*a) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * 1.0 * En - a * L) * rm - 2 * M * (a*a) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
+    double CapitalGamma = 4 * 1.0 * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * 1.0 * En - a * L) * rp - 2 * M * (a*a) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * 1.0 * En - a * L) * rm - 2 * M * (a*a) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
 
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
@@ -612,13 +624,13 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
     double a_squared = a*a;
     double En_squared = En*En;
     double L_squared = L*L;
-    double Epsilon0 = a_squared * (1 - En_squared) / L_squared;
+    double Epsilon0 = a_squared * (1.- En_squared) / L_squared;
     // double zm = 0;
-    double a2zp = (L_squared + a_squared * (-1 + En_squared) * (-1)) / ((-1 + En_squared) * (-1));
+    double a2zp = (L_squared + a_squared * (-1.+ En_squared) * (-1)) / ((-1.+ En_squared) * (-1));
 
-    double Epsilon0zp = -((L_squared + a_squared * (-1 + En_squared) * (-1)) / (L_squared * (-1)));
+    double Epsilon0zp = -((L_squared + a_squared * (-1.+ En_squared) * (-1)) / (L_squared * (-1)));
 
-    double zp = a_squared * (1 - En_squared) + L_squared;
+    double zp = a_squared * (1.- En_squared) + L_squared;
 
     double arg_kr = (r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4);
 
@@ -632,7 +644,11 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
         printf("a p e %.16e %.16e %.16e\n", a,p,e);
     }
     double elK = EllipticK(kr2);
-    double CapitalUpsilonr = (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2))) / (2 * elK); //(*Eq.(15)*)
+    double CapitalUpsilonr = (M_PI * sqrt((1.- En_squared) * (r1 - r3) * (r2))) / (2. * elK); //(*Eq.(15)*)
+    // print to debug CapitalUpsilonr
+    // printf("r1 r2 r3 %e %e %e\n", r1, r2, r3);
+    // printf("(1.- En_squared), r1-r3, r2 %e %e %e %e\n", (1.- En_squared), r1-r3, r2, elK);
+
     double CapitalUpsilonTheta = x * sqrt(zp);                                                             //(*Eq.(15)*)
 
     double rp = M + sqrt(1.0 - a_squared);
@@ -657,7 +673,7 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
     {
         prob1 = prob1 / (r3 - rp);
     }
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm));
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1.- En_squared) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm));
 
     // This term is zero when r3 - rp == 0.0
     double prob2 = ((4 * 1.0 * En - a * L) * rp - 2 * M * a_squared * En) * (elK - (r2 - r3) / (r2 - rp) * elPi);
@@ -665,13 +681,14 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
     {
         prob2 = prob2 / (r3 - rp);
     }
-    double CapitalGamma = 4 * 1.0 * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * elK + (r2 - r3) * (r1 + r2 + r3 + r4) * elPi_hr + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * elK + (r2 - r3) * elPi_hr) + (2 * M) / (rp - rm) * (prob2 - ((4 * 1.0 * En - a * L) * rm - 2 * M * a_squared * En) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm)));
+    double CapitalGamma = 4 * 1.0 * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1.- En_squared) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * elK + (r2 - r3) * (r1 + r2 + r3 + r4) * elPi_hr + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * elK + (r2 - r3) * elPi_hr) + (2 * M) / (rp - rm) * (prob2 - ((4 * 1.0 * En - a * L) * rm - 2 * M * a_squared * En) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm)));
 
     // This check makes sure that the problematic terms are zero when r3-rp is zero
     // if (r3 - rp==0.0){
     // printf("prob %e %e\n", prob1, prob2);
     // diff_r3_rp = 1e10;
     // }
+    // print all the variables in order to debug
 
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
@@ -709,13 +726,13 @@ void SchwarzschildGeoCoordinateFrequencies(double *OmegaPhi, double *OmegaR, dou
     double EllipPi1 = EllipticPi(16 * e / (12.0 + 8 * e - 4 * e * e - 8 * p + p * p), 4 * e / (p - 6.0 + 2 * e));
     double EllipPi2 = EllipticPi(2 * e * (p - 4) / ((1.0 + e) * (p - 6.0 + 2 * e)), 4 * e / (p - 6.0 + 2 * e));
 
-    *OmegaPhi = (2 * Power(p, 1.5)) / (Sqrt(-4 * (e*e) + Power(-2 + p, 2)) * (8 + ((-2 * EllipPi2 * (6 + 2 * e - p) * (3 + (e*e) - p) * (p*p)) / ((-1 + e) * Power(1 + e, 2)) - (EllipE * (-4 + p) * (p*p) * (-6 + 2 * e + p)) / (-1 + (e*e)) +
-                                                                                         (EllipK * (p*p) * (28 + 4 * (e*e) - 12 * p + (p*p))) / (-1 + (e*e)) + (4 * (-4 + p) * p * (2 * (1 + e) * EllipK + EllipPi2 * (-6 - 2 * e + p))) / (1 + e) + 2 * Power(-4 + p, 2) * (EllipK * (-4 + p) + (EllipPi1 * p * (-6 - 2 * e + p)) / (2 + 2 * e - p))) /
+    *OmegaPhi = (2 * Power(p, 1.5)) / (Sqrt(-4 * (e*e) + Power(-2 + p, 2)) * (8 + ((-2 * EllipPi2 * (6 + 2 * e - p) * (3 + (e*e) - p) * (p*p)) / ((-1.+ e) * Power(1.+ e, 2)) - (EllipE * (-4 + p) * (p*p) * (-6 + 2 * e + p)) / (-1.+ (e*e)) +
+                                                                                         (EllipK * (p*p) * (28 + 4 * (e*e) - 12 * p + (p*p))) / (-1.+ (e*e)) + (4 * (-4 + p) * p * (2 * (1.+ e) * EllipK + EllipPi2 * (-6 - 2 * e + p))) / (1.+ e) + 2 * Power(-4 + p, 2) * (EllipK * (-4 + p) + (EllipPi1 * p * (-6 - 2 * e + p)) / (2 + 2 * e - p))) /
                                                                                             (EllipK * Power(-4 + p, 2))));
 
     *OmegaR = (p * Sqrt((-6 + 2 * e + p) / (-4 * (e*e) + Power(-2 + p, 2))) * Pi) /
-              (8 * EllipK + ((-2 * EllipPi2 * (6 + 2 * e - p) * (3 + (e*e) - p) * (p*p)) / ((-1 + e) * Power(1 + e, 2)) - (EllipE * (-4 + p) * (p*p) * (-6 + 2 * e + p)) / (-1 + (e*e)) +
-                             (EllipK * (p*p) * (28 + 4 * (e*e) - 12 * p + (p*p))) / (-1 + (e*e)) + (4 * (-4 + p) * p * (2 * (1 + e) * EllipK + EllipPi2 * (-6 - 2 * e + p))) / (1 + e) + 2 * Power(-4 + p, 2) * (EllipK * (-4 + p) + (EllipPi1 * p * (-6 - 2 * e + p)) / (2 + 2 * e - p))) /
+              (8 * EllipK + ((-2 * EllipPi2 * (6 + 2 * e - p) * (3 + (e*e) - p) * (p*p)) / ((-1.+ e) * Power(1.+ e, 2)) - (EllipE * (-4 + p) * (p*p) * (-6 + 2 * e + p)) / (-1.+ (e*e)) +
+                             (EllipK * (p*p) * (28 + 4 * (e*e) - 12 * p + (p*p))) / (-1.+ (e*e)) + (4 * (-4 + p) * p * (2 * (1.+ e) * EllipK + EllipPi2 * (-6 - 2 * e + p))) / (1.+ e) + 2 * Power(-4 + p, 2) * (EllipK * (-4 + p) + (EllipPi1 * p * (-6 - 2 * e + p)) / (2 + 2 * e - p))) /
                                 Power(-4 + p, 2));
 }
 
@@ -901,7 +918,7 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     double z3 = -2.*rtQnr*cos(theta/3.) - C2/3.;
     double rtz2z3 = sqrt(z2*z3);
     //
-    // Now assemble the roots of the quartic.  Note that M/(2(1 - E^2)) = -0.25*A3.
+    // Now assemble the roots of the quartic.  Note that M/(2(1.- E^2)) = -0.25*A3.
     //
     double sgnB1 = (B1 > 0 ? 1. : -1.);
     double rttermmin = sqrt(z2 + z3 - 2.*sgnB1*rtz2z3);
@@ -914,7 +931,7 @@ void ELQ_to_pex(double *p, double *e, double *xI, double a, double E, double Lz,
     *p = 2.*ra*rp/(ra + rp);
     *e = (ra - rp)/(ra + rp);
     //
-    // Note that omE2 = 1 - E^2 = -E2m1 = -(E^2 - 1)
+    // Note that omE2 = 1.- E^2 = -E2m1 = -(E^2 - 1)
     //
     double QpLz2ma2omE2 = Q + Lz*Lz + a2*E2m1;
     double denomsqr = QpLz2ma2omE2 + sqrt(QpLz2ma2omE2*QpLz2ma2omE2 - 4.*Lz*Lz*a2*E2m1);
@@ -949,7 +966,7 @@ double separatrix_polynomial_full(double p, void *params_in)
     double e = params->e;
     double x = params->x;
 
-    return (-4 * (3 + e) * Power(p, 11) + Power(p, 12) + Power(a, 12) * Power(-1 + e, 4) * Power(1 + e, 8) * Power(-1 + x, 4) * Power(1 + x, 4) - 4 * Power(a, 10) * (-3 + e) * Power(-1 + e, 3) * Power(1 + e, 7) * p * Power(-1 + Power(x, 2), 4) - 4 * Power(a, 8) * (-1 + e) * Power(1 + e, 5) * Power(p, 3) * Power(-1 + x, 3) * Power(1 + x, 3) * (7 - 7 * Power(x, 2) - (e*e) * (-13 + Power(x, 2)) + Power(e, 3) * (-5 + Power(x, 2)) + 7 * e * (-1 + Power(x, 2))) + 8 * Power(a, 6) * (-1 + e) * Power(1 + e, 3) * Power(p, 5) * Power(-1 + Power(x, 2), 2) * (3 + e + 12 * Power(x, 2) + 4 * e * Power(x, 2) + Power(e, 3) * (-5 + 2 * Power(x, 2)) + (e*e) * (1 + 2 * Power(x, 2))) - 8 * (a*a*a*a) * Power(1 + e, 2) * Power(p, 7) * (-1 + x) * (1 + x) * (-3 + e + 15 * Power(x, 2) - 5 * e * Power(x, 2) + Power(e, 3) * (-5 + 3 * Power(x, 2)) + (e*e) * (-1 + 3 * Power(x, 2))) + 4 * (a*a) * Power(p, 9) * (-7 - 7 * e + Power(e, 3) * (-5 + 4 * Power(x, 2)) + (e*e) * (-13 + 12 * Power(x, 2))) + 2 * Power(a, 8) * Power(-1 + e, 2) * Power(1 + e, 6) * (p*p) * Power(-1 + Power(x, 2), 3) * (2 * Power(-3 + e, 2) * (-1 + Power(x, 2)) + (a*a) * ((e*e) * (-3 + Power(x, 2)) - 3 * (1 + Power(x, 2)) + 2 * e * (1 + Power(x, 2)))) - 2 * Power(p, 10) * (-2 * Power(3 + e, 2) + (a*a) * (-3 + 6 * Power(x, 2) + (e*e) * (-3 + 2 * Power(x, 2)) + e * (-2 + 4 * Power(x, 2)))) + Power(a, 6) * Power(1 + e, 4) * Power(p, 4) * Power(-1 + Power(x, 2), 2) * (-16 * Power(-1 + e, 2) * (-3 - 2 * e + (e*e)) * (-1 + Power(x, 2)) + (a*a) * (15 + 6 * Power(x, 2) + 9 * Power(x, 4) + (e*e) * (26 + 20 * Power(x, 2) - 2 * Power(x, 4)) + Power(e, 4) * (15 - 10 * Power(x, 2) + Power(x, 4)) + 4 * Power(e, 3) * (-5 - 2 * Power(x, 2) + Power(x, 4)) - 4 * e * (5 + 2 * Power(x, 2) + 3 * Power(x, 4)))) - 4 * (a*a*a*a) * Power(1 + e, 2) * Power(p, 6) * (-1 + x) * (1 + x) * (-2 * (11 - 14 * (e*e) + 3 * Power(e, 4)) * (-1 + Power(x, 2)) + (a*a) * (5 - 5 * Power(x, 2) - 9 * Power(x, 4) + 4 * Power(e, 3) * Power(x, 2) * (-2 + Power(x, 2)) + Power(e, 4) * (5 - 5 * Power(x, 2) + Power(x, 4)) + (e*e) * (6 - 6 * Power(x, 2) + 4 * Power(x, 4)))) + (a*a) * Power(p, 8) * (-16 * Power(1 + e, 2) * (-3 + 2 * e + (e*e)) * (-1 + Power(x, 2)) + (a*a) * (15 - 36 * Power(x, 2) + 30 * Power(x, 4) + Power(e, 4) * (15 - 20 * Power(x, 2) + 6 * Power(x, 4)) + 4 * Power(e, 3) * (5 - 12 * Power(x, 2) + 6 * Power(x, 4)) + 4 * e * (5 - 12 * Power(x, 2) + 10 * Power(x, 4)) + (e*e) * (26 - 72 * Power(x, 2) + 44 * Power(x, 4)))));
+    return (-4 * (3 + e) * Power(p, 11) + Power(p, 12) + Power(a, 12) * Power(-1.+ e, 4) * Power(1.+ e, 8) * Power(-1.+ x, 4) * Power(1.+ x, 4) - 4 * Power(a, 10) * (-3 + e) * Power(-1.+ e, 3) * Power(1.+ e, 7) * p * Power(-1.+ Power(x, 2), 4) - 4 * Power(a, 8) * (-1.+ e) * Power(1.+ e, 5) * Power(p, 3) * Power(-1.+ x, 3) * Power(1.+ x, 3) * (7 - 7 * Power(x, 2) - (e*e) * (-13 + Power(x, 2)) + Power(e, 3) * (-5 + Power(x, 2)) + 7 * e * (-1.+ Power(x, 2))) + 8 * Power(a, 6) * (-1.+ e) * Power(1.+ e, 3) * Power(p, 5) * Power(-1.+ Power(x, 2), 2) * (3 + e + 12 * Power(x, 2) + 4 * e * Power(x, 2) + Power(e, 3) * (-5 + 2 * Power(x, 2)) + (e*e) * (1.+ 2 * Power(x, 2))) - 8 * (a*a*a*a) * Power(1.+ e, 2) * Power(p, 7) * (-1.+ x) * (1.+ x) * (-3 + e + 15 * Power(x, 2) - 5 * e * Power(x, 2) + Power(e, 3) * (-5 + 3 * Power(x, 2)) + (e*e) * (-1.+ 3 * Power(x, 2))) + 4 * (a*a) * Power(p, 9) * (-7 - 7 * e + Power(e, 3) * (-5 + 4 * Power(x, 2)) + (e*e) * (-13 + 12 * Power(x, 2))) + 2 * Power(a, 8) * Power(-1.+ e, 2) * Power(1.+ e, 6) * (p*p) * Power(-1.+ Power(x, 2), 3) * (2 * Power(-3 + e, 2) * (-1.+ Power(x, 2)) + (a*a) * ((e*e) * (-3 + Power(x, 2)) - 3 * (1.+ Power(x, 2)) + 2 * e * (1.+ Power(x, 2)))) - 2 * Power(p, 10) * (-2 * Power(3 + e, 2) + (a*a) * (-3 + 6 * Power(x, 2) + (e*e) * (-3 + 2 * Power(x, 2)) + e * (-2 + 4 * Power(x, 2)))) + Power(a, 6) * Power(1.+ e, 4) * Power(p, 4) * Power(-1.+ Power(x, 2), 2) * (-16 * Power(-1.+ e, 2) * (-3 - 2 * e + (e*e)) * (-1.+ Power(x, 2)) + (a*a) * (15 + 6 * Power(x, 2) + 9 * Power(x, 4) + (e*e) * (26 + 20 * Power(x, 2) - 2 * Power(x, 4)) + Power(e, 4) * (15 - 10 * Power(x, 2) + Power(x, 4)) + 4 * Power(e, 3) * (-5 - 2 * Power(x, 2) + Power(x, 4)) - 4 * e * (5 + 2 * Power(x, 2) + 3 * Power(x, 4)))) - 4 * (a*a*a*a) * Power(1.+ e, 2) * Power(p, 6) * (-1.+ x) * (1.+ x) * (-2 * (11 - 14 * (e*e) + 3 * Power(e, 4)) * (-1.+ Power(x, 2)) + (a*a) * (5 - 5 * Power(x, 2) - 9 * Power(x, 4) + 4 * Power(e, 3) * Power(x, 2) * (-2 + Power(x, 2)) + Power(e, 4) * (5 - 5 * Power(x, 2) + Power(x, 4)) + (e*e) * (6 - 6 * Power(x, 2) + 4 * Power(x, 4)))) + (a*a) * Power(p, 8) * (-16 * Power(1.+ e, 2) * (-3 + 2 * e + (e*e)) * (-1.+ Power(x, 2)) + (a*a) * (15 - 36 * Power(x, 2) + 30 * Power(x, 4) + Power(e, 4) * (15 - 20 * Power(x, 2) + 6 * Power(x, 4)) + 4 * Power(e, 3) * (5 - 12 * Power(x, 2) + 6 * Power(x, 4)) + 4 * e * (5 - 12 * Power(x, 2) + 10 * Power(x, 4)) + (e*e) * (26 - 72 * Power(x, 2) + 44 * Power(x, 4)))));
 }
 
 double separatrix_polynomial_polar(double p, void *params_in)
@@ -960,7 +977,7 @@ double separatrix_polynomial_polar(double p, void *params_in)
     double e = params->e;
     double x = params->x;
 
-    return (Power(a, 6) * Power(-1 + e, 2) * Power(1 + e, 4) + Power(p, 5) * (-6 - 2 * e + p) + (a*a) * Power(p, 3) * (-4 * (-1 + e) * Power(1 + e, 2) + (3 + e * (2 + 3 * e)) * p) - (a*a*a*a) * Power(1 + e, 2) * p * (6 + 2 * Power(e, 3) + 2 * e * (-1 + p) - 3 * p - 3 * (e*e) * (2 + p)));
+    return (Power(a, 6) * Power(-1.+ e, 2) * Power(1.+ e, 4) + Power(p, 5) * (-6 - 2 * e + p) + (a*a) * Power(p, 3) * (-4 * (-1.+ e) * Power(1.+ e, 2) + (3 + e * (2 + 3 * e)) * p) - (a*a*a*a) * Power(1.+ e, 2) * p * (6 + 2 * Power(e, 3) + 2 * e * (-1.+ p) - 3 * p - 3 * (e*e) * (2 + p)));
 }
 
 double separatrix_polynomial_equat(double p, void *params_in)
@@ -971,7 +988,7 @@ double separatrix_polynomial_equat(double p, void *params_in)
     double e = params->e;
     double x = params->x;
 
-    return ((a*a*a*a) * Power(-3 - 2 * e + (e*e), 2) + (p*p) * Power(-6 - 2 * e + p, 2) - 2 * (a*a) * (1 + e) * p * (14 + 2 * (e*e) + 3 * p - e * p));
+    return ((a*a*a*a) * ((-3. - 2. * e + (e*e))*(-3. - 2. * e + (e*e))) + (p*p) * ((-6. - 2. * e + p)*(-6. - 2. * e + p)) - 2. * (a*a) * (1. + e) * p * (14. + 2. * (e*e) + 3. * p - e * p));
 }
 
 double derivative_polynomial_equat(double p, void *params_in)
@@ -981,7 +998,7 @@ double derivative_polynomial_equat(double p, void *params_in)
     double a = params->a;
     double e = params->e;
     double x = params->x;
-    return -2 * (a*a) * (1 + e) * (14 + 2 * (e*e) - e * p + 6 * p) + 4 * p * (18 + 2 * (e*e) - 3 * e * (-4 + p) - 9 * p + (p*p));
+    return -2 * (a*a) * (1.+ e) * (14 + 2 * (e*e) - e * p + 6 * p) + 4 * p * (18 + 2 * (e*e) - 3 * e * (-4 + p) - 9 * p + (p*p));
 }
 
 void eq_pol_fdf(double p, void *params_in, double *y, double *dy)
@@ -991,8 +1008,8 @@ void eq_pol_fdf(double p, void *params_in, double *y, double *dy)
     double a = params->a;
     double e = params->e;
     double x = params->x;
-    *y = ((a*a*a*a) * Power(-3 - 2 * e + (e*e), 2) + (p*p) * Power(-6 - 2 * e + p, 2) - 2 * (a*a) * (1 + e) * p * (14 + 2 * (e*e) + 3 * p - e * p));
-    *dy = -2 * (a*a) * (1 + e) * (14 + 2 * (e*e) - e * p + 6 * p) + 4 * p * (18 + 2 * (e*e) - 3 * e * (-4 + p) - 9 * p + (p*p));
+    *y = ((a*a*a*a) * Power(-3 - 2 * e + (e*e), 2) + (p*p) * Power(-6 - 2 * e + p, 2) - 2 * (a*a) * (1.+ e) * p * (14 + 2 * (e*e) + 3 * p - e * p));
+    *dy = -2 * (a*a) * (1.+ e) * (14 + 2 * (e*e) - e * p + 6 * p) + 4 * p * (18 + 2 * (e*e) - 3 * e * (-4 + p) - 9 * p + (p*p));
 }
 
 double solver(struct params_holder *params, double (*func)(double, void *), double x_lo, double x_hi)
@@ -1152,7 +1169,7 @@ double get_separatrix(double a, double e, double x)
         double x_lo, x_hi;
 
         x_lo = 6 + 2. * e;
-        x_hi = 5 + e + 4 * Sqrt(1 + e);
+        x_hi = 5 + e + 4 * Sqrt(1.+ e);
 
         p_sep = solver(&params, &separatrix_polynomial_equat, x_lo, x_hi);
         return p_sep;
@@ -1535,12 +1552,12 @@ void KerrEqSpinFrequenciesCorrection(double *deltaOmegaR_, double *deltaOmegaPhi
                                           (Pihpkr * ((a*a) + pow(rp, 2)) * deltaP(rp, a, En, xi, deltaEn, deltaxi)) / ((r2 - rp) * (r3 - rp)))) /
                                 (-rm + rp) +
                             Kkr * (-0.5 * (deltaEn * (r1 - r3) * (r2 - r3)) + deltaVtr3))) /
-                      sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4));
+                      sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4));
 
     double cK = Kkr * (-0.5 * (a2 * En * (r1 - r3) * (r2 - r3)) + (pow(a, 4) * En * r3 * (-am1 + pow(r3, 2) * (a1 + 2 * a2 * r3)) +
                                                                    2 * (a*a) * En * pow(r3, 2) * (-(am1 * (-2 + r3)) + a0 * r3 + pow(r3, 3) * (a1 - a2 + 2 * a2 * r3)) +
                                                                    En * pow(r3, 5) * (-2 * a0 - am1 + r3 * (a1 * (-4 + r3) + 2 * a2 * (-3 + r3) * r3)) + 2 * pow(a, 3) * (2 * am1 + a0 * r3 - a2 * pow(r3, 3)) * xi +
-                                                                   2 * a * r3 * (am1 * (-6 + 4 * r3) + r3 * (2 * a1 * (-1 + r3) * r3 + a2 * pow(r3, 3) + a0 * (-4 + 3 * r3))) * xi) /
+                                                                   2 * a * r3 * (am1 * (-6 + 4 * r3) + r3 * (2 * a1 * (-1.+ r3) * r3 + a2 * pow(r3, 3) + a0 * (-4 + 3 * r3))) * xi) /
                                                                       (pow(r3, 2) * pow(r3 - rm, 2) * pow(r3 - rp, 2)));
     double cEPi = (En * (a2 * Ekr * r2 * (r1 - r3) + Pihrkr * (r2 - r3) * (2 * a1 + a2 * (4 + r1 + r2 + 3 * r3)))) / 2.;
     double cPi = ((-r2 + r3) * ((Pihmkr * ((a*a) + pow(rm, 2)) * P(rm, a, En, xi) * deltaRt(rm, am1, a0, a1, a2)) / ((r2 - rm) * pow(r3 - rm, 2) * rm) -
@@ -1549,33 +1566,33 @@ void KerrEqSpinFrequenciesCorrection(double *deltaOmegaR_, double *deltaOmegaPhi
 
     double cE = (Ekr * ((2 * am1 * (-r1 + r3) * xi) / (a * r1) + (r2 * Vtr3 * deltaRt(r3, am1, a0, a1, a2)) / (r2 - r3))) / pow(r3, 2);
 
-    double deltaIt2 = -((cE + cEPi + cK + cPi) / (pow(1 - (En*En), 1.5) * sqrt((r1 - r3) * (r2 - r4))));
+    double deltaIt2 = -((cE + cEPi + cK + cPi) / (pow(1.- (En*En), 1.5) * sqrt((r1 - r3) * (r2 - r4))));
     double deltaIt = deltaIt1 + deltaIt2;
 
     double It = (2 * ((En * (Ekr * r2 * (r1 - r3) + Pihrkr * (r2 - r3) * (4 + r1 + r2 + r3))) / 2. +
                       ((r2 - r3) * ((Pihmkr * ((a*a) + pow(rm, 2)) * P(rm, a, En, xi)) / ((r2 - rm) * (r3 - rm)) - (Pihpkr * ((a*a) + pow(rp, 2)) * P(rp, a, En, xi)) / ((r2 - rp) * (r3 - rp)))) /
                           (-rm + rp) +
                       Kkr * (-0.5 * (En * (r1 - r3) * (r2 - r3)) + Vtr3))) /
-                sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4));
+                sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4));
 
     double VPhir3 = xi + a / CapitalDelta(r3, a) * P(r3, a, En, xi);
     double deltaVPhir3 = deltaxi + a / CapitalDelta(r3, a) * deltaP(r3, a, En, xi, deltaEn, deltaxi);
 
     double deltaIPhi1 = (2 * ((Ekr * (r1 - r3) * xi) / (a * r1 * r3) + (a * (r2 - r3) * ((Pihmkr * deltaP(rm, a, En, xi, deltaEn, deltaxi)) / ((r2 - rm) * (r3 - rm)) - (Pihpkr * deltaP(rp, a, En, xi, deltaEn, deltaxi)) / ((r2 - rp) * (r3 - rp)))) / (-rm + rp) + Kkr * deltaVPhir3)) /
-                        sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4));
+                        sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4));
 
-    double dK = (Kkr * (-(a * En * pow(r3, 2) * (2 * a0 * (-1 + r3) * r3 + (a1 + 2 * a2) * pow(r3, 3) + am1 * (-4 + 3 * r3))) - pow(a, 3) * En * r3 * (am1 - pow(r3, 2) * (a1 + 2 * a2 * r3)) -
-                        (a*a) * (am1 * (-4 + r3) - 2 * a0 * r3 - (a1 + 2 * a2 * (-1 + r3)) * pow(r3, 3)) * xi - pow(-2 + r3, 2) * r3 * (3 * am1 + r3 * (2 * a0 + a1 * r3)) * xi)) /
+    double dK = (Kkr * (-(a * En * pow(r3, 2) * (2 * a0 * (-1.+ r3) * r3 + (a1 + 2 * a2) * pow(r3, 3) + am1 * (-4 + 3 * r3))) - pow(a, 3) * En * r3 * (am1 - pow(r3, 2) * (a1 + 2 * a2 * r3)) -
+                        (a*a) * (am1 * (-4 + r3) - 2 * a0 * r3 - (a1 + 2 * a2 * (-1.+ r3)) * pow(r3, 3)) * xi - pow(-2 + r3, 2) * r3 * (3 * am1 + r3 * (2 * a0 + a1 * r3)) * xi)) /
                 (pow(r3, 2) * pow(r3 - rm, 2) * pow(r3 - rp, 2));
 
     double dPi = -((a * (r2 - r3) * ((Pihmkr * P(rm, a, En, xi) * deltaRt(rm, am1, a0, a1, a2)) / ((r2 - rm) * pow(r3 - rm, 2) * rm) - (Pihpkr * P(rp, a, En, xi) * deltaRt(rp, am1, a0, a1, a2)) / ((r2 - rp) * pow(r3 - rp, 2) * rp))) / (-rm + rp));
     double dE = (Ekr * ((-2 * am1 * (r1 - r3) * xi) / ((a*a) * r1) + (r2 * VPhir3 * deltaRt(r3, am1, a0, a1, a2)) / (r2 - r3))) / pow(r3, 2);
 
-    double deltaIPhi2 = -((dE + dK + dPi) / (pow(1 - (En*En), 1.5) * sqrt((r1 - r3) * (r2 - r4))));
+    double deltaIPhi2 = -((dE + dK + dPi) / (pow(1.- (En*En), 1.5) * sqrt((r1 - r3) * (r2 - r4))));
     double deltaIPhi = deltaIPhi1 + deltaIPhi2;
 
     double IPhi = (2 * ((a * (r2 - r3) * ((Pihmkr * P(rm, a, En, xi)) / ((r2 - rm) * (r3 - rm)) - (Pihpkr * P(rp, a, En, xi)) / ((r2 - rp) * (r3 - rp)))) / (-rm + rp) + Kkr * VPhir3)) /
-                  sqrt((1 - (En*En)) * (r1 - r3) * (r2 - r4));
+                  sqrt((1.- (En*En)) * (r1 - r3) * (r2 - r4));
 
     double deltaOmegaR = -M_PI / pow(It, 2) * deltaIt;
     double deltaOmegaPhi = deltaIPhi / It - IPhi / pow(It, 2) * deltaIt;
@@ -1625,39 +1642,39 @@ int main()
 // compile with: g++ -o domegaphi_dp domegaphi_dp.cc -I/usr/local/include -L/usr/local/lib -lgsl -lgslcblas -lm
 // run with: ./domegaphi_dp
 double DomegaPhi_Dp(double a, double p, double e){
-double Compile_$1 = Power(e,2);
-double Compile_$5 = -1 + Compile_$1;
-double Compile_$6 = Power(a,2);
+double Compile_$1= (e*e);
+double Compile_$5 = -1.+ Compile_$1;
+double Compile_$6 = (a*a);
 double Compile_$2 = -Compile_$1;
 double Compile_$7 = Power(Compile_$5,2);
 double Compile_$4 = 1/p;
-double Compile_$45 = 1 + e;
+double Compile_$45 = 1.+ e;
 double Compile_$46 = -e;
-double Compile_$47 = 1 + Compile_$46;
+double Compile_$47 = 1.+ Compile_$46;
 double Compile_$48 = 1/Compile_$47;
 double Compile_$50 = 1/Compile_$45;
 double Compile_$51 = -(p*Compile_$50);
-double Compile_$3 = 1 + Compile_$2;
+double Compile_$3 = 1.+ Compile_$2;
 double Compile_$8 = -4*Compile_$6*Compile_$7;
 double Compile_$9 = -p;
-double Compile_$10 = 3 + Compile_$1 + Compile_$9;
+double Compile_$10 = 3 + Compile_$1+ Compile_$9;
 double Compile_$11 = Power(Compile_$10,2);
 double Compile_$12 = p*Compile_$11;
 double Compile_$13 = Compile_$12 + Compile_$8;
 double Compile_$14 = 1/Compile_$13;
 double Compile_$15 = 3*Compile_$1;
-double Compile_$16 = 1 + p + Compile_$15;
+double Compile_$16 = 1.+ p + Compile_$15;
 double Compile_$17 = Compile_$16*Compile_$6;
 double Compile_$18 = Power(p,-3);
-double Compile_$19 = Power(a,6);
+double Compile_$19 = (a*a*a*a*a*a);
 double Compile_$20 = Compile_$19*Compile_$7;
 double Compile_$21 = -4*Compile_$1;
 double Compile_$22 = -2 + p;
 double Compile_$23 = Power(Compile_$22,2);
 double Compile_$24 = Compile_$21 + Compile_$23;
-double Compile_$25 = Power(p,2);
+double Compile_$25 = (p*p);
 double Compile_$26 = Compile_$24*Compile_$25*Compile_$6;
-double Compile_$27 = Power(a,4);
+double Compile_$27 = (a*a*a*a);
 double Compile_$28 = 2 + p;
 double Compile_$29 = Compile_$1*Compile_$28;
 double Compile_$30 = -2 + p + Compile_$29;
@@ -1670,7 +1687,7 @@ double Compile_$36 = -3 + p + Compile_$2 + Compile_$35;
 double Compile_$37 = p*Compile_$36;
 double Compile_$38 = Compile_$17 + Compile_$37;
 double Compile_$39 = Compile_$14*Compile_$38*Compile_$5;
-double Compile_$40 = 1 + Compile_$39;
+double Compile_$40 = 1.+ Compile_$39;
 double Compile_$53 = -(p*Compile_$48);
 double Compile_$54 = 1/Compile_$3;
 double Compile_$55 = 1/Compile_$40;
@@ -1680,7 +1697,7 @@ double Compile_$57 = Compile_$51 + Compile_$53 + Compile_$56;
 double Compile_$58 = Power(Compile_$57,2);
 double Compile_$59 = Sqrt(Compile_$58);
 double Compile_$41 = -(Compile_$3*Compile_$4*Compile_$40);
-double Compile_$42 = 1 + Compile_$41;
+double Compile_$42 = 1.+ Compile_$41;
 double Compile_$43 = Sqrt(Compile_$42);
 double Compile_$60 = Compile_$51 + Compile_$53 + Compile_$56 + Compile_$59;
 double Compile_$52 = Compile_$49 + Compile_$51;
@@ -1699,13 +1716,13 @@ double Compile_$82 = Compile_$49 + Compile_$61 + Compile_$81;
 double Compile_$73 = Compile_$52*Compile_$67;
 double Compile_$74 = EllipticPi(Compile_$73,Compile_$68);
 double Compile_$89 = -Compile_$6;
-double Compile_$90 = 1 + Compile_$89;
+double Compile_$90 = 1.+ Compile_$89;
 double Compile_$92 = Sqrt(Compile_$90);
 double Compile_$44 = 4*Compile_$43;
 double Compile_$93 = -Compile_$92;
-double Compile_$107 = -1 + Compile_$61 + Compile_$93;
+double Compile_$107 = -1.+ Compile_$61 + Compile_$93;
 double Compile_$108 = 1/Compile_$107;
-double Compile_$94 = -1 + Compile_$81 + Compile_$93;
+double Compile_$94 = -1.+ Compile_$81 + Compile_$93;
 double Compile_$96 = -2*Compile_$43*Compile_$6;
 double Compile_$98 = Compile_$14*Compile_$38;
 double Compile_$99 = Sqrt(Compile_$98);
@@ -1714,14 +1731,14 @@ double Compile_$101 = a*Compile_$43;
 double Compile_$102 = Compile_$100 + Compile_$101;
 double Compile_$103 = -(a*Compile_$102);
 double Compile_$104 = Compile_$103 + Compile_$44;
-double Compile_$119 = -1 + Compile_$61 + Compile_$92;
+double Compile_$119 = -1.+ Compile_$61 + Compile_$92;
 double Compile_$120 = 1/Compile_$119;
-double Compile_$114 = -1 + Compile_$81 + Compile_$92;
+double Compile_$114 = -1.+ Compile_$81 + Compile_$92;
 double Compile_$133 = -2*p*Compile_$10;
 double Compile_$134 = Compile_$11 + Compile_$133;
 double Compile_$135 = Power(Compile_$13,-2);
 double Compile_$137 = 1/Sqrt(Compile_$33);
-double Compile_$138 = 1 + Compile_$1;
+double Compile_$138 = 1.+ Compile_$1;
 double Compile_$139 = 2*p*Compile_$138*Compile_$27;
 double Compile_$140 = 2*p*Compile_$24*Compile_$6;
 double Compile_$141 = 2*Compile_$22*Compile_$25*Compile_$6;
@@ -1732,7 +1749,7 @@ double Compile_$145 = Power(p,-4);
 double Compile_$146 = -3*Compile_$145*Compile_$32;
 double Compile_$147 = Compile_$144 + Compile_$146;
 double Compile_$148 = -(Compile_$137*Compile_$147);
-double Compile_$149 = 1 + Compile_$148;
+double Compile_$149 = 1.+ Compile_$148;
 double Compile_$150 = p*Compile_$149;
 double Compile_$151 = -3 + p + Compile_$150 + Compile_$2 + Compile_$35 + Compile_$6;
 double Compile_$91 = 1/Sqrt(Compile_$90);
@@ -1749,15 +1766,15 @@ double Compile_$177 = 1/Sqrt(Compile_$58);
 double Compile_$178 = Compile_$169 + Compile_$173 + Compile_$174 + Compile_$176;
 double Compile_$78 = EllipticE(Compile_$68);
 double Compile_$166 = -0.5*(Compile_$4*Compile_$45*Compile_$52*Compile_$60*Compile_$67);
-double Compile_$167 = 1 + Compile_$166;
+double Compile_$167 = 1.+ Compile_$166;
 double Compile_$95 = 1/Compile_$94;
-double Compile_$97 = 1 + Compile_$92;
+double Compile_$97 = 1.+ Compile_$92;
 double Compile_$109 = Compile_$108*Compile_$52*Compile_$67*Compile_$94;
 double Compile_$110 = EllipticPi(Compile_$109,Compile_$68);
 double Compile_$111 = -(Compile_$108*Compile_$110*Compile_$72);
 double Compile_$112 = Compile_$111 + Compile_$69;
 double Compile_$115 = 1/Compile_$114;
-double Compile_$116 = 1 + Compile_$93;
+double Compile_$116 = 1.+ Compile_$93;
 double Compile_$121 = Compile_$114*Compile_$120*Compile_$52*Compile_$67;
 double Compile_$122 = EllipticPi(Compile_$121,Compile_$68);
 double Compile_$123 = -(Compile_$120*Compile_$122*Compile_$72);
@@ -1804,7 +1821,7 @@ double Compile_$205 = Compile_$154 + Compile_$163 + Compile_$99;
 double Compile_$206 = -(a*Compile_$205);
 double Compile_$209 = p*Compile_$164*Compile_$165*Compile_$168*Compile_$190*Compile_$193*Compile_$50*Compile_$66;
 double Compile_$212 = Compile_$187 + Compile_$50;
-double Compile_$216 = -1 + Compile_$68;
+double Compile_$216 = -1.+ Compile_$68;
 double Compile_$217 = 1/Compile_$216;
 double Compile_$218 = Compile_$217*Compile_$78;
 double Compile_$248 = Power(Compile_$119,-2);
@@ -1846,7 +1863,7 @@ double Compile_$290 = Compile_$166 + Compile_$73;
 double Compile_$291 = 1/Compile_$290;
 double Compile_$292 = Compile_$218 + Compile_$74;
 double Compile_$293 = (Compile_$190*Compile_$291*Compile_$292)/2.;
-double Compile_$294 = -1 + Compile_$73;
+double Compile_$294 = -1.+ Compile_$73;
 double Compile_$295 = 1/Compile_$294;
 double Compile_$298 = 1/Compile_$297;
 double Compile_$299 = Compile_$170*Compile_$67;
@@ -1868,7 +1885,7 @@ double Compile_$215 = 1/Compile_$214;
 double Compile_$219 = Compile_$110 + Compile_$218;
 double Compile_$220 = (Compile_$190*Compile_$215*Compile_$219)/2.;
 double Compile_$223 = 1/Compile_$222;
-double Compile_$224 = -1 + Compile_$109;
+double Compile_$224 = -1.+ Compile_$109;
 double Compile_$225 = 1/Compile_$224;
 double Compile_$226 = (Compile_$108*Compile_$180*Compile_$52*Compile_$67)/2.;
 double Compile_$227 = -(Compile_$210*Compile_$50*Compile_$52*Compile_$67*Compile_$94);
@@ -1895,7 +1912,7 @@ double Compile_$252 = 1/Compile_$251;
 double Compile_$253 = Compile_$122 + Compile_$218;
 double Compile_$254 = (Compile_$190*Compile_$252*Compile_$253)/2.;
 double Compile_$257 = 1/Compile_$256;
-double Compile_$258 = -1 + Compile_$121;
+double Compile_$258 = -1.+ Compile_$121;
 double Compile_$259 = 1/Compile_$258;
 double Compile_$260 = (Compile_$120*Compile_$180*Compile_$52*Compile_$67)/2.;
 double Compile_$261 = -(Compile_$114*Compile_$248*Compile_$50*Compile_$52*Compile_$67);
@@ -1916,19 +1933,19 @@ return -(((Compile_$100 + Compile_$101 + (a*Compile_$200*Compile_$70*Compile_$91
 }
 
 double DomegaPhi_De(double a, double p, double e){
-double Compile_$131 = Power(e,2);
-double Compile_$207 = -1 + Compile_$131;
-double Compile_$208 = Power(a,2);
+double Compile_$131 = (e*e);
+double Compile_$207 = -1.+ Compile_$131;
+double Compile_$208 = (a*a);
 double Compile_$201 = -Compile_$131;
 double Compile_$242 = Power(Compile_$207,2);
 double Compile_$204 = 1/p;
-double Compile_$330 = 1 + e;
+double Compile_$330 = 1.+ e;
 double Compile_$331 = -e;
-double Compile_$332 = 1 + Compile_$331;
+double Compile_$332 = 1.+ Compile_$331;
 double Compile_$335 = 1/Compile_$332;
 double Compile_$337 = 1/Compile_$330;
 double Compile_$338 = -(p*Compile_$337);
-double Compile_$203 = 1 + Compile_$201;
+double Compile_$203 = 1.+ Compile_$201;
 double Compile_$244 = -4*Compile_$208*Compile_$242;
 double Compile_$245 = -p;
 double Compile_$246 = 3 + Compile_$131 + Compile_$245;
@@ -1937,18 +1954,18 @@ double Compile_$275 = p*Compile_$247;
 double Compile_$276 = Compile_$244 + Compile_$275;
 double Compile_$277 = 1/Compile_$276;
 double Compile_$278 = 3*Compile_$131;
-double Compile_$279 = 1 + p + Compile_$278;
+double Compile_$279 = 1.+ p + Compile_$278;
 double Compile_$280 = Compile_$208*Compile_$279;
 double Compile_$281 = Power(p,-3);
-double Compile_$282 = Power(a,6);
+double Compile_$282 = (a*a*a*a*a*a);
 double Compile_$284 = Compile_$242*Compile_$282;
 double Compile_$285 = -4*Compile_$131;
 double Compile_$286 = -2 + p;
 double Compile_$287 = Power(Compile_$286,2);
 double Compile_$288 = Compile_$285 + Compile_$287;
-double Compile_$289 = Power(p,2);
+double Compile_$289 = (p*p);
 double Compile_$309 = Compile_$208*Compile_$288*Compile_$289;
-double Compile_$310 = Power(a,4);
+double Compile_$310 = (a*a*a*a);
 double Compile_$311 = 2 + p;
 double Compile_$312 = Compile_$131*Compile_$311;
 double Compile_$313 = -2 + p + Compile_$312;
@@ -1961,7 +1978,7 @@ double Compile_$319 = -3 + p + Compile_$201 + Compile_$318;
 double Compile_$320 = p*Compile_$319;
 double Compile_$323 = Compile_$280 + Compile_$320;
 double Compile_$324 = Compile_$207*Compile_$277*Compile_$323;
-double Compile_$325 = 1 + Compile_$324;
+double Compile_$325 = 1.+ Compile_$324;
 double Compile_$340 = -(p*Compile_$335);
 double Compile_$341 = 1/Compile_$203;
 double Compile_$342 = 1/Compile_$325;
@@ -1971,7 +1988,7 @@ double Compile_$344 = Compile_$338 + Compile_$340 + Compile_$343;
 double Compile_$345 = Power(Compile_$344,2);
 double Compile_$346 = Sqrt(Compile_$345);
 double Compile_$326 = -(Compile_$203*Compile_$204*Compile_$325);
-double Compile_$327 = 1 + Compile_$326;
+double Compile_$327 = 1.+ Compile_$326;
 double Compile_$328 = Sqrt(Compile_$327);
 double Compile_$347 = Compile_$338 + Compile_$340 + Compile_$343 + Compile_$346;
 double Compile_$339 = Compile_$336 + Compile_$338;
@@ -1990,13 +2007,13 @@ double Compile_$369 = Compile_$336 + Compile_$348 + Compile_$368;
 double Compile_$360 = Compile_$339*Compile_$354;
 double Compile_$361 = EllipticPi(Compile_$360,Compile_$355);
 double Compile_$376 = -Compile_$208;
-double Compile_$377 = 1 + Compile_$376;
+double Compile_$377 = 1.+ Compile_$376;
 double Compile_$379 = Sqrt(Compile_$377);
 double Compile_$329 = 4*Compile_$328;
 double Compile_$380 = -Compile_$379;
-double Compile_$394 = -1 + Compile_$348 + Compile_$380;
+double Compile_$394 = -1.+ Compile_$348 + Compile_$380;
 double Compile_$395 = 1/Compile_$394;
-double Compile_$381 = -1 + Compile_$368 + Compile_$380;
+double Compile_$381 = -1.+ Compile_$368 + Compile_$380;
 double Compile_$383 = -2*Compile_$208*Compile_$328;
 double Compile_$385 = Compile_$277*Compile_$323;
 double Compile_$386 = Sqrt(Compile_$385);
@@ -2005,9 +2022,9 @@ double Compile_$388 = a*Compile_$328;
 double Compile_$389 = Compile_$387 + Compile_$388;
 double Compile_$390 = -(a*Compile_$389);
 double Compile_$391 = Compile_$329 + Compile_$390;
-double Compile_$406 = -1 + Compile_$348 + Compile_$379;
+double Compile_$406 = -1.+ Compile_$348 + Compile_$379;
 double Compile_$407 = 1/Compile_$406;
-double Compile_$401 = -1 + Compile_$368 + Compile_$379;
+double Compile_$401 = -1.+ Compile_$368 + Compile_$379;
 double Compile_$420 = 6*e*Compile_$208;
 double Compile_$421 = -2*e;
 double Compile_$422 = 4*e*Compile_$207*Compile_$282;
@@ -2041,15 +2058,15 @@ double Compile_$462 = Compile_$458 + Compile_$459 + Compile_$460 + Compile_$461;
 double Compile_$463 = 1/Sqrt(Compile_$345);
 double Compile_$365 = EllipticE(Compile_$355);
 double Compile_$477 = -0.5*(Compile_$204*Compile_$330*Compile_$339*Compile_$347*Compile_$354);
-double Compile_$478 = 1 + Compile_$477;
+double Compile_$478 = 1.+ Compile_$477;
 double Compile_$382 = 1/Compile_$381;
-double Compile_$384 = 1 + Compile_$379;
+double Compile_$384 = 1.+ Compile_$379;
 double Compile_$396 = Compile_$339*Compile_$354*Compile_$381*Compile_$395;
 double Compile_$397 = EllipticPi(Compile_$396,Compile_$355);
 double Compile_$398 = -(Compile_$359*Compile_$395*Compile_$397);
 double Compile_$399 = Compile_$356 + Compile_$398;
 double Compile_$402 = 1/Compile_$401;
-double Compile_$403 = 1 + Compile_$380;
+double Compile_$403 = 1.+ Compile_$380;
 double Compile_$408 = Compile_$339*Compile_$354*Compile_$401*Compile_$407;
 double Compile_$409 = EllipticPi(Compile_$408,Compile_$355);
 double Compile_$410 = -(Compile_$359*Compile_$407*Compile_$409);
@@ -2097,7 +2114,7 @@ double Compile_$486 = 2*Compile_$328*Compile_$403;
 double Compile_$487 = Compile_$390 + Compile_$486;
 double Compile_$498 = p*Compile_$337*Compile_$353*Compile_$448*Compile_$449*Compile_$476*Compile_$479*Compile_$482;
 double Compile_$499 = Compile_$453 + Compile_$466;
-double Compile_$505 = -1 + Compile_$355;
+double Compile_$505 = -1.+ Compile_$355;
 double Compile_$506 = 1/Compile_$505;
 double Compile_$507 = Compile_$365*Compile_$506;
 double Compile_$538 = Power(Compile_$406,-2);
@@ -2142,7 +2159,7 @@ double Compile_$582 = (Compile_$476*Compile_$580*Compile_$581)/2.;
 double Compile_$583 = -(Compile_$339*Compile_$467*Compile_$468);
 double Compile_$584 = Compile_$354*Compile_$473;
 double Compile_$585 = Compile_$583 + Compile_$584;
-double Compile_$586 = -1 + Compile_$360;
+double Compile_$586 = -1.+ Compile_$360;
 double Compile_$587 = 1/Compile_$586;
 double Compile_$590 = 1/Compile_$589;
 double Compile_$591 = Compile_$353*Compile_$356*Compile_$448*Compile_$589;
@@ -2166,7 +2183,7 @@ double Compile_$512 = p*Compile_$339*Compile_$354*Compile_$381*Compile_$452*Comp
 double Compile_$513 = Compile_$354*Compile_$381*Compile_$395*Compile_$473;
 double Compile_$514 = Compile_$510 + Compile_$511 + Compile_$512 + Compile_$513;
 double Compile_$517 = 1/Compile_$516;
-double Compile_$518 = -1 + Compile_$396;
+double Compile_$518 = -1.+ Compile_$396;
 double Compile_$519 = 1/Compile_$518;
 double Compile_$520 = Compile_$353*Compile_$356*Compile_$382*Compile_$394*Compile_$448*Compile_$516;
 double Compile_$522 = Power(Compile_$381,2);
@@ -2193,7 +2210,7 @@ double Compile_$546 = p*Compile_$339*Compile_$354*Compile_$401*Compile_$452*Comp
 double Compile_$547 = Compile_$354*Compile_$401*Compile_$407*Compile_$473;
 double Compile_$548 = Compile_$544 + Compile_$545 + Compile_$546 + Compile_$547;
 double Compile_$551 = 1/Compile_$550;
-double Compile_$552 = -1 + Compile_$408;
+double Compile_$552 = -1.+ Compile_$408;
 double Compile_$553 = 1/Compile_$552;
 double Compile_$554 = Compile_$353*Compile_$356*Compile_$402*Compile_$406*Compile_$448*Compile_$550;
 double Compile_$555 = Power(Compile_$401,2);
@@ -2210,18 +2227,18 @@ return (Compile_$438 + Compile_$447 - (a*p*Compile_$337*Compile_$353*Compile_$37
 
 double DomegaR_De(double a, double p, double e)
 {
-double Compile_$3 = Power(e,2);
-double Compile_$6 = -1 + Compile_$3;
-double Compile_$7 = Power(a,2);
+double Compile_$3 = (e*e);
+double Compile_$6 = -1.+ Compile_$3;
+double Compile_$7 = (a*a);
 double Compile_$4 = -Compile_$3;
 double Compile_$8 = Power(Compile_$6,2);
 double Compile_$42 = -e;
-double Compile_$43 = 1 + Compile_$42;
+double Compile_$43 = 1.+ Compile_$42;
 double Compile_$44 = 1/Compile_$43;
 double Compile_$45 = p*Compile_$44;
-double Compile_$1 = 1 + e;
+double Compile_$1= 1.+ e;
 double Compile_$2 = 1/Compile_$1;
-double Compile_$5 = 1 + Compile_$4;
+double Compile_$5 = 1.+ Compile_$4;
 double Compile_$9 = -4*Compile_$7*Compile_$8;
 double Compile_$10 = -p;
 double Compile_$11 = 3 + Compile_$10 + Compile_$3;
@@ -2230,18 +2247,18 @@ double Compile_$13 = p*Compile_$12;
 double Compile_$14 = Compile_$13 + Compile_$9;
 double Compile_$15 = 1/Compile_$14;
 double Compile_$16 = 3*Compile_$3;
-double Compile_$17 = 1 + p + Compile_$16;
+double Compile_$17 = 1.+ p + Compile_$16;
 double Compile_$18 = Compile_$17*Compile_$7;
 double Compile_$19 = Power(p,-3);
-double Compile_$20 = Power(a,6);
+double Compile_$20 = (a*a*a*a*a*a);
 double Compile_$21 = Compile_$20*Compile_$8;
 double Compile_$22 = -4*Compile_$3;
 double Compile_$23 = -2 + p;
 double Compile_$24 = Power(Compile_$23,2);
 double Compile_$25 = Compile_$22 + Compile_$24;
-double Compile_$26 = Power(p,2);
+double Compile_$26 = (p*p);
 double Compile_$27 = Compile_$25*Compile_$26*Compile_$7;
-double Compile_$28 = Power(a,4);
+double Compile_$28 = (a*a*a*a);
 double Compile_$29 = 2 + p;
 double Compile_$30 = Compile_$29*Compile_$3;
 double Compile_$31 = -2 + p + Compile_$30;
@@ -2254,7 +2271,7 @@ double Compile_$37 = -3 + p + Compile_$36 + Compile_$4;
 double Compile_$38 = p*Compile_$37;
 double Compile_$39 = Compile_$18 + Compile_$38;
 double Compile_$40 = Compile_$15*Compile_$39*Compile_$6;
-double Compile_$41 = 1 + Compile_$40;
+double Compile_$41 = 1.+ Compile_$40;
 double Compile_$47 = 1/Compile_$5;
 double Compile_$48 = 1/Compile_$41;
 double Compile_$62 = Power(Compile_$43,-2);
@@ -2301,7 +2318,7 @@ double Compile_$108 = (Compile_$1*Compile_$104*Compile_$105*Compile_$106*Compile
 double Compile_$109 = EllipticK(Compile_$108);
 double Compile_$110 = 1/Compile_$109;
 double Compile_$111 = -(Compile_$104*Compile_$41*Compile_$5);
-double Compile_$112 = 1 + Compile_$111;
+double Compile_$112 = 1.+ Compile_$111;
 double Compile_$113 = Sqrt(Compile_$112);
 double Compile_$116 = Compile_$46 + Compile_$58;
 double Compile_$125 = Compile_$106/2.;
@@ -2309,13 +2326,13 @@ double Compile_$126 = Compile_$125 + Compile_$45 + Compile_$46;
 double Compile_$117 = Compile_$105*Compile_$107;
 double Compile_$118 = EllipticPi(Compile_$117,Compile_$108);
 double Compile_$134 = -Compile_$7;
-double Compile_$135 = 1 + Compile_$134;
+double Compile_$135 = 1.+ Compile_$134;
 double Compile_$137 = Sqrt(Compile_$135);
 double Compile_$114 = 4*Compile_$113;
 double Compile_$138 = -Compile_$137;
-double Compile_$152 = -1 + Compile_$138 + Compile_$46;
+double Compile_$152 = -1.+ Compile_$138 + Compile_$46;
 double Compile_$153 = 1/Compile_$152;
-double Compile_$139 = -1 + Compile_$125 + Compile_$138;
+double Compile_$139 = -1.+ Compile_$125 + Compile_$138;
 double Compile_$141 = -2*Compile_$113*Compile_$7;
 double Compile_$143 = Compile_$15*Compile_$39;
 double Compile_$144 = Sqrt(Compile_$143);
@@ -2324,9 +2341,9 @@ double Compile_$146 = a*Compile_$113;
 double Compile_$147 = Compile_$145 + Compile_$146;
 double Compile_$148 = -(a*Compile_$147);
 double Compile_$149 = Compile_$114 + Compile_$148;
-double Compile_$164 = -1 + Compile_$137 + Compile_$46;
+double Compile_$164 = -1.+ Compile_$137 + Compile_$46;
 double Compile_$165 = 1/Compile_$164;
-double Compile_$159 = -1 + Compile_$125 + Compile_$137;
+double Compile_$159 = -1.+ Compile_$125 + Compile_$137;
 double Compile_$60 = Compile_$2*Compile_$41*Compile_$5*Compile_$59;
 double Compile_$65 = -(p*Compile_$64);
 double Compile_$86 = 2*p*Compile_$47*Compile_$84*Compile_$85;
@@ -2343,7 +2360,7 @@ double Compile_$97 = Compile_$96/2.;
 double Compile_$98 = Compile_$63 + Compile_$97;
 double Compile_$122 = EllipticE(Compile_$108);
 double Compile_$190 = -0.5*(Compile_$1*Compile_$104*Compile_$105*Compile_$106*Compile_$107);
-double Compile_$191 = 1 + Compile_$190;
+double Compile_$191 = 1.+ Compile_$190;
 double Compile_$115 = (Compile_$106*Compile_$109)/2.;
 double Compile_$119 = Compile_$116*Compile_$118;
 double Compile_$120 = Compile_$115 + Compile_$119;
@@ -2358,7 +2375,7 @@ double Compile_$132 = Compile_$123 + Compile_$129 + Compile_$130;
 double Compile_$133 = (Compile_$113*Compile_$132)/2.;
 double Compile_$136 = 1/Sqrt(Compile_$135);
 double Compile_$140 = 1/Compile_$139;
-double Compile_$142 = 1 + Compile_$137;
+double Compile_$142 = 1.+ Compile_$137;
 double Compile_$150 = Compile_$142*Compile_$149;
 double Compile_$151 = Compile_$141 + Compile_$150;
 double Compile_$154 = Compile_$105*Compile_$107*Compile_$139*Compile_$153;
@@ -2367,7 +2384,7 @@ double Compile_$156 = -(Compile_$116*Compile_$153*Compile_$155);
 double Compile_$157 = Compile_$109 + Compile_$156;
 double Compile_$158 = Compile_$140*Compile_$151*Compile_$157;
 double Compile_$160 = 1/Compile_$159;
-double Compile_$161 = 1 + Compile_$138;
+double Compile_$161 = 1.+ Compile_$138;
 double Compile_$162 = Compile_$149*Compile_$161;
 double Compile_$163 = Compile_$141 + Compile_$162;
 double Compile_$166 = Compile_$105*Compile_$107*Compile_$159*Compile_$165;
@@ -2408,7 +2425,7 @@ double Compile_$255 = Compile_$254 + Compile_$63 + Compile_$65;
 double Compile_$213 = Compile_$65 + Compile_$97;
 double Compile_$215 = Compile_$117 + Compile_$190;
 double Compile_$216 = 1/Compile_$215;
-double Compile_$217 = -1 + Compile_$108;
+double Compile_$217 = -1.+ Compile_$108;
 double Compile_$218 = 1/Compile_$217;
 double Compile_$219 = Compile_$122*Compile_$218;
 double Compile_$220 = Compile_$118 + Compile_$219;
@@ -2416,7 +2433,7 @@ double Compile_$221 = (Compile_$189*Compile_$216*Compile_$220)/2.;
 double Compile_$222 = -(Compile_$105*Compile_$181*Compile_$98);
 double Compile_$223 = Compile_$107*Compile_$186;
 double Compile_$224 = Compile_$222 + Compile_$223;
-double Compile_$225 = -1 + Compile_$117;
+double Compile_$225 = -1.+ Compile_$117;
 double Compile_$226 = 1/Compile_$225;
 double Compile_$229 = 1/Compile_$228;
 double Compile_$230 = Compile_$109*Compile_$178*Compile_$228*Compile_$59;
@@ -2445,23 +2462,23 @@ double Compile_$295 = p*Compile_$178*Compile_$179*Compile_$189*Compile_$192*Comp
 double Compile_$570 = Power(Compile_$164,-2);
 double Compile_$601 = -(Compile_$105*Compile_$107*Compile_$159*Compile_$165);
 double Compile_$602 = Compile_$108 + Compile_$601;
-return -0.5*(p*Pi*Compile_$176*Compile_$178*Compile_$179*Compile_$180*Compile_$189*Compile_$192*Compile_$193*Compile_$195*Compile_$2*Compile_$59) + (Pi*Compile_$110*Compile_$176*(-2*e*Compile_$2*Compile_$41*Compile_$59 - Compile_$41*Compile_$5*Compile_$59*Compile_$64 + Compile_$2*Compile_$5*Compile_$59*Compile_$84 + Compile_$2*Compile_$41*Compile_$5*Compile_$98))/(4.*Sqrt(Compile_$60)) - (Pi*Compile_$110*Compile_$180*(Compile_$205 - p*Compile_$173*Compile_$178*Compile_$179*Compile_$189*Compile_$192*Compile_$193*Compile_$195*Compile_$2*Compile_$59 + Compile_$110*(Compile_$120*Compile_$200*Compile_$202 + (Compile_$132*Compile_$200*Compile_$202)/4. + 2*Compile_$113*((Compile_$109*Compile_$184)/2. + Compile_$118*Compile_$213 + Compile_$116*Compile_$237 + (p*Compile_$178*Compile_$189*Compile_$192*Compile_$195*Compile_$2*Compile_$59)/2.) + (Compile_$113*(Compile_$118*Compile_$126*Compile_$213 + Compile_$116*Compile_$126*Compile_$237 + Compile_$116*Compile_$118*Compile_$255 + p*Compile_$128*Compile_$178*Compile_$179*Compile_$189*Compile_$192*Compile_$195*Compile_$2*Compile_$59 - p*Compile_$122*Compile_$59*Compile_$64 + (-Compile_$109 + Compile_$122)*Compile_$178*Compile_$179*Compile_$189*Compile_$26*Power(Compile_$59,2)*Compile_$64 + Compile_$109*((Compile_$126*Compile_$184)/2. + (Compile_$106*Compile_$255)/2. - Compile_$2*Compile_$26*Compile_$62 + Compile_$26*Compile_$44*Compile_$64) + p*Compile_$122*Compile_$2*Compile_$98))/2. + Compile_$136*(-0.5*(Compile_$151*Compile_$157*Compile_$184)/Power(Compile_$139,2) + (Compile_$163*Compile_$169*Compile_$184)/(2.*Power(Compile_$159,2)) + Compile_$140*Compile_$157*(Compile_$266 + Compile_$142*Compile_$283) - Compile_$160*Compile_$169*(Compile_$266 + Compile_$161*Compile_$283) + Compile_$140*Compile_$151*(-(Compile_$153*Compile_$155*Compile_$213) + Compile_$295 - p*Compile_$116*Compile_$155*Compile_$297*Compile_$64 - Compile_$116*Compile_$153*((Compile_$189*(Compile_$155 + Compile_$219))/(2.*(Compile_$154 + Compile_$190)) + ((Compile_$122 + Compile_$140*Compile_$152*Compile_$155*Compile_$178*(Compile_$190 + Power(Compile_$139,2)*Compile_$181*Compile_$231*Compile_$297)*Compile_$59 + Compile_$109*Compile_$140*Compile_$152*Compile_$178*Compile_$321*Compile_$59)*((Compile_$105*Compile_$107*Compile_$153*Compile_$184)/2. + Compile_$107*Compile_$139*Compile_$153*Compile_$186 + p*Compile_$105*Compile_$107*Compile_$139*Compile_$297*Compile_$64 - Compile_$105*Compile_$139*Compile_$153*Compile_$181*Compile_$98))/(2.*(-1 + Compile_$154)*Compile_$321))) - Compile_$160*Compile_$163*(-(Compile_$165*Compile_$167*Compile_$213) + Compile_$295 - p*Compile_$116*Compile_$167*Compile_$570*Compile_$64 - Compile_$116*Compile_$165*((Compile_$189*(Compile_$167 + Compile_$219))/(2.*(Compile_$166 + Compile_$190)) + ((Compile_$122 + Compile_$160*Compile_$164*Compile_$167*Compile_$178*(Compile_$190 + Power(Compile_$159,2)*Compile_$181*Compile_$231*Compile_$570)*Compile_$59 + Compile_$109*Compile_$160*Compile_$164*Compile_$178*Compile_$59*Compile_$602)*((Compile_$105*Compile_$107*Compile_$165*Compile_$184)/2. + Compile_$107*Compile_$159*Compile_$165*Compile_$186 + p*Compile_$105*Compile_$107*Compile_$159*Compile_$570*Compile_$64 - Compile_$105*Compile_$159*Compile_$165*Compile_$181*Compile_$98))/(2.*(-1 + Compile_$166)*Compile_$602)))))))/(2.*Power(Compile_$175,2));
+return -0.5*(p*Pi*Compile_$176*Compile_$178*Compile_$179*Compile_$180*Compile_$189*Compile_$192*Compile_$193*Compile_$195*Compile_$2*Compile_$59) + (Pi*Compile_$110*Compile_$176*(-2*e*Compile_$2*Compile_$41*Compile_$59 - Compile_$41*Compile_$5*Compile_$59*Compile_$64 + Compile_$2*Compile_$5*Compile_$59*Compile_$84 + Compile_$2*Compile_$41*Compile_$5*Compile_$98))/(4.*Sqrt(Compile_$60)) - (Pi*Compile_$110*Compile_$180*(Compile_$205 - p*Compile_$173*Compile_$178*Compile_$179*Compile_$189*Compile_$192*Compile_$193*Compile_$195*Compile_$2*Compile_$59 + Compile_$110*(Compile_$120*Compile_$200*Compile_$202 + (Compile_$132*Compile_$200*Compile_$202)/4. + 2*Compile_$113*((Compile_$109*Compile_$184)/2. + Compile_$118*Compile_$213 + Compile_$116*Compile_$237 + (p*Compile_$178*Compile_$189*Compile_$192*Compile_$195*Compile_$2*Compile_$59)/2.) + (Compile_$113*(Compile_$118*Compile_$126*Compile_$213 + Compile_$116*Compile_$126*Compile_$237 + Compile_$116*Compile_$118*Compile_$255 + p*Compile_$128*Compile_$178*Compile_$179*Compile_$189*Compile_$192*Compile_$195*Compile_$2*Compile_$59 - p*Compile_$122*Compile_$59*Compile_$64 + (-Compile_$109 + Compile_$122)*Compile_$178*Compile_$179*Compile_$189*Compile_$26*Power(Compile_$59,2)*Compile_$64 + Compile_$109*((Compile_$126*Compile_$184)/2. + (Compile_$106*Compile_$255)/2. - Compile_$2*Compile_$26*Compile_$62 + Compile_$26*Compile_$44*Compile_$64) + p*Compile_$122*Compile_$2*Compile_$98))/2. + Compile_$136*(-0.5*(Compile_$151*Compile_$157*Compile_$184)/Power(Compile_$139,2) + (Compile_$163*Compile_$169*Compile_$184)/(2.*Power(Compile_$159,2)) + Compile_$140*Compile_$157*(Compile_$266 + Compile_$142*Compile_$283) - Compile_$160*Compile_$169*(Compile_$266 + Compile_$161*Compile_$283) + Compile_$140*Compile_$151*(-(Compile_$153*Compile_$155*Compile_$213) + Compile_$295 - p*Compile_$116*Compile_$155*Compile_$297*Compile_$64 - Compile_$116*Compile_$153*((Compile_$189*(Compile_$155 + Compile_$219))/(2.*(Compile_$154 + Compile_$190)) + ((Compile_$122 + Compile_$140*Compile_$152*Compile_$155*Compile_$178*(Compile_$190 + Power(Compile_$139,2)*Compile_$181*Compile_$231*Compile_$297)*Compile_$59 + Compile_$109*Compile_$140*Compile_$152*Compile_$178*Compile_$321*Compile_$59)*((Compile_$105*Compile_$107*Compile_$153*Compile_$184)/2. + Compile_$107*Compile_$139*Compile_$153*Compile_$186 + p*Compile_$105*Compile_$107*Compile_$139*Compile_$297*Compile_$64 - Compile_$105*Compile_$139*Compile_$153*Compile_$181*Compile_$98))/(2.*(-1.+ Compile_$154)*Compile_$321))) - Compile_$160*Compile_$163*(-(Compile_$165*Compile_$167*Compile_$213) + Compile_$295 - p*Compile_$116*Compile_$167*Compile_$570*Compile_$64 - Compile_$116*Compile_$165*((Compile_$189*(Compile_$167 + Compile_$219))/(2.*(Compile_$166 + Compile_$190)) + ((Compile_$122 + Compile_$160*Compile_$164*Compile_$167*Compile_$178*(Compile_$190 + Power(Compile_$159,2)*Compile_$181*Compile_$231*Compile_$570)*Compile_$59 + Compile_$109*Compile_$160*Compile_$164*Compile_$178*Compile_$59*Compile_$602)*((Compile_$105*Compile_$107*Compile_$165*Compile_$184)/2. + Compile_$107*Compile_$159*Compile_$165*Compile_$186 + p*Compile_$105*Compile_$107*Compile_$159*Compile_$570*Compile_$64 - Compile_$105*Compile_$159*Compile_$165*Compile_$181*Compile_$98))/(2.*(-1.+ Compile_$166)*Compile_$602)))))))/(2.*Power(Compile_$175,2));
 }
 
 double DomegaR_Dp(double a, double p, double e)
 {
-double Compile_$3 = Power(e,2);
-double Compile_$6 = -1 + Compile_$3;
-double Compile_$7 = Power(a,2);
+double Compile_$3 = (e*e);
+double Compile_$6 = -1.+ Compile_$3;
+double Compile_$7 = (a*a);
 double Compile_$4 = -Compile_$3;
 double Compile_$8 = Power(Compile_$6,2);
 double Compile_$42 = -e;
-double Compile_$43 = 1 + Compile_$42;
+double Compile_$43 = 1.+ Compile_$42;
 double Compile_$44 = 1/Compile_$43;
 double Compile_$45 = p*Compile_$44;
-double Compile_$1 = 1 + e;
+double Compile_$1= 1.+ e;
 double Compile_$2 = 1/Compile_$1;
-double Compile_$5 = 1 + Compile_$4;
+double Compile_$5 = 1.+ Compile_$4;
 double Compile_$9 = -4*Compile_$7*Compile_$8;
 double Compile_$10 = -p;
 double Compile_$11 = 3 + Compile_$10 + Compile_$3;
@@ -2470,18 +2487,18 @@ double Compile_$13 = p*Compile_$12;
 double Compile_$14 = Compile_$13 + Compile_$9;
 double Compile_$15 = 1/Compile_$14;
 double Compile_$16 = 3*Compile_$3;
-double Compile_$17 = 1 + p + Compile_$16;
+double Compile_$17 = 1.+ p + Compile_$16;
 double Compile_$18 = Compile_$17*Compile_$7;
 double Compile_$19 = Power(p,-3);
-double Compile_$20 = Power(a,6);
+double Compile_$20 = (a*a*a*a*a*a);
 double Compile_$21 = Compile_$20*Compile_$8;
 double Compile_$22 = -4*Compile_$3;
 double Compile_$23 = -2 + p;
 double Compile_$24 = Power(Compile_$23,2);
 double Compile_$25 = Compile_$22 + Compile_$24;
-double Compile_$26 = Power(p,2);
+double Compile_$26 = (p*p);
 double Compile_$27 = Compile_$25*Compile_$26*Compile_$7;
-double Compile_$28 = Power(a,4);
+double Compile_$28 = (a*a*a*a);
 double Compile_$29 = 2 + p;
 double Compile_$30 = Compile_$29*Compile_$3;
 double Compile_$31 = -2 + p + Compile_$30;
@@ -2494,7 +2511,7 @@ double Compile_$37 = -3 + p + Compile_$36 + Compile_$4;
 double Compile_$38 = p*Compile_$37;
 double Compile_$39 = Compile_$18 + Compile_$38;
 double Compile_$40 = Compile_$15*Compile_$39*Compile_$6;
-double Compile_$41 = 1 + Compile_$40;
+double Compile_$41 = 1.+ Compile_$40;
 double Compile_$47 = 1/Compile_$5;
 double Compile_$48 = 1/Compile_$41;
 double Compile_$46 = p*Compile_$2;
@@ -2514,7 +2531,7 @@ double Compile_$63 = Compile_$12 + Compile_$62;
 double Compile_$64 = Power(Compile_$14,-2);
 double Compile_$65 = -(Compile_$39*Compile_$6*Compile_$63*Compile_$64);
 double Compile_$66 = 1/Sqrt(Compile_$34);
-double Compile_$67 = 1 + Compile_$3;
+double Compile_$67 = 1.+ Compile_$3;
 double Compile_$68 = 2*p*Compile_$28*Compile_$67;
 double Compile_$69 = 2*p*Compile_$25*Compile_$7;
 double Compile_$70 = 2*Compile_$23*Compile_$26*Compile_$7;
@@ -2525,7 +2542,7 @@ double Compile_$74 = Power(p,-4);
 double Compile_$75 = -3*Compile_$33*Compile_$74;
 double Compile_$76 = Compile_$73 + Compile_$75;
 double Compile_$77 = -(Compile_$66*Compile_$76);
-double Compile_$78 = 1 + Compile_$77;
+double Compile_$78 = 1.+ Compile_$77;
 double Compile_$79 = p*Compile_$78;
 double Compile_$80 = -3 + p + Compile_$36 + Compile_$4 + Compile_$7 + Compile_$79;
 double Compile_$81 = Compile_$15*Compile_$6*Compile_$80;
@@ -2539,7 +2556,7 @@ double Compile_$103 = (Compile_$1*Compile_$100*Compile_$101*Compile_$102*Compile
 double Compile_$104 = EllipticK(Compile_$103);
 double Compile_$105 = 1/Compile_$104;
 double Compile_$106 = -(Compile_$41*Compile_$5*Compile_$99);
-double Compile_$107 = 1 + Compile_$106;
+double Compile_$107 = 1.+ Compile_$106;
 double Compile_$108 = Sqrt(Compile_$107);
 double Compile_$111 = Compile_$46 + Compile_$58;
 double Compile_$120 = Compile_$101/2.;
@@ -2547,13 +2564,13 @@ double Compile_$121 = Compile_$120 + Compile_$45 + Compile_$46;
 double Compile_$112 = Compile_$100*Compile_$102;
 double Compile_$113 = EllipticPi(Compile_$112,Compile_$103);
 double Compile_$128 = -Compile_$7;
-double Compile_$129 = 1 + Compile_$128;
+double Compile_$129 = 1.+ Compile_$128;
 double Compile_$132 = Sqrt(Compile_$129);
 double Compile_$109 = 4*Compile_$108;
 double Compile_$133 = -Compile_$132;
-double Compile_$147 = -1 + Compile_$133 + Compile_$46;
+double Compile_$147 = -1.+ Compile_$133 + Compile_$46;
 double Compile_$148 = 1/Compile_$147;
-double Compile_$134 = -1 + Compile_$120 + Compile_$133;
+double Compile_$134 = -1.+ Compile_$120 + Compile_$133;
 double Compile_$136 = -2*Compile_$108*Compile_$7;
 double Compile_$138 = Compile_$15*Compile_$39;
 double Compile_$139 = Sqrt(Compile_$138);
@@ -2562,9 +2579,9 @@ double Compile_$141 = a*Compile_$108;
 double Compile_$142 = Compile_$140 + Compile_$141;
 double Compile_$143 = -(a*Compile_$142);
 double Compile_$144 = Compile_$109 + Compile_$143;
-double Compile_$159 = -1 + Compile_$132 + Compile_$46;
+double Compile_$159 = -1.+ Compile_$132 + Compile_$46;
 double Compile_$160 = 1/Compile_$159;
-double Compile_$154 = -1 + Compile_$120 + Compile_$132;
+double Compile_$154 = -1.+ Compile_$120 + Compile_$132;
 double Compile_$60 = Compile_$2*Compile_$41*Compile_$5*Compile_$59;
 double Compile_$89 = -Compile_$2;
 double Compile_$88 = -Compile_$44;
@@ -2580,7 +2597,7 @@ double Compile_$95 = Compile_$94/2.;
 double Compile_$96 = Compile_$44 + Compile_$95;
 double Compile_$117 = EllipticE(Compile_$103);
 double Compile_$176 = -0.5*(Compile_$1*Compile_$100*Compile_$101*Compile_$102*Compile_$99);
-double Compile_$177 = 1 + Compile_$176;
+double Compile_$177 = 1.+ Compile_$176;
 double Compile_$110 = (Compile_$101*Compile_$104)/2.;
 double Compile_$114 = Compile_$111*Compile_$113;
 double Compile_$115 = Compile_$110 + Compile_$114;
@@ -2595,7 +2612,7 @@ double Compile_$126 = Compile_$118 + Compile_$124 + Compile_$125;
 double Compile_$127 = (Compile_$108*Compile_$126)/2.;
 double Compile_$130 = 1/Sqrt(Compile_$129);
 double Compile_$135 = 1/Compile_$134;
-double Compile_$137 = 1 + Compile_$132;
+double Compile_$137 = 1.+ Compile_$132;
 double Compile_$145 = Compile_$137*Compile_$144;
 double Compile_$146 = Compile_$136 + Compile_$145;
 double Compile_$149 = Compile_$100*Compile_$102*Compile_$134*Compile_$148;
@@ -2604,7 +2621,7 @@ double Compile_$151 = -(Compile_$111*Compile_$148*Compile_$150);
 double Compile_$152 = Compile_$104 + Compile_$151;
 double Compile_$153 = Compile_$135*Compile_$146*Compile_$152;
 double Compile_$155 = 1/Compile_$154;
-double Compile_$156 = 1 + Compile_$133;
+double Compile_$156 = 1.+ Compile_$133;
 double Compile_$157 = Compile_$144*Compile_$156;
 double Compile_$158 = Compile_$136 + Compile_$157;
 double Compile_$161 = Compile_$100*Compile_$102*Compile_$154*Compile_$160;
@@ -2646,12 +2663,12 @@ double Compile_$251 = Compile_$184/2.;
 double Compile_$252 = Compile_$2 + Compile_$251 + Compile_$44;
 double Compile_$211 = Compile_$112 + Compile_$176;
 double Compile_$212 = 1/Compile_$211;
-double Compile_$213 = -1 + Compile_$103;
+double Compile_$213 = -1.+ Compile_$103;
 double Compile_$214 = 1/Compile_$213;
 double Compile_$215 = Compile_$117*Compile_$214;
 double Compile_$216 = Compile_$113 + Compile_$215;
 double Compile_$217 = (Compile_$188*Compile_$212*Compile_$216)/2.;
-double Compile_$218 = -1 + Compile_$112;
+double Compile_$218 = -1.+ Compile_$112;
 double Compile_$219 = 1/Compile_$218;
 double Compile_$222 = 1/Compile_$221;
 double Compile_$223 = Compile_$102*Compile_$179;
@@ -2683,7 +2700,7 @@ double Compile_$291 = p*Compile_$173*Compile_$174*Compile_$178*Compile_$188*Comp
 double Compile_$565 = Power(Compile_$159,-2);
 double Compile_$573 = -(Compile_$100*Compile_$102*Compile_$154*Compile_$160);
 double Compile_$574 = Compile_$103 + Compile_$573;
-return -0.5*(p*Pi*Compile_$171*Compile_$173*Compile_$174*Compile_$175*Compile_$178*Compile_$188*Compile_$189*Compile_$191*Compile_$2*Compile_$59) + (Pi*Compile_$105*Compile_$171*(Compile_$2*Compile_$5*Compile_$59*Compile_$82 + Compile_$2*Compile_$41*Compile_$5*Compile_$96))/(4.*Sqrt(Compile_$60)) - (Pi*Compile_$105*Compile_$175*(Compile_$198 - p*Compile_$168*Compile_$173*Compile_$174*Compile_$178*Compile_$188*Compile_$189*Compile_$191*Compile_$2*Compile_$59 + Compile_$105*(Compile_$115*Compile_$194*Compile_$197 + (Compile_$126*Compile_$194*Compile_$197)/4. + 2*Compile_$108*((Compile_$104*Compile_$184)/2. + Compile_$113*Compile_$209 + Compile_$111*Compile_$233 + (p*Compile_$173*Compile_$178*Compile_$188*Compile_$191*Compile_$2*Compile_$59)/2.) + (Compile_$108*(Compile_$113*Compile_$121*Compile_$209 + Compile_$111*Compile_$121*Compile_$233 + Compile_$111*Compile_$113*Compile_$252 + Compile_$104*((Compile_$121*Compile_$184)/2. + (Compile_$101*Compile_$252)/2. - 2*p*Compile_$2*Compile_$44) + Compile_$117*Compile_$2*Compile_$59 + p*Compile_$123*Compile_$173*Compile_$174*Compile_$178*Compile_$188*Compile_$191*Compile_$2*Compile_$59 + ((-Compile_$104 + Compile_$117)*Compile_$173*Compile_$174*Compile_$188*Compile_$26*Power(Compile_$59,2))/Power(Compile_$1,2) + p*Compile_$117*Compile_$2*Compile_$96))/2. + Compile_$130*(-0.5*(Compile_$146*Compile_$152*Compile_$184)/Power(Compile_$134,2) + (Compile_$158*Compile_$164*Compile_$184)/(2.*Power(Compile_$154,2)) + Compile_$135*Compile_$152*(Compile_$264 + Compile_$137*Compile_$273) - Compile_$155*Compile_$164*(Compile_$264 + Compile_$156*Compile_$273) + Compile_$135*Compile_$146*(-(Compile_$148*Compile_$150*Compile_$209) + Compile_$291 + Compile_$111*Compile_$150*Compile_$2*Compile_$292 - Compile_$111*Compile_$148*((Compile_$188*(Compile_$150 + Compile_$215))/(2.*(Compile_$149 + Compile_$176)) + ((Compile_$117 + Compile_$135*Compile_$147*Compile_$150*Compile_$173*(Compile_$176 + Power(Compile_$134,2)*Compile_$186*Compile_$227*Compile_$292)*Compile_$59 + Compile_$104*Compile_$135*Compile_$147*Compile_$173*Compile_$300*Compile_$59)*(Compile_$102*Compile_$134*Compile_$148*Compile_$179 + (Compile_$100*Compile_$102*Compile_$148*Compile_$184)/2. - Compile_$100*Compile_$102*Compile_$134*Compile_$2*Compile_$292 - Compile_$100*Compile_$134*Compile_$148*Compile_$186*Compile_$96))/(2.*(-1 + Compile_$149)*Compile_$300))) - Compile_$155*Compile_$158*(-(Compile_$160*Compile_$162*Compile_$209) + Compile_$291 + Compile_$111*Compile_$162*Compile_$2*Compile_$565 - Compile_$111*Compile_$160*((Compile_$188*(Compile_$162 + Compile_$215))/(2.*(Compile_$161 + Compile_$176)) + ((Compile_$117 + Compile_$155*Compile_$159*Compile_$162*Compile_$173*(Compile_$176 + Power(Compile_$154,2)*Compile_$186*Compile_$227*Compile_$565)*Compile_$59 + Compile_$104*Compile_$155*Compile_$159*Compile_$173*Compile_$574*Compile_$59)*(Compile_$102*Compile_$154*Compile_$160*Compile_$179 + (Compile_$100*Compile_$102*Compile_$160*Compile_$184)/2. - Compile_$100*Compile_$102*Compile_$154*Compile_$2*Compile_$565 - Compile_$100*Compile_$154*Compile_$160*Compile_$186*Compile_$96))/(2.*(-1 + Compile_$161)*Compile_$574)))))))/(2.*Power(Compile_$170,2));
+return -0.5*(p*Pi*Compile_$171*Compile_$173*Compile_$174*Compile_$175*Compile_$178*Compile_$188*Compile_$189*Compile_$191*Compile_$2*Compile_$59) + (Pi*Compile_$105*Compile_$171*(Compile_$2*Compile_$5*Compile_$59*Compile_$82 + Compile_$2*Compile_$41*Compile_$5*Compile_$96))/(4.*Sqrt(Compile_$60)) - (Pi*Compile_$105*Compile_$175*(Compile_$198 - p*Compile_$168*Compile_$173*Compile_$174*Compile_$178*Compile_$188*Compile_$189*Compile_$191*Compile_$2*Compile_$59 + Compile_$105*(Compile_$115*Compile_$194*Compile_$197 + (Compile_$126*Compile_$194*Compile_$197)/4. + 2*Compile_$108*((Compile_$104*Compile_$184)/2. + Compile_$113*Compile_$209 + Compile_$111*Compile_$233 + (p*Compile_$173*Compile_$178*Compile_$188*Compile_$191*Compile_$2*Compile_$59)/2.) + (Compile_$108*(Compile_$113*Compile_$121*Compile_$209 + Compile_$111*Compile_$121*Compile_$233 + Compile_$111*Compile_$113*Compile_$252 + Compile_$104*((Compile_$121*Compile_$184)/2. + (Compile_$101*Compile_$252)/2. - 2*p*Compile_$2*Compile_$44) + Compile_$117*Compile_$2*Compile_$59 + p*Compile_$123*Compile_$173*Compile_$174*Compile_$178*Compile_$188*Compile_$191*Compile_$2*Compile_$59 + ((-Compile_$104 + Compile_$117)*Compile_$173*Compile_$174*Compile_$188*Compile_$26*Power(Compile_$59,2))/Power(Compile_$1,2) + p*Compile_$117*Compile_$2*Compile_$96))/2. + Compile_$130*(-0.5*(Compile_$146*Compile_$152*Compile_$184)/Power(Compile_$134,2) + (Compile_$158*Compile_$164*Compile_$184)/(2.*Power(Compile_$154,2)) + Compile_$135*Compile_$152*(Compile_$264 + Compile_$137*Compile_$273) - Compile_$155*Compile_$164*(Compile_$264 + Compile_$156*Compile_$273) + Compile_$135*Compile_$146*(-(Compile_$148*Compile_$150*Compile_$209) + Compile_$291 + Compile_$111*Compile_$150*Compile_$2*Compile_$292 - Compile_$111*Compile_$148*((Compile_$188*(Compile_$150 + Compile_$215))/(2.*(Compile_$149 + Compile_$176)) + ((Compile_$117 + Compile_$135*Compile_$147*Compile_$150*Compile_$173*(Compile_$176 + Power(Compile_$134,2)*Compile_$186*Compile_$227*Compile_$292)*Compile_$59 + Compile_$104*Compile_$135*Compile_$147*Compile_$173*Compile_$300*Compile_$59)*(Compile_$102*Compile_$134*Compile_$148*Compile_$179 + (Compile_$100*Compile_$102*Compile_$148*Compile_$184)/2. - Compile_$100*Compile_$102*Compile_$134*Compile_$2*Compile_$292 - Compile_$100*Compile_$134*Compile_$148*Compile_$186*Compile_$96))/(2.*(-1.+ Compile_$149)*Compile_$300))) - Compile_$155*Compile_$158*(-(Compile_$160*Compile_$162*Compile_$209) + Compile_$291 + Compile_$111*Compile_$162*Compile_$2*Compile_$565 - Compile_$111*Compile_$160*((Compile_$188*(Compile_$162 + Compile_$215))/(2.*(Compile_$161 + Compile_$176)) + ((Compile_$117 + Compile_$155*Compile_$159*Compile_$162*Compile_$173*(Compile_$176 + Power(Compile_$154,2)*Compile_$186*Compile_$227*Compile_$565)*Compile_$59 + Compile_$104*Compile_$155*Compile_$159*Compile_$173*Compile_$574*Compile_$59)*(Compile_$102*Compile_$154*Compile_$160*Compile_$179 + (Compile_$100*Compile_$102*Compile_$160*Compile_$184)/2. - Compile_$100*Compile_$102*Compile_$154*Compile_$2*Compile_$565 - Compile_$100*Compile_$154*Compile_$160*Compile_$186*Compile_$96))/(2.*(-1.+ Compile_$161)*Compile_$574)))))))/(2.*Power(Compile_$170,2));
 }
 
 void KerrEquatorialFrequencyDerivative(double *omegaPhi_dp, double *omegaPhi_de, double *omegaR_dp, double *omegaR_de, double a, double p, double e)

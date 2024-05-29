@@ -67,7 +67,7 @@ from powerlaw import powerlaw_dist
  
 from few.waveform import AAKWaveformBase
 from few.trajectory.inspiral import EMRIInspiral
-from few.summation.aakwave import AAKSummation
+from few.summation.aakwave import AAKSummation,KerrAAKSummation
 from few.waveform import GenerateEMRIWaveform
 from few.utils.constants import *
 from few.utils.utility import get_p_at_t, get_separatrix, get_fundamental_frequencies
@@ -153,7 +153,7 @@ def run_emri_pe(
     few_gen = GenerateEMRIWaveform(
     AAKWaveformBase, 
     EMRIInspiral,
-    AAKSummation,
+    KerrAAKSummation,
     # when using intrinsic only , we return a list
     return_list=True,
     inspiral_kwargs=insp_kwargs,
@@ -371,7 +371,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=3,  # may need this subset
+        subset=6,  # may need this subset
     )
 
     def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
@@ -472,7 +472,7 @@ def run_emri_pe(
     except:
         print("find starting points")
         # precision of 1e-5
-        cov = np.load("covariance.npy") * 2.38**2 /ndim
+        cov = np.load("covariance.npy") * 2.38**2 /ndim /1000
         if vacuum:
             cov = cov[:-1,:-1]
         # increase the size of the covariance only along the last direction
