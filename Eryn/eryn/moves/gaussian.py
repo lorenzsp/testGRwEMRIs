@@ -349,7 +349,7 @@ def propose_DE(current_state, chain, F=0.5, CR=0.9, use_current_state=True, cros
     
     # Generate mutant vectors using DE/rand/1
     if use_current_state:
-        mutant_vectors = current_state + F * (current_state[indices[:, 1]] - current_state[indices[:, 2]])
+        mutant_vectors = current_state + F * (chain[indices[:, 1]] - chain[indices[:, 2]])
     else:
         mutant_vectors = chain[indices[:, 0]] + F * (chain[indices[:, 1]] - chain[indices[:, 2]])
 

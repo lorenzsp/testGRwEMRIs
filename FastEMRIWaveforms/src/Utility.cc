@@ -18,270 +18,6 @@
 
 using namespace std;
 using namespace std::chrono;
-// ----------------------------------------------------------------------------
-// define new elliptic pi function from Scott
-
-// Reasonable maximum
-template<class NUMBER>
-inline NUMBER Max(const NUMBER a, const NUMBER b) {
-  return (a > b ? a : b);
-};
-
-#define DMAX(a,b) Max(a,b)
-#define FMAX(a,b) Max(a,b)
-#define LMAX(a,b) Max(a,b)
-#define IMAX(a,b) Max(a,b)
-
-// Reasonable minimum
-template<class NUMBER>
-inline NUMBER Min(const NUMBER a, const NUMBER b) {
-  return (a < b ? a : b);
-};
-
-#define DMIN(a,b) Min(a,b)
-#define FMIN(a,b) Min(a,b)
-#define LMIN(a,b) Min(a,b)
-#define IMIN(a,b) Min(a,b)
-
-void Die(const char error_text[])
-{
-  cerr << error_text << endl;
-  exit(0);
-}
-
-double rf(const double x, const double y, const double z)
-{
-    // Define constants inside the function
-    const double ERRTOL = 0.0025;
-    const double TINY = 1.5e-38;
-    const double BIG = 3.0e37;
-    const double THIRD = 1.0/3.0;
-    const double C1 = 1.0/24.0;
-    const double C2 = 0.1;
-    const double C3 = 3.0/44.0;
-    const double C4 = 1.0/14.0;
-
-    double alamb, ave, delx, dely, delz, e2, e3, sqrtx, sqrty, sqrtz,
-    xt, yt, zt;
-
-    if (DMIN(DMIN(x, y), z) < 0.0 || DMIN(DMIN(x + y, x + z), y + z) < TINY ||
-        DMAX(DMAX(x, y), z) > BIG) Die("invalid arguments in rf");
-    xt = x;
-    yt = y;
-    zt = z;
-    do {
-        sqrtx = sqrt(xt);
-        sqrty = sqrt(yt);
-        sqrtz = sqrt(zt);
-        alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
-        xt = 0.25*(xt + alamb);
-        yt = 0.25*(yt + alamb);
-        zt = 0.25*(zt + alamb);
-        ave = THIRD*(xt + yt + zt);
-        delx = (ave - xt)/ave;
-        dely = (ave - yt)/ave;
-        delz = (ave - zt)/ave;
-    } while (DMAX(DMAX(fabs(delx), fabs(dely)), fabs(delz)) > ERRTOL);
-    e2 = delx*dely - delz*delz;
-    e3 = delx*dely*delz;
-    return (1.0 + (C1*e2 - C2 - C3*e3)*e2 + C4*e3)/sqrt(ave);
-}
-
-double rc(const double x, const double y)
-{
-    // Define constants inside the function
-    const double ERRTOL = 0.0012;
-    const double TINY = 1.69e-38;
-    const double SQRTNY = 1.3e-19;
-    const double BIG = 3.e37;
-    const double TNBG = (TINY*BIG);
-    const double COMP1 = (2.236/SQRTNY);
-    const double COMP2 = (TNBG*TNBG/25.0);
-    const double THIRD = 1.0/3.0;
-    const double C1 = 0.3;
-    const double C2 = 1.0/7.0;
-    const double C3 = 0.375;
-    const double C4 = 9.0/22.0;
-
-    double alamb, ave, s, w, xt, yt;
-    if (x < 0.0 || y == 0.0 || (x+fabs(y)) < TINY || (x + fabs(y)) > BIG ||
-        (y < -COMP1 && x > 0.0 && x < COMP2)) Die("invalid arguments in rc");
-    if (y > 0.0) {
-        xt = x;
-        yt = y;
-        w = 1.0;
-    } else {
-        xt = x-y;
-        yt = -y;
-        w = sqrt(x)/sqrt(xt);
-    }
-    do {
-        alamb = 2.0*sqrt(xt)*sqrt(yt) + yt;
-        xt = 0.25*(xt + alamb);
-        yt = 0.25*(yt + alamb);
-        ave = THIRD*(xt + yt + yt);
-        s = (yt - ave)/ave;
-    } while (fabs(s) > ERRTOL);
-    return w*(1.0 + s*s*(C1 + s*(C2 + s*(C3 + s*C4))))/sqrt(ave);
-}
-
-double rj(const double x, const double y, const double z, const double p)
-{
-    // Define constants inside the function
-    const double ERRTOL = 0.0015;
-    const double TINY = 2.5e-13;
-    const double BIG = 9.0e11;
-    const double C1 = 3.0/14.0;
-    const double C2 = 1.0/3.0;
-    const double C3 = 3.0/22.0;
-    const double C4 = 3.0/26.0;
-    const double C5 = 0.75*C3;
-    const double C6 = 1.5*C4;
-    const double C7 = 0.5*C2;
-    const double C8 = C3 + C3;
-
-    double a, alamb, alpha, ans, ave, b, beta, delp, delx, dely, delz, 
-    ea, eb, ec, ed, ee, fac, pt, rcx, rho, sqrtx, sqrty, sqrtz, sum,
-    tau, xt, yt, zt;
-
-    if (DMIN(DMIN(x, y), z) < 0.0 || DMIN(DMIN(x + y, x + z),
-                    DMIN(y + z, fabs(p))) < TINY
-      || DMAX(DMAX(x, y), DMAX(z, fabs(p))) > BIG)
-    Die("invalid arguments in rj");
-    sum = 0.0;
-    fac = 1.0;
-    if (p > 0.0) {
-    xt = x;
-    yt = y;
-    zt = z;
-    pt = p;
-    } else {
-    xt = DMIN(DMIN(x, y), z);
-    zt = DMAX(DMAX(x, y), z);
-    yt = x + y + z - xt - zt;
-    a = 1.0/(yt - p);
-    b = a*(zt - yt)*(yt - xt);
-    pt = yt + b;
-    rho = xt*zt/yt;
-    tau = p*pt/yt;
-    rcx = rc(rho, tau);
-    }
-    do {
-    sqrtx = sqrt(xt);
-    sqrty = sqrt(yt);
-    sqrtz = sqrt(zt);
-    alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
-    alpha = (pt*(sqrtx + sqrty + sqrtz) + sqrtx*sqrty*sqrtz)*(pt*(sqrtx + sqrty + sqrtz) + sqrtx*sqrty*sqrtz);
-    beta = pt*(pt + alamb)*(pt + alamb);
-    sum +=  fac*rc(alpha, beta);
-    fac = 0.25*fac;
-    xt = 0.25*(xt + alamb);
-    yt = 0.25*(yt + alamb);
-    zt = 0.25*(zt + alamb);
-    pt = 0.25*(pt + alamb);
-    ave = 0.2*(xt + yt + zt + pt + pt);
-    delx = (ave - xt)/ave;
-    dely = (ave - yt)/ave;
-    delz = (ave - zt)/ave;
-    delp = (ave - pt)/ave;
-    } while (DMAX(DMAX(fabs(delx), fabs(dely)), 
-            DMAX(fabs(delz), fabs(delp))) > ERRTOL);
-    ea = delx*(dely + delz) + dely*delz;
-    eb = delx*dely*delz;
-    ec = delp*delp;
-    ed = ea - 3.0*ec;
-    ee = eb + 2.0*delp*(ea - ec);
-    ans = 3.0*sum + fac*(1.0 + ed*(-C1 + C5*ed - C6*ee) +
-               eb*(C7 + delp*(-C8 + delp*C4))
-               + delp*ea*(C2 - delp*C3) - C2*delp*ec)/(ave*sqrt(ave));
-    if (p <= 0.0) ans = a*(b*ans + 3.0*(rcx - rf(xt, yt, zt)));
-    return ans;
-}
-
-double rd(const double x, const double y, const double z)
-{
-    // Define constants inside the function
-    const double ERRTOL = 0.0015;
-    const double TINY = 1.0e-25;
-    const double BIG = 4.5e21;
-    const double C1 = 3.0/14.0;
-    const double C2 = 1.0/6.0;
-    const double C3 = 9.0/22.0;
-    const double C4 = 3.0/26.0;
-    const double C5 = 0.25*C3;
-    const double C6 = 1.5*C4;
-
-    double alamb, ave, delx, dely, delz, ea, eb, ec, ed, ee, fac,
-    sqrtx, sqrty, sqrtz, sum, xt, yt, zt;
-
-    if (DMIN(x, y) < 0.0 || DMIN(x + y, z) < TINY || DMAX(DMAX(x, y), z) > BIG)
-    Die("invalid arguments in rd");
-    xt = x;
-    yt = y;
-    zt = z;
-    sum = 0.0;
-    fac = 1.0;
-    do {
-    sqrtx = sqrt(xt);
-    sqrty = sqrt(yt);
-    sqrtz = sqrt(zt);
-    alamb = sqrtx*(sqrty + sqrtz) + sqrty*sqrtz;
-    sum += fac/(sqrtz*(zt + alamb));
-    fac = 0.25*fac;
-    xt = 0.25*(xt + alamb);
-    yt = 0.25*(yt + alamb);
-    zt = 0.25*(zt + alamb);
-    ave = 0.2*(xt + yt + 3.0*zt);
-    delx = (ave - xt)/ave;
-    dely = (ave - yt)/ave;
-    delz = (ave - zt)/ave;
-    } while (DMAX(DMAX(fabs(delx), fabs(dely)), fabs(delz)) > ERRTOL);
-    ea = delx*dely;
-    eb = delz*delz;
-    ec = ea-eb;
-    ed = ea-6.0*eb;
-    ee = ed+ec+ec;
-    return 3.0*sum + fac*(1.0 + ed*(-C1 + C5*ed - C6*delz*ee)
-            + delz*(C2*ee + delz*(-C3*ec + delz*C4*ea)))/(ave*sqrt(ave));
-}
-
-double ellpi(const double phi, const double en, const double ak)
-{
-    double rf(const double x, const double y, const double z);
-    double rj(const double x, const double y, const double z, const double p);
-
-    const double cc = cos(phi)*cos(phi);
-    const double s = sin(phi);
-    const double enss = en * s * s;
-    const double q = (1.0 - s * ak) * (1.0 + s * ak);
-
-    return s * (rf(cc, q, 1.0) - enss * rj(cc, q, 1.0, 1.0 + enss) / 3.0);
-}
-
-double elle(const double phi, const double ak)
-{
-    double rd(const double x, const double y, const double z);
-    double rf(const double x, const double y, const double z);
-  
-    const double s = sin(phi);
-    const double cc = pow(cos(phi), 2);
-    const double q = (1.0 - s * ak) * (1.0 + s * ak);
-
-    return s * (rf(cc, q, 1.0) - pow(s * ak, 2) * rd(cc, q, 1.0) / 3.0);
-}
-
-double ellf(const double phi, const double ak)
-{
-    double rf(const double x, const double y, const double z);
-    const double s = sin(phi);
-
-    if (phi > M_PI/2.)
-        return (-1.*s*rf(pow(cos(phi), 2), (1.0-s*ak)*(1.0+s*ak), 1.0) + 2.*rf(0.,(1.0-ak)*(1.0+ak), 1.0));
-    else
-        return s*rf(pow(cos(phi), 2), (1.0-s*ak)*(1.0+s*ak), 1.0);
-}
-// ----------------------------------------------------------------------------
-
 
 int sanity_check(double a, double p, double e, double Y)
 {
@@ -544,8 +280,8 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     double CapitalUpsilonr = (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) / (2 * EllipticK(pow(kr, 2))); //(*Eq.(15)*)
     double CapitalUpsilonTheta = (M_PI * L * sqrt(Epsilon0zp)) / (2 * EllipticK(pow(kTheta, 2)));                   //(*Eq.(15)*)
 
-    double rp = M + sqrt(1.0 - pow(a, 2));
-    double rm = M - sqrt(1.0 - pow(a, 2));
+    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
+    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
 
     double hr = (r1 - r2) / (r1 - r3);
     double hp = ((r1 - r2) * (r3 - rp)) / ((r1 - r3) * (r2 - rp));
@@ -554,7 +290,7 @@ void KerrGeoMinoFrequencies(double *CapitalGamma_, double *CapitalUpsilonPhi_, d
     // (*Eq. (21)*)
     double CapitalUpsilonPhi = (2 * CapitalUpsilonTheta) / (M_PI * sqrt(Epsilon0zp)) * EllipticPi(zm, pow(kTheta, 2)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * ((2 * M * En * rp - a * L) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2))));
 
-    double CapitalGamma = 4 * 1.0 * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * 1.0 * En - a * L) * rp - 2 * M * pow(a, 2) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * 1.0 * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
+    double CapitalGamma = 4 * pow(M, 2) * En + (2 * a2zp * En * CapitalUpsilonTheta) / (M_PI * L * sqrt(Epsilon0zp)) * (EllipticK(pow(kTheta, 2)) - EllipticE(pow(kTheta, 2))) + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(pow(kr, 2)) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, pow(kr, 2)) + (r1 - r3) * (r2 - r4) * EllipticE(pow(kr, 2))) + 2 * M * En * (r3 * EllipticK(pow(kr, 2)) + (r2 - r3) * EllipticPi(hr, pow(kr, 2))) + (2 * M) / (rp - rm) * (((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) / (r3 - rp) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, pow(kr, 2))) - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(pow(kr, 2)) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, pow(kr, 2)))));
 
     *CapitalGamma_ = CapitalGamma;
     *CapitalUpsilonPhi_ = CapitalUpsilonPhi;
@@ -608,16 +344,14 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
     // get radial roots
     double r1, r2, r3, r4;
     KerrGeoRadialRoots(&r1, &r2, &r3, &r4, a, p, e, x, En, Q);
-    double a_squared = a*a;
-    double En_squared = En*En;
-    double L_squared = L*L;
-    double Epsilon0 = a_squared * (1 - En_squared) / L_squared;
+
+    double Epsilon0 = pow(a, 2) * (1 - pow(En, 2)) / pow(L, 2);
     // double zm = 0;
-    double a2zp = (L_squared + a_squared * (-1 + En_squared) * (-1)) / ((-1 + En_squared) * (-1));
+    double a2zp = (pow(L, 2) + pow(a, 2) * (-1 + pow(En, 2)) * (-1)) / ((-1 + pow(En, 2)) * (-1));
 
-    double Epsilon0zp = -((L_squared + a_squared * (-1 + En_squared) * (-1)) / (L_squared * (-1)));
+    double Epsilon0zp = -((pow(L, 2) + pow(a, 2) * (-1 + pow(En, 2)) * (-1)) / (pow(L, 2) * (-1)));
 
-    double zp = a_squared * (1 - En_squared) + L_squared;
+    double zp = pow(a, 2) * (1 - pow(En, 2)) + pow(L, 2);
 
     double arg_kr = (r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4);
 
@@ -630,12 +364,11 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
         printf("r1 r2 r3 r4 %e %e %e %e\n", r1, r2, r3, r4);
         printf("a p e %e %e %e\n", a,p,e);
     }
-    double elK = EllipticK(kr2);
-    double CapitalUpsilonr = (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2))) / (2 * elK); //(*Eq.(15)*)
+    double CapitalUpsilonr = (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2))) / (2 * EllipticK(kr2)); //(*Eq.(15)*)
     double CapitalUpsilonTheta = x * pow(zp, 0.5);                                                             //(*Eq.(15)*)
 
-    double rp = M + sqrt(1.0 - a_squared);
-    double rm = M - sqrt(1.0 - a_squared);
+    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
+    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
 
     // this check was introduced to avoid round off errors
     // if (r3 - rp==0.0){
@@ -648,23 +381,20 @@ void KerrGeoEquatorialMinoFrequencies(double *CapitalGamma_, double *CapitalUpsi
 
     // (*Eq. (21)*)
     // This term is zero when r3 - rp == 0.0
-    double elPi = EllipticPi(hp, kr2);
-    double elPi_hm = EllipticPi(hm, kr2);
-    double elPi_hr = EllipticPi(hr, kr2);
-    double prob1 = (2 * M * En * rp - a * L) * (elK - (r2 - r3) / (r2 - rp) * elPi);
+    double prob1 = (2 * M * En * rp - a * L) * (EllipticK(kr2) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, kr2));
     if (abs(prob1) != 0.0)
     {
         prob1 = prob1 / (r3 - rp);
     }
-    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm));
+    double CapitalUpsilonPhi = (CapitalUpsilonTheta) / (sqrt(Epsilon0zp)) + (2 * a * CapitalUpsilonr) / (M_PI * (rp - rm) * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (prob1 - (2 * M * En * rm - a * L) / (r3 - rm) * (EllipticK(kr2) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, kr2)));
 
     // This term is zero when r3 - rp == 0.0
-    double prob2 = ((4 * 1.0 * En - a * L) * rp - 2 * M * a_squared * En) * (elK - (r2 - r3) / (r2 - rp) * elPi);
+    double prob2 = ((4 * pow(M, 2) * En - a * L) * rp - 2 * M * pow(a, 2) * En) * (EllipticK(kr2) - (r2 - r3) / (r2 - rp) * EllipticPi(hp, kr2));
     if (abs(prob2) != 0.0)
     {
         prob2 = prob2 / (r3 - rp);
     }
-    double CapitalGamma = 4 * 1.0 * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - En_squared) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * elK + (r2 - r3) * (r1 + r2 + r3 + r4) * elPi_hr + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * elK + (r2 - r3) * elPi_hr) + (2 * M) / (rp - rm) * (prob2 - ((4 * 1.0 * En - a * L) * rm - 2 * M * a_squared * En) / (r3 - rm) * (elK - (r2 - r3) / (r2 - rm) * elPi_hm)));
+    double CapitalGamma = 4 * pow(M, 2) * En + (2 * CapitalUpsilonr) / (M_PI * sqrt((1 - pow(En, 2)) * (r1 - r3) * (r2 - r4))) * (En / 2 * ((r3 * (r1 + r2 + r3) - r1 * r2) * EllipticK(kr2) + (r2 - r3) * (r1 + r2 + r3 + r4) * EllipticPi(hr, kr2) + (r1 - r3) * (r2 - r4) * EllipticE(kr2)) + 2 * M * En * (r3 * EllipticK(kr2) + (r2 - r3) * EllipticPi(hr, kr2)) + (2 * M) / (rp - rm) * (prob2 - ((4 * pow(M, 2) * En - a * L) * rm - 2 * M * pow(a, 2) * En) / (r3 - rm) * (EllipticK(kr2) - (r2 - r3) / (r2 - rm) * EllipticPi(hm, kr2))));
 
     // This check makes sure that the problematic terms are zero when r3-rp is zero
     // if (r3 - rp==0.0){
@@ -1514,8 +1244,8 @@ void KerrEqSpinFrequenciesCorrection(double *deltaOmegaR_, double *deltaOmegaPhi
     double kr = (r1 - r2) / (r1 - r3) * (r3 - r4) / (r2 - r4); // convention without the sqrt
     double hr = (r1 - r2) / (r1 - r3);
 
-    double rp = M + sqrt(1.0 - pow(a, 2));
-    double rm = M - sqrt(1.0 - pow(a, 2));
+    double rp = M + sqrt(pow(M, 2) - pow(a, 2));
+    double rm = M - sqrt(pow(M, 2) - pow(a, 2));
 
     double hp = ((r1 - r2) * (r3 - rp)) / ((r1 - r3) * (r2 - rp));
     double hm = ((r1 - r2) * (r3 - rm)) / ((r1 - r3) * (r2 - rm));
