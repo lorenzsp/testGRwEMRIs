@@ -243,13 +243,13 @@ ls = ['-', '--', '-.', ':', (0, (3, 1, 1, 1, 3)), (0, (3, 5, 1, 5, 1))]
 
 
 # check that get_delta_Edot scales with charge
-plt.figure()
-charge = np.linspace(1e-5,1e-1,100)
-plt.plot(charge,[get_delta_Edot(1e6, 10., 0.9, 10.0, 0.1, 1.0, ch**2/4) for ch in charge])
+# plt.figure()
+# charge = np.linspace(1e-5,1e-1,100)
+# plt.plot(charge,[get_delta_Edot(1e6, 10., 0.9, 10.0, 0.1, 1.0, ch**2/4) for ch in charge])
 # check p0 scaling
 # pvec = np.linspace(4.0,20.0,100)
 # plt.loglog(pvec,[np.abs(get_delta_Edot(1e6, 10., 0.95, pp, 0.4, 1.0, 1e-2)) for pp in pvec])
-plt.savefig(f'./figures/check_charge_scaling.pdf', bbox_inches='tight')
+# plt.savefig(f'./figures/check_charge_scaling.pdf', bbox_inches='tight')
 
 Nsamp = int(1e4)
 #------------------------- delta phi ---------------------------------
