@@ -4,3 +4,4 @@ python plot_all_parameters_posteriors.py
 python plot_degeneracy.py
 python plot_grid.py
 python plot_phase_difference.py
+python plot_bound_delta_phi.py
