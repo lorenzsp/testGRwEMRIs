@@ -742,7 +742,7 @@ if __name__ == "__main__":
 
     
     # name of the folder to store the plots
-    folder = "./paper_runs/"
+    folder = "./results/"
     
     if bool(args['zerolike']):
         folder + "zerolike_"

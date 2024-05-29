@@ -418,7 +418,7 @@ def run_emri_pe(
     # get samples
     toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
     ll = file.get_log_like(discard=burn, thin=thin)[:,0].flatten()
-    Nresamp = 10
+    Nresamp = 10000
     weights = np.exp(like(toplot[:Nresamp],**emri_kwargs)-ll[:Nresamp])
     
     CORNER_KWARGS = dict(

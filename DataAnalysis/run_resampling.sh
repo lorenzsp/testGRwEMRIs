@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# nohup bash run_resampling.sh > out.out &
 # Assign variables to each parameter
 Tobs=2.0
 dt=10.0
