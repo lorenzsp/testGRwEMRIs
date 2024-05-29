@@ -122,7 +122,7 @@ t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4,
 
  
 # Plot the third trajectory
-plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"{M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"M={M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
 
 # Set the labels and title of the plot
 plt.xlabel('p',fontsize=20)

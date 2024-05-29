@@ -67,6 +67,7 @@ labels = [r'$\Delta \ln M$', r'$\Delta \ln \mu$', r'$\Delta a$', r'$\Delta p_0 \
             r"$\Delta \cos \theta_K$",r"$\Delta \phi_K$",
         r'$\Delta \Phi_{\varphi 0}$', r'$\Delta \Phi_{r 0}$',
             r"$\Delta \Lambda$",
+            # r"$\Delta d$",
         ]
 
 CORNER_KWARGS = dict(
@@ -83,7 +84,8 @@ CORNER_KWARGS = dict(
     truth_color='k',
     labelpad=0.3,
 )
-def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, title=None, ylim=None):
+
+def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, title=None, ylim=None, weights=None,):
     """
     Plots multiple corners on top of each other.
 
@@ -130,11 +132,16 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
     corn_kw = corn_kw or {}
     corn_kw.update(range=plot_range)
     list_maxy = []
+    
+    if weights is None:
+        weights = [get_normalisation_weight(len(samples_list[idx]), max_len) for idx in range(0, n)]
+    else:
+        weights = [get_normalisation_weight(len(samples_list[idx]), max_len)*weights[idx] for idx in range(0, n)]
     # Create the first corner plot
     fig = corner.corner(
         samples_list[0],
         color=colors[0],
-        weights=get_normalisation_weight(len(samples_list[0]), max_len),
+        weights=weights[0],
         **corn_kw
     )
     axes = np.array(fig.axes).reshape((ndim, ndim))
@@ -147,7 +154,7 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
         fig = corner.corner(
             samples_list[idx],
             fig=fig,
-            weights=get_normalisation_weight(len(samples_list[idx]), max_len),
+            weights=weights[idx],
             color=colors[idx],
             **corn_kw
         )
@@ -285,7 +292,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     temp_samp = np.load(repo_name + '/samples.npy')
     Lambda = temp_samp[:,-1]
     temp_samp = temp_samp[Lambda>0.0]
-    list_chains.append(temp_samp - truths[None,:])
+    # list_chains.append(temp_samp - truths[None,:])
     # obtain median and 95% credible interval from the samples
     med = np.median(temp_samp, axis=0)
     low = np.percentile(temp_samp, 2.5, axis=0)
@@ -301,7 +308,10 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     charge = np.sqrt(4 * Lambda)
     weights_ch=1/np.sqrt(Lambda)
     charge_quantiles = weighted_quantile(charge, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights_ch)
-    
+    # append charge at the end of the samples
+    temp_samp = np.hstack((temp_samp - truths[None,:],sqrt_alpha[:,None]))
+    temp_samp = np.hstack((temp_samp,weights[:,None]))
+    list_chains.append(temp_samp)
     # Create a DataFrame with the parameter information
     # add correlation coefficient
     corrcoef = np.corrcoef(temp_samp.T)
@@ -357,10 +367,10 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         label += f", {int(params_dict.get('mu'))}"
     label += f", {params_dict.get('a'):.2f}"
     label += f", {params_dict.get('e')}"
-    if params_dict.get('charge') == 0.0:
-        label += f", $0.0$"
-    else:
-        label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
+    # if params_dict.get('charge') == 0.0:
+    #     label += f", $0.0$"
+    # else:
+    #     label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
     
     label += f",{params_dict.get('T')}"
     # add another lable for the cycles
@@ -382,7 +392,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     list_cyc_precision.append(np.append(precision,Ncyc))
     # construct a table where the first axis is the
     v = get_fundamental_frequencies(truths[2], truths[3], truths[4], 1.0)[0]**(1/3)
-    print(v**(-2))
+    print("dimensionless velocity",v)
     table_comparison[repo_name.split('_noise0.0_')[-1].split('_seed')[0]] = [charge_quantiles[3], sqrtalpha_quantiles[3],v,Ncyc]
 
 table_comparison
@@ -390,44 +400,15 @@ pd.DataFrame(table_comparison).T.to_markdown('./posterior_summary/comparison_tab
 
 ########################### plot all #############################################
 # plot corner plots
-overlaid_corner(list_chains, labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, \Lambda, T [{\rm yrs}], N_{\rm cycles})$')
+# breakpoint()
+overlaid_corner([el[:,:-2] for el in list_chains], labs, './figures/plot_all_parameters_posteriors', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yrs}], N_{\rm cycles})$')
 
-# pl
-# # plot the precision as a function of the number of cycles
-# list_cyc_precision = np.asarray(list_cyc_precision)
-
-# cmap = plt.cm.get_cmap('Set1',)
-# colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-# plt.rcParams.update({
-#     "text.usetex": True,
-#     "pgf.texsystem": 'pdflatex',
-#     "pgf.rcfonts": False,
-#     "font.family": "serif",
-#     "figure.figsize": [246.0*px, inv_golden * 246.0*px],
-#     'legend.fontsize': 12,
-#     'xtick.labelsize': 18,
-#     'ytick.labelsize': 18,
-#     'legend.title_fontsize' : 12,
-# })
-
-# # plt.figure()
-# # var_list = [r"$M$", r"$\mu$", r"$a$", r"$p_0$", r"$e_0$"]
-# # run_list = np.arange(5)
-# # marker_list = ['o','s','^','D','P']
-# # for var in range(5):
-# #     for run_ind in run_list:
-# #         plt.scatter(list_cyc_precision[run_ind,-1], list_cyc_precision[run_ind,:-1][var], label=var_list[var], color=colors[run_ind], marker=marker_list[var],alpha=0.7)
-# # plt.yscale('log')
-# # plt.xlabel(r'$N_{\rm cycles}$', fontsize=20)
-# # plt.ylabel(r'$\sigma_\theta / \theta$', fontsize=20)
-# # # define custom legend with markers only
-# # legend_elements = [plt.Line2D([0], [0], marker='o', color='w', label=r'$M$', markerfacecolor='black', markersize=10),
-# #                    plt.Line2D([0], [0], marker='s', color='w', label=r'$\mu$', markerfacecolor='black', markersize=10),
-# #                    plt.Line2D([0], [0], marker='^', color='w', label=r'$a$', markerfacecolor='black', markersize=10),
-# #                    plt.Line2D([0], [0], marker='D', color='w', label=r'$p_0$', markerfacecolor='black', markersize=10),
-# #                    plt.Line2D([0], [0], marker='P', color='w', label=r'$e_0$', markerfacecolor='black', markersize=10)]
-# # # now add the labels of labs
-# # plt.legend(handles=legend_elements, loc='upper right')
-# # plt.tight_layout()
-# # plt.grid()
-# # plt.savefig('./figures/plot_precision_vs_Ncycles.pdf')
+ind = np.array([0,1,2,3,4,10,11,12])
+CORNER_KWARGS['truths'] = np.zeros(len(ind))
+CORNER_KWARGS['labels'] = list(np.asarray(CORNER_KWARGS['labels'])[ind])
+CORNER_KWARGS['labels'][-1] = r"$\sqrt{\alpha}\, {\rm [km]}$ "
+ind = np.array([0,1,2,3,4,10,11,13])
+overlaid_corner([el[:,ind] for el in list_chains], labs, './figures/plot_parameters_posteriors_sqrt_alpha', 
+                weights=[el[:,-1] for el in list_chains],
+                corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yrs}], N_{\rm cycles})$')
+# 

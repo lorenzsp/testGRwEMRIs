@@ -371,7 +371,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=6,  # may need this subset
+        subset=3,  # may need this subset
     )
 
     def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
