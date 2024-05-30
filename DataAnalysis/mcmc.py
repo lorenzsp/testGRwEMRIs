@@ -95,7 +95,7 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-10,
+    "err": 5e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": False,

@@ -1,6 +1,5 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python resampling.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 3 -nwalkers 26 -ntemps 1 -nsteps 1000 -outname MCMC -vacuum 0
-
+# python plot_spectrogram.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 7 -outname spectrogram -vacuum 0
 
 import argparse
 import os
@@ -19,12 +18,8 @@ parser.add_argument("-x0", "--x0", help="prograde orbits", default=1.0, required
 parser.add_argument("-charge", "--charge", help="Scalar Charge", required=True, type=float)
 parser.add_argument("-dev", "--dev", help="Cuda Device", required=False, type=int, default=0)
 parser.add_argument("-dt", "--dt", help="sampling interval delta t", required=False, type=float, default=10.0)
-parser.add_argument("-nwalkers", "--nwalkers", help="number of MCMC walkers", required=True, type=int)
-parser.add_argument("-ntemps", "--ntemps", help="number of MCMC temperatures", required=True, type=int)
-parser.add_argument("-nsteps", "--nsteps", help="number of MCMC iterations", required=False, type=int, default=1000)
 parser.add_argument("-SNR", "--SNR", help="SNR", required=False, type=float, default=50.0)
 parser.add_argument("-outname", "--outname", help="output name", required=False, type=str, default="MCMC")
-parser.add_argument("-zerolike", "--zerolike", help="zero likelihood test", required=False, type=int, default=0)
 parser.add_argument("-noise", "--noise", help="noise injection on=1, off=0", required=False, type=float, default=0.0)
 parser.add_argument("-vacuum", "--vacuum", help="mcmc in vacuum, vacuum=1 sampling with a vacuum template", required=False, type=int, default=0)
 parser.add_argument("-Tplunge", "--Tplunge", help="Time to plunge in years to set p0", required=False, type=float, default=2.0)
@@ -43,6 +38,11 @@ import matplotlib.pyplot as plt
 
 
 import numpy as np
+from scipy.constants import golden
+
+inv_golden = 1. / golden
+px = 2*0.0132
+
 
 from eryn.state import State
 from eryn.ensemble import EnsembleSampler
@@ -93,7 +93,7 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-10,
+    "err": 5e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": False,
@@ -113,9 +113,6 @@ def run_emri_pe(
     Tobs,
     dt,
     fp,
-    ntemps,
-    nwalkers,
-    nsteps,
     emri_kwargs={},
     vacuum=False,
     source_SNR=50.0,
@@ -312,138 +309,38 @@ def run_emri_pe(
     check_snr = snr([data_channels[0], data_channels[1]],**inner_kw)
     
     print("SNR",check_snr)
-    ############################## priors ########################################################
-    
-    delta = 0.01
-    
-    # priors
-    
-    if vacuum:
-        priors_in = {
-                0: uniform_dist(emri_injection_params_in[0]*(1-delta), emri_injection_params_in[0]*(1+delta)),  # ln M
-                1: uniform_dist(emri_injection_params_in[1]*(1-delta), emri_injection_params_in[1]*(1+delta)),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2]*(1-delta), emri_injection_params_in[2]*(1+delta)),  # a
-                3: uniform_dist(emri_injection_params_in[3]*(1-delta), emri_injection_params_in[3]*(1+delta)),  # p0
-                4: uniform_dist(emri_injection_params_in[4]*(1-delta), emri_injection_params_in[4]*(1+delta)),  # e0
-                5: powerlaw_dist(0.01,10.0),  # dist in Gpc
-                6: uniform_dist(-0.99999, 0.99999),  # qS
-                7: uniform_dist(0.0, 2 * np.pi),  # phiS
-                8: uniform_dist(-0.99999, 0.99999),  # qK
-                9: uniform_dist(0.0, 2 * np.pi),  # phiK
-                10: uniform_dist(0.0, np.pi),  # Phi_phi0
-                11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-            }
-    else:
-        priors_in = {
-                0: uniform_dist(emri_injection_params_in[0]*(1-delta), emri_injection_params_in[0]*(1+delta)),  # ln M
-                1: uniform_dist(emri_injection_params_in[1]*(1-delta), emri_injection_params_in[1]*(1+delta)),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2]*(1-delta), emri_injection_params_in[2]*(1+delta)),  # a
-                3: uniform_dist(emri_injection_params_in[3]*(1-delta), emri_injection_params_in[3]*(1+delta)),  # p0
-                4: uniform_dist(emri_injection_params_in[4]*(1-delta), emri_injection_params_in[4]*(1+delta)),  # e0
-                5: powerlaw_dist(0.01,10.0),  # dist in Gpc
-                6: uniform_dist(-0.99999, 0.99999),  # qS
-                7: uniform_dist(0.0, 2 * np.pi),  # phiS
-                8: uniform_dist(-0.99999, 0.99999),  # qK
-                9: uniform_dist(0.0, 2 * np.pi),  # phiK
-                10: uniform_dist(0.0, np.pi),  # Phi_phi0
-                11: uniform_dist(0.0, 2 * np.pi),  # Phi_r0
-                12: prior_charge,  # charge
-            }
-    
-    priors = {
-        "emri": ProbDistContainer(priors_in) 
-    }
+    ############################## plots ########################################################
+    spec, time_array, frequency_array = spectrogram(data_channels[0], fs=1/dt, window_size=5*256, step_size=64)
 
-    # sampler treats periodic variables by wrapping them properly
-    periodic = {
-        "emri": {7: 2 * np.pi, 9: 2 * np.pi, 10: np.pi, 11: 2 * np.pi}
-    }
-    
-    ############################## likelihood ########################################################
-    # this is a parent likelihood class that manages the parameter transforms
-    like = Likelihood(
-        wave_gen,
-        2,  # channels (A,E)
-        dt=dt,
-        parameter_transforms={"emri": transform_fn},
-        use_gpu=use_gpu,
-        vectorized=False,
-        transpose_params=False,
-        subset=32,  # may need this subset
-    )
+    plt.rcParams.update({
+    "text.usetex": True,
+    "pgf.texsystem": 'pdflatex',
+    "pgf.rcfonts": False,
+    "font.family": "serif",
+    "figure.figsize": [246.0*px, inv_golden * 246.0*px],
+    'legend.fontsize': 12,
+    'xtick.labelsize': 18,
+    'ytick.labelsize': 18,
+    'legend.title_fontsize' : 12,
+    })
+    # Plot spectrogram
+    plt.figure()
+    plt.imshow(np.log10(spec), aspect='auto', origin='lower', cmap='inferno')
+    cbar = plt.colorbar()#orientation='horizontal')
+    cbar.set_label(label='$\log_{10}$Power',size=18)
+    # cbar.ax.set_position([0.5, 0.01, 0.5, 0.025])
+    plt.xlabel('Time [days]', fontsize=22)
+    plt.ylabel('Frequency [Hz]', fontsize=22)
+    newt = np.arange(0, time_array.max() / 3600 / 24, 100, dtype=int)
+    xtick_loc = np.interp(newt, time_array / 3600 / 24, np.arange(len(time_array)))
+    plt.xticks(xtick_loc, newt)
+    newf = np.arange(0., 0.05, 0.01)
+    ytick_loc = np.interp(newf, np.abs(frequency_array), np.arange(len(frequency_array)))
+    plt.yticks(ytick_loc, newf)
+    plt.ylim(0,np.interp(0.03, np.abs(frequency_array), np.arange(len(frequency_array))))
+    plt.tight_layout()
+    plt.savefig(fp+'.pdf')
 
-    def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
-        freqs = xp.fft.fftfreq(N, dt)
-        df_full = xp.diff(freqs)[0]
-        freqs[0] = freqs[1]
-        psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
-        # psd = [get_sensitivity_stas(freqs.get(),sens_fn=sens_fn), get_sensitivity_stas(freqs.get(),sens_fn=sens_fn)]
-        # psd = [xp.asarray(psd_temp) for psd_temp in psd]
-        
-        # normalize by the factors:
-        # 1/dt because when you take the FFT of the noise in time domain
-        # 1/sqrt(4 df) because of the noise is sqrt(S / 4 df)
-        noise_to_add_FD = [xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) for psd_temp in psd]
-        if sym:
-            for ii in range(2):
-                noise_to_add_FD[ii][freqs<0.0] = noise_to_add_FD[ii][freqs>0.0][::-1].conj()
-        # noise_to_add = [xp.fft.ifft(xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0]))+ 1j * xp.random.normal(0, psd_temp ** (1 / 2), len(psd[0])) ).real for psd_temp in psd]
-        noise_to_add = [xp.fft.ifft(el).real for el in noise_to_add_FD]
-        return [noise/(dt*np.sqrt(2*df_full)) * noise_to_add[0], noise/(dt*np.sqrt(2*df_full)) * noise_to_add[1]]
-
-    full_noise = get_noise_injection(len_tot,dt)
-    print("check nosie value",full_noise[0][0],full_noise[1][0])
-    print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
-    print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
-    
-    nchannels = 2
-    
-    like.inject_signal(
-        data_stream=[data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]],
-        noise_fn=get_sensitivity,
-        noise_kwargs=[{"sens_fn": "lisasens"} for _ in range(nchannels)],
-        noise_args=[[] for _ in range(nchannels)],
-    )
-
-    ndim = 13
-    if vacuum:
-        ndim = 12
-    print('Sampling in ',ndim,' dimensions')
-
-    #####################################################################
-    file  = HDFBackend(fp)
-    burn = int(file.iteration*0.25)
-    thin = 1
-    
-    # get samples
-    toplot = file.get_chain(discard=burn, thin=thin)['emri'][:,0][file.get_inds(discard=burn, thin=thin)['emri'][:,0]]
-    ll = file.get_log_like(discard=burn, thin=thin)[:,0].flatten()
-    Nresamp = toplot.shape[0]
-    weights = np.exp(like(toplot[:Nresamp],**emri_kwargs)-ll[:Nresamp])
-    
-    CORNER_KWARGS = dict(
-        # labels=labels,
-        bins=40,
-        truths=emri_injection_params_in,
-        label_kwargs=dict(fontsize=35),
-        levels=(1 - np.exp(-0.5), 1 - np.exp(-2), 1 - np.exp(-9 / 2.)),
-        plot_density=False,
-        plot_datapoints=False,
-        fill_contours=False,
-        show_titles=False,
-        max_n_ticks=3,
-        truth_color='k',
-        labelpad=0.3,
-    )
-    overlaid_corner([toplot, toplot[:Nresamp]],['no resamp', 'resamp'], weights=[np.ones(len(toplot)), weights], name_save=fp[:-3] + '_resampling', corn_kw=CORNER_KWARGS)
-    np.save(fp[:-3] + '_resampling_weights.npy', weights)
-    np.save(fp[:-3] + '_resampling_toplot.npy', toplot[:Nresamp])
-    np.save(fp[:-3] + '_resampling_ll.npy', ll[:Nresamp])
-    
-    neff = Nresamp/(1+(np.std(weights)/np.mean(weights))**2)
-    print("mean, std of weights",np.mean(weights),np.std(weights))
-    print("effective sample size, efficiency",neff, neff/Nresamp)
-    
     return
 
 if __name__ == "__main__":
@@ -479,9 +376,6 @@ if __name__ == "__main__":
     dt = args["dt"]  # seconds
     source_SNR = args["SNR"]
 
-    ntemps = args["ntemps"]
-    nwalkers = args["nwalkers"]
-
     traj = EMRIInspiral(func=func)
     # fix p0 given T
     p0 = get_p_at_t(
@@ -499,23 +393,21 @@ if __name__ == "__main__":
     toc = time.time()
     print("traj timing",toc - tic)
 
-    
-    # name of the folder to store the plots
-    folder = "./paper_runs/"
-    
-    if bool(args['zerolike']):
-        folder + "zerolike_"
-    
-    if vacuum:
-        fp = folder + args["outname"] + f"_noise{args['noise']}_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}_vacuum.h5"
-    else:
-        fp = folder + args["outname"] + f"_noise{args['noise']}_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}_seed{SEED}_nw{nwalkers}_nt{ntemps}.h5"
-
-    print('---------------------------------------')
-    print(fp)
     tvec, p_tmp, e_tmp, x_tmp, Phi_phi_tmp, Phi_theta_tmp, Phi_r_tmp = traj(M, mu, a, p0, e0, x0, charge*charge/4,T=10.0,err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])
     print("len", len(tvec))
-
+    fig, axes = plt.subplots(2, 3)
+    plt.subplots_adjust(wspace=0.3)
+    fig.set_size_inches(14, 8)
+    axes = axes.ravel()
+    ylabels = [r'$e$', r'$p$', r'$e$', r'$\Phi_\phi$', r'$\Phi_r$', r'Flux']
+    xlabels = [r'$p$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$', r'$t$']
+    ys = [e_tmp, p_tmp, e_tmp, Phi_phi_tmp, Phi_r_tmp]
+    xs = [p_tmp, tvec, tvec, tvec, tvec]
+    for i, (ax, x, y, xlab, ylab) in enumerate(zip(axes, xs, ys, xlabels, ylabels)):
+        ax.plot(x, y)
+        ax.set_xlabel(xlab, fontsize=16)
+        ax.set_ylabel(ylab, fontsize=16)
+    plt.savefig("trajectory.pdf")
     # print number of cycles
     freq_sep = get_fundamental_frequencies(a,p_tmp[-1], e_tmp[-1],1.0)[0]/(2*np.pi*MTSUN_SI*M)
     print("number of cycles", Phi_phi_tmp[-1]/(2*np.pi))
@@ -545,17 +437,14 @@ if __name__ == "__main__":
         "mich": True
     }
 
+    
     run_emri_pe(
         emri_injection_params, 
         Tobs,
         dt,
-        fp,
-        ntemps,
-        nwalkers,
-        args['nsteps'],
+        args['outname']+f'_M{M:.2}_mu{mu:.2}_a{a:.2}_p{p0:.2}_e{e0:.2}_x{x0:.2}_charge{charge}_SNR{source_SNR}_T{Tobs}',
         emri_kwargs=waveform_kwargs,
         vacuum=vacuum,
         source_SNR=source_SNR,
-        zero_like=bool(args['zerolike']),
         noise=args['noise']
     )

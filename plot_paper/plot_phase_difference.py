@@ -93,7 +93,7 @@ for err, simb, color in zip(err_vec, simbols, colors):
 plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k--', label=rf'$\propto d^2$')
 plt.legend(ncol=2)
 plt.xlabel(r'Scalar charge $d$', fontsize=20)
-plt.ylabel(r'Phase difference $\Delta \Phi_\varphi$', fontsize=20)
+plt.ylabel(r'Phase difference $\Delta \Phi_\phi$', fontsize=20)
 plt.ylim(1e-9,1.0)
 plt.tight_layout()
 plt.savefig('./figures/phase_difference.pdf')

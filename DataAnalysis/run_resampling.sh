@@ -1,4 +1,6 @@
 #!/bin/bash
+# print process id
+echo $$
 # nohup bash run_resampling.sh > out.out &
 # Assign variables to each parameter
 Tobs=2.0

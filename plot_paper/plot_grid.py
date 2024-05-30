@@ -38,7 +38,7 @@ plt.rcParams.update({
     "pgf.rcfonts": False,
     "font.family": "serif",
     "figure.figsize": [246.0*px, inv_golden * 246.0*px],
-    'legend.fontsize': 12,
+    'legend.fontsize': 11,
     'xtick.labelsize': 18,
     'ytick.labelsize': 18,
     'legend.title_fontsize' : 12,
@@ -90,7 +90,7 @@ t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4,
 
 # Plot the first trajectory
 
-plt.plot(p, e, '--', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, '--', label=fr"$M=${M/1e6}$\times 10^6 \, M_\odot$" + fr', $\mu=$ {int(mu)} $M_\odot$', lw=3.0)
 
 # Set the parameters for the second plot
 M = 1e6
@@ -100,7 +100,7 @@ p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatr
 t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
 # Plot the second trajectory
-plt.plot(p, e, '-.', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, '-.', label=fr"$M=${M/1e6}$\times 10^6 \, M_\odot$" + fr', $\mu=$ {int(mu)} $M_\odot$', lw=3.0)
 
 # Set the parameters for the third plot
 M = 1e6
@@ -110,7 +110,7 @@ p0 = get_p_at_t(traj, 2.0 * 0.999, [M, mu, a, e0, x0, 0.0], bounds=[get_separatr
 t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4, T=3.0, dt=10.0)
 
 # Plot the third trajectory
-plt.plot(p, e, ':', label=fr"$M=${M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, ':', label=fr"$M=${M/1e6}$\times 10^6 \, M_\odot$" + fr', $\mu=$ {int(mu)} $M_\odot$', lw=3.0)
 
 
 # Set the parameters for the third plot
@@ -122,7 +122,7 @@ t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, 1.0, charge**2/4,
 
  
 # Plot the third trajectory
-plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"M={M/1e6}$\times 10^6$" + fr', $\mu=$ {int(mu)}', lw=3.0)
+plt.plot(p, e, linestyle=(0, (3, 1, 1, 1, 3)), label=fr"$M=${M/1e6}$\times 10^6 \, M_\odot$" + fr', $\mu=$ {int(mu)} $M_\odot$', lw=3.0)
 
 # Set the labels and title of the plot
 plt.xlabel('p',fontsize=20)
