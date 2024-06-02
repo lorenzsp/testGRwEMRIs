@@ -371,7 +371,7 @@ def run_emri_pe(
         use_gpu=use_gpu,
         vectorized=False,
         transpose_params=False,
-        subset=6,  # may need this subset
+        subset=3,  # may need this subset
     )
 
     def get_noise_injection(N, dt, sens_fn="lisasens",sym=False):
@@ -730,7 +730,7 @@ if __name__ == "__main__":
         Tplunge * 0.999,
         [M, mu, a, e0, x0, 0.0],
         bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
-        traj_kwargs={"dt":dt},
+        traj_kwargs={"dt":dt,"err":1e-10},
         
     )
     print("new p0 fixed by Tobs, p0=", p0)

@@ -21,15 +21,15 @@ outname=MCMC
 # output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
 # # Execute the Python command and redirect output to the dynamic filename
-# nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
+# nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise -Tplunge 10.0 > $output_filename &
 # # ---------------------------------------------------------
-dev=1
-mu=3.6
-# Create a dynamic output filename
-output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
+# dev=1
+# mu=3.6
+# # Create a dynamic output filename
+# output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
-# Execute the Python command and redirect output to the dynamic filename
-nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
+# # Execute the Python command and redirect output to the dynamic filename
+# nohup python mcmc.py -SNR 11.0 -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
 # mu=10.0
 # ---------------------------------------------------------
 # dev=2
@@ -83,28 +83,28 @@ nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0
 # # Execute the Python command and redirect output to the dynamic filename
 # nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
 
-# # ---------------------------------------------------------
-# Tobs=1.0
-# dt=2.5
-# M=1e5
-# mu=5
-# a=0.95
-# p0=13.0
-# e0=0.4
-# x0=1.0
-# charge=0.0
-# nwalkers=26
-# ntemps=1
-# nsteps=500000
-# noise=0.0
-# outname=MCMC
+# ---------------------------------------------------------
+Tobs=4.0
+dt=10.0
+M=5e5
+mu=3.6
+a=0.95
+p0=11.0
+e0=0.4
+x0=1.0
+charge=0.0
+nwalkers=26
+ntemps=1
+nsteps=50000
+noise=0.0
+outname=MCMC
 
-# dev=7
-# # Create a dynamic output filename
-# output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
+dev=0
+# Create a dynamic output filename
+output_filename="output_Tobs${Tobs}_dt${dt}_M${M}_mu${mu}_a${a}_p0${p0}_e0${e0}_x0${x0}_charge${charge}_dev${dev}_nwalkers${nwalkers}_ntemps${ntemps}_nsteps${nsteps}.txt"
 
-# # Execute the Python command and redirect output to the dynamic filename
-# nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise -Tplunge 1.0 > $output_filename &
+# Execute the Python command and redirect output to the dynamic filename
+nohup python mcmc.py -SNR 11.0 -Tobs $Tobs -Tplunge $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
 # ----------------------- Vacuum ----------------------------------
 # Tobs=2.0
 # dt=10

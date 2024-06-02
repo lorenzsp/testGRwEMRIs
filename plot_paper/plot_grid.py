@@ -134,3 +134,4 @@ plt.ylim(-0.05,0.75)
 # Save and show the plot
 plt.savefig('./figures/plot_grid.pdf')
 # plt.show()
+breakpoint()

@@ -46,7 +46,7 @@ x0 = 1.0
 
 
 def get_t_dphi_dom(err,charge):
-    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=1e-10, use_rk4=use_rk4)
+    t, p, e, x, Phi_phi, Phi_theta, Phi_r = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0, err=1e-11, use_rk4=use_rk4)
     omPhi, omTh, omR = get_fundamental_frequencies(a,p,e,x)
     interp = CubicSplineInterpolant(t, np.vstack((Phi_phi,omPhi)) )
                 
@@ -76,9 +76,9 @@ def get_t_dphi_dom_fixed_err(err,charge):
     return np.vstack((new_t[None,:], diff))
 
 
-charge_vec=10**np.linspace(-10,-3,num=10)
+charge_vec=10**np.linspace(-9,-2,num=20)
 # err_vec = [1e-13, 1e-12, 1e-11, 1e-10, 1e-9]
-err_vec = [ 1e-5, 1e-6, 1e-7, 1e-8, 1e-9]#, 1e-12, 1e-13,]
+err_vec = [ 1e-6, 1e-8, 1e-10]#, 1e-12, 1e-13,]
 simbols = ['-o',  '-x',  '-^',  '-d',  '-*', '-+']
 colors = plt.cm.tab10.colors
 
@@ -91,10 +91,10 @@ for err, simb, color in zip(err_vec, simbols, colors):
     
     plt.loglog(charge_vec, np.abs(deph), simb, label=rf'error=$10^{{{int(np.log10(err))}}}$, N={Npoints}')
 plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k--', label=rf'$\propto d^2$')
-plt.legend(ncol=2)
+plt.legend(ncol=1,loc='upper left')
 plt.xlabel(r'Scalar charge $d$', fontsize=20)
 plt.ylabel(r'Phase difference $\Delta \Phi_\phi$', fontsize=20)
-plt.ylim(1e-9,1.0)
+# plt.ylim(1e-9,1.0)
 plt.tight_layout()
 plt.savefig('./figures/phase_difference.pdf')
 
