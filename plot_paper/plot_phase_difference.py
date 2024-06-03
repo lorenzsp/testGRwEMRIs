@@ -34,7 +34,7 @@ print(os.getpid())
 traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 use_rk4=False
 
-grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/grav_Edot_Ldot/data_total.dat")
 
 # reference system
 M = 1e6
@@ -76,7 +76,7 @@ def get_t_dphi_dom_fixed_err(err,charge):
     return np.vstack((new_t[None,:], diff))
 
 
-charge_vec=10**np.linspace(-9,-2,num=20)
+charge_vec=10**np.linspace(-9,-4,num=20)
 # err_vec = [1e-13, 1e-12, 1e-11, 1e-10, 1e-9]
 err_vec = [ 1e-6, 1e-8, 1e-10]#, 1e-12, 1e-13,]
 simbols = ['-o',  '-x',  '-^',  '-d',  '-*', '-+']
@@ -90,7 +90,9 @@ for err, simb, color in zip(err_vec, simbols, colors):
     deph = np.asarray([el[-1] for el in deph ])
     
     plt.loglog(charge_vec, np.abs(deph), simb, label=rf'error=$10^{{{int(np.log10(err))}}}$, N={Npoints}')
-plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k--', label=rf'$\propto d^2$')
+
+charge_vec = charge_vec[charge_vec>1e-7]
+plt.loglog(charge_vec, charge_vec**2 * deph[-1]/charge_vec[-1]**2 , 'k:', label=rf'$\propto d^2$')
 plt.legend(ncol=1,loc='upper left')
 plt.xlabel(r'Scalar charge $d$', fontsize=20)
 plt.ylabel(r'Phase difference $\Delta \Phi_\phi$', fontsize=20)

@@ -309,6 +309,8 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
         ax.axvline(charge_quantiles[0], ls='--', lw=2)
         ax.axvline(0.025, ls=':', lw=2, label='Injected scalar charge')
         ax.axvline(charge_quantiles[2], ls='--', lw=2, label='95\% credible interval')
+        
+        ax.axvline(0.035, ls='-', color='orange', lw=2, label='Upper bound GW230529')
         print(charge_quantiles)
         plt.xlabel(r'Scalar charge $d$',fontsize=18)
         plt.ylabel('Marginalized posterior',fontsize=18)

@@ -45,7 +45,7 @@ plt.rcParams.update({
 })
 
 # Load the grid data
-grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/grav_Edot_Ldot/data_total.dat")
 
 def find_closest_value_indices(array, target_value):
     """

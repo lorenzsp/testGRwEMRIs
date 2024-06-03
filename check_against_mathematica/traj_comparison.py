@@ -40,7 +40,7 @@ import time, os
 print(os.getpid())
 
 
-grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/final_grid/data_total.dat")
+grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/grav_Edot_Ldot/data_total.dat")
 
 # diff = np.abs(grid[:,2] - get_separatrix(np.abs(grid[:,0]),grid[:,2]+1e-16,np.sign(grid[:,0])*1.0))
 # plt.figure(); plt.semilogy(diff); plt.savefig('diff')
