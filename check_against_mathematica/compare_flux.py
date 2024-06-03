@@ -40,14 +40,16 @@ a, p, e, xi, E, Lz, Q, pLSO, EdotInf_tot, EdotH_tot, LzdotInf_tot, LzdotH_tot, Q
 target_p, target_e = 10.0, 0.4
 
 # Calculate the Euclidean distance between each point and the target point
-distances = np.sqrt((p - target_p)**2 + (e - target_e)**2)
+distances = np.sqrt((1-p/target_p)**2 + (1-e/target_e)**2)
 
 # Get the index of the closest point
 index = np.argmin(distances)
 
 # Get the closest point
 closest_p, closest_e = p[index], e[index]
-scott_flux = EdotInf_tot[index]+EdotH_tot[index]
-our_flux = np.abs(get_Edot(1e6,10,spin,closest_p, closest_e,1.0,0.0))
-print(closest_p, closest_e, np.abs(1-scott_flux/our_flux))
+scott_flux = (EdotInf_tot[index]+EdotH_tot[index]) * closest_p**5 * 5/32
+our_flux = np.abs(get_Edot(1e6,10,spin,closest_p, closest_e,1.0,0.0)) * closest_p**5 * 5/32
+print("p,e, p^5 Edot 5/32 relative error, absolute error\n",closest_p, closest_e, np.abs(1-scott_flux/our_flux),scott_flux-our_flux)
+print("absolute error on fluxes",np.abs(our_flux-scott_flux)/(closest_p**5 * 5/32))
+
 # fid in p,e close to some values in the check file
