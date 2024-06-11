@@ -86,8 +86,8 @@ class ModuleTest(unittest.TestCase):
         traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
 
         # set initial parameters
-        M = 1e6
-        mu = 5e1
+        M = 1e4
+        mu = 1.
         p0 = 12.0
         e0 = 0.1
         a=-0.987
@@ -100,9 +100,9 @@ class ModuleTest(unittest.TestCase):
         elapsed_time = []
         elapsed_time_rk8 = []
         err = 1e-10
-        for i in range(10):
+        for i in range(100):
             # beginning E =0.875343   L=2.36959       Q=0
-            p0 = np.random.uniform(9.5,17.0)
+            p0 = np.random.uniform(9.5,30.0)
             e0 = np.random.uniform(0.1, 0.45)
             a = np.random.uniform(-0.99, 0.99)
             print('-----------------------------------------------')

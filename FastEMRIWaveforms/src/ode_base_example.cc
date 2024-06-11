@@ -482,18 +482,18 @@ __deriv__ void KerrEccentricEquatorialAPEX::deriv_func(double ydot[], const doub
 
     
     // needs adjustment for validity
-    if (e > 1e-8)
-    {
+    // if (e > 1e-8)
+    // {
         // the scalar flux is d^2 /4
         pdot = epsilon * pdot_out;
         edot = epsilon * edot_out;
-    }
-    else{
+    // }
+    // else{
         
-        edot = 0.0;
-        pdot = epsilon * pdot_out;
-        // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
-    }
+    //     edot = 0.0;
+    //     pdot = epsilon * pdot_out;
+    //     // cout << "end" << " a =" << a  << "\t" << "p=" <<  p << "\t" << "e=" << e <<  "\t" << "x=" << x << "\t" << r << " plso =" <<  p_sep << endl;
+    // }
 
     xdot = 0.0;
     

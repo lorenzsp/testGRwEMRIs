@@ -120,7 +120,7 @@ from scipy.stats import gaussian_kde
 
 init_name = '../DataAnalysis/paper_runs/MCMC*'
 datasets = [
-# '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.9e+01_e0.4_x1.0_charge0.0_SNR50.0_T1.0_seed2601_nw26_nt1.h5',
+# '../DataAnalysis/results/MCMC_noise0.0_M3.6e+04_mu3.6_a0.95_p2.5e+01_e0.4_x1.0_charge0.0_SNR11.0_T0.5_seed2601_nw26_nt1.h5',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1.h5',
 '../DataAnalysis/results/MCMC_noise0.0_M5e+05_mu3.6_a0.95_p9.2_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
@@ -135,7 +135,7 @@ datasets = [
 ]
 
 pars_inj =[
-# '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.9e+01_e0.4_x1.0_charge0.0_SNR50.0_T1.0_seed2601_nw26_nt1_injected_pars.npy',
+# '../DataAnalysis/results/MCMC_noise0.0_M3.6e+04_mu3.6_a0.95_p2.5e+01_e0.4_x1.0_charge0.0_SNR11.0_T0.5_seed2601_nw26_nt1_injected_pars.npy',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.0_SNR50.0_T0.5_seed2601_nw26_nt1_injected_pars.npy',
 '../DataAnalysis/results/MCMC_noise0.0_M5e+05_mu3.6_a0.95_p9.2_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
 '../DataAnalysis/paper_runs/MCMC_noise0.0_M5e+05_mu5.0_a0.95_p1e+01_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
@@ -159,7 +159,7 @@ colors = sns.color_palette('colorblind')
 #                   '#999999', '#e41a1c', '#dede00']
 # colors = [cmap(i) for i in range(len(datasets))]
 
-fig, axs = plt.subplots(1, 2, figsize=(default_width*2, default_width * default_ratio))
+fig, axs = plt.subplots(1, 1, figsize=(default_width*1.2, default_width * default_ratio))
 plt.subplots_adjust(wspace=0.05)
 
 ii = 0
@@ -182,9 +182,9 @@ for filename,el in zip(datasets, pars_inj):
     hist,bin_edges = np.histogram(charge, bins=np.linspace(0.0,0.04,num=30), weights=w_charge, density=True)
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs[0].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8,label=label)
-    axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
-    axs[0].set_xlabel(r'Scalar charge $d$', size=22)
+    axs.bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8,label=label)
+    axs.vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
+    axs.set_xlabel(r'Scalar charge $d$', size=18)
 
     # sqrt alpha 
     sqrt_alpha = 2*mu*MRSUN_SI/1e3*Lambda**(1/4)
@@ -194,22 +194,75 @@ for filename,el in zip(datasets, pars_inj):
     hist,bin_edges = np.histogram(sqrt_alpha, bins=np.linspace(0.1,4.1,num=40), weights=w_sqrta, density=True)
     hist = hist/hist.max()/2
     bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
-    axs[1].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8)
-    axs[1].vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
-    axs[1].set_xlabel(r'ESGB constant $\sqrt{\alpha}  [{\rm km}]$',size=22)
     # remove yticks
-    axs[0].set_yticks([])
-    axs[1].set_yticks([])
+    axs.set_yticks([])
     ii+=1
 
 # add y ticks, centered at given values
-axs[0].set_yticks(np.arange(0,ii,1)+0.2, np.arange(0,ii,1)+1)
+axs.set_yticks(np.arange(0,ii,1)+0.2, np.arange(0,ii,1)+1)
 
-axs[1].axvline(0.26 * np.sqrt(16*np.pi**0.5), color='k',linestyle=':',label='GW230529')
-axs[0].axvline(-0.01, color='k',linestyle=':',label='GW230529')
-axs[0].set_xlim(0.0,0.035)
-axs[1].set_xlim(0.0,4.1)
-axs[0].legend(bbox_to_anchor=(0.05, 1.45), ncols=3, loc='upper left',
+# axs.axvline(-0.01, color='k',linestyle=':',label='GW230529')
+axs.set_xlim(0.0,0.035)
+axs.legend(bbox_to_anchor=(0.0, 1.6), ncols=2, loc='upper left',
               title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0,T [{\rm yrs}])$',
               )
+plt.savefig('figures/bound_charge.pdf', bbox_inches='tight')
+
+#--------------------------------------------------------
+fig, axs = plt.subplots(1, 1, figsize=(default_width*1.2, default_width * default_ratio))
+plt.subplots_adjust(wspace=0.05)
+
+ii = 0
+for filename,el in zip(datasets, pars_inj):
+    label, toplot, truths = get_labels_chains(el)
+
+    Lambda = toplot[:,-1]
+    mask = (Lambda>0.0)
+    toplot = toplot[mask]
+    Lambda = Lambda[mask]
+    mu = np.exp(toplot[:,1])
+    
+    quantiles = [0.68, 0.95]
+    
+    # charge
+    charge = np.sqrt(4 * Lambda)
+    w_charge = 1 / np.sqrt(Lambda)
+    ci_charge = weighted_quantile(charge, quantiles, sample_weight=w_charge)
+    
+    hist,bin_edges = np.histogram(charge, bins=np.linspace(0.0,0.04,num=30), weights=w_charge, density=True)
+    hist = hist/hist.max()/2
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    # axs[0].bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8,label=label)
+    # axs[0].vlines(ci_charge[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
+    # axs[0].set_xlabel(r'Scalar charge $d$', size=22)
+
+    # sqrt alpha 
+    sqrt_alpha = 2*mu*MRSUN_SI/1e3*Lambda**(1/4)
+    w_sqrta = mu * Lambda**(-3/4) * 0.5
+    ci_sqrta = weighted_quantile(sqrt_alpha, quantiles, sample_weight=w_sqrta)
+    
+    hist,bin_edges = np.histogram(sqrt_alpha, bins=np.linspace(0.1,4.1,num=40), weights=w_sqrta, density=True)
+    hist = hist/hist.max()/2
+    bin_centers = 0.5 * (bin_edges[:-1] + bin_edges[1:])
+    axs.bar(bin_centers, hist, width=bin_edges[1] - bin_edges[0], bottom=ii, color=colors[ii], alpha=0.8)
+    axs.vlines(ci_sqrta[1], ii, ii+hist.max(), color=colors[ii], linestyle='--')
+    axs.set_xlabel(r'GB coupling constant $\sqrt{\alpha}  [{\rm km}]$',size=18)
+    # remove yticks
+    axs.set_yticks([])
+    ii+=1
+
+axs.set_yticks(np.arange(0,ii,1)+0.2, np.arange(0,ii,1)+1)
+
+# add y ticks, centered at given values
+axs.text(0.26 * np.sqrt(16*np.pi**0.5)-0.4, 8.25, 'GW230529', fontsize=14)
+axs.axvline(0.26 * np.sqrt(16*np.pi**0.5), color='k',linestyle=':',label='GW230529')
+
+axs.text(0.4 * np.sqrt(16*np.pi**0.5)-0.3, 8.25, 'LVK Voyager', fontsize=14)
+axs.axvline(0.4 * np.sqrt(16*np.pi**0.5), color='k',linestyle='-',label='LVK Voyager')
+# axs.xaxis.tick_top()
+axs.set_xlim(0.0,4.1)
+# axs.grid(axis='x')
+# axs[0].legend(bbox_to_anchor=(0.05, 1.45), ncols=3, loc='upper left',
+#               title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0,T [{\rm yrs}])$',
+#               )
 plt.savefig('figures/bound_charge_alpha.pdf', bbox_inches='tight')

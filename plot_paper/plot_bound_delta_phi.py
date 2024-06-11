@@ -349,7 +349,7 @@ from matplotlib.ticker import LogLocator
 delta_phi_list = np.asarray(delta_phi_list)
 # create two subplots one for the beta and one for PN order
 fig, axs = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio*2.0))
-axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], np.quantile(delta_phi_list[-1],0.95,axis=0),'o',label='EMRI vacuum mapping',alpha=0.5,ms=10)
+axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], np.quantile(delta_phi_list[-1],0.95,axis=0),'o',label='EMRI GR mapping',alpha=0.5,ms=10)
 run_constraints = np.quantile(delta_phi_list[:-1,:,0],0.95,axis=1)
 axs.semilogy(["-1"], run_constraints[4],'P',label='EMRI scalar charge',alpha=0.5,ms=10)
 
@@ -363,15 +363,16 @@ axs.grid(axis='y')
 # axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], dphi_lvk,'*',label='LVK')
 axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [2e-5, 3e-1, 7e-2, 1e-1, 0.25, 3],'v',label='GW170817',alpha=0.5,ms=10)
 axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [8e-5, 5.0, 0.2, 0.2, 0.3, 3],'^',label='GW230529',alpha=0.5,ms=10)
-axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [7e-3, 6e-1, 1.5e-1, 1e-1, 8e-1, 0.4],'D',label='GWTC-3',alpha=0.5,ms=10)
+axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [7e-3, 6e-2, 1.5e-1, 1e-1, 7e-2, 0.4],'D',label='GWTC-3',alpha=0.5,ms=10)
+axs.semilogy(["-1", "0", "0.5", "1", "1.5", "2"], [5.5e-7, 0.230612, 0.0161558, 0.166536, 0.127024, 0.845096],'p',label='Forecast ET GW230529',alpha=0.5,ms=10)
 
-
+# {{-1, 5.54476*10^-7}, {-(1/2), 0.0000212187}, {0, 0.230612}, {1/2, 0.0161558}, {1, 0.166536}, {3/2, 0.127024}, {2, 0.845096}}
 # pulsar bounds # # https://journals.aps.org/prx/pdf/10.1103/PhysRevX.11.041050
 beta2 = 4e-6
 Pdot_precision = 1.3e-4
 boundB_prx_dpsr = 4e-10 # 95% quoted in the paper, 
 # if we divide by two we obtain one sigma
-B = np.random.normal(0,boundB_prx_dpsr / 2,size=10000) 
+B = np.random.normal(0,boundB_prx_dpsr / 2,size=10000)
 beta_dp, dphi_dp = get_beta_dphi_from_B(B, -1, 1.33818, 1.24886, 0.0)
 axs.semilogy(["-1", "0", "0.5", "1"], [np.quantile(dphi_dp,0.95), 0.8e-4, 0.8, 10.0],'*',label='Double pulsar J0737–3039',alpha=0.5,ms=15)
 axs.set_ylim(0.5e-11,30)

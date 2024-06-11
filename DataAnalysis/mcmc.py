@@ -1,14 +1,15 @@
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python mcmc.py -Tobs 2 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0025 -dev 7 -nwalkers 26 -ntemps 1 -nsteps 1000 -outname test -vacuum 0
+# python mcmc.py -Tobs 0.5 -Tplunge 0.5 -dt 0.7 -M 3.6e4 -mu 3.6 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 26 -ntemps 1 -nsteps 1000 -outname test -vacuum 0
 # test with zero likelihood
 # python mcmc.py -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -charge 0.0 -dev 7 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 
 
 import argparse
 import os
+print("PID:",os.getpid())
 os.environ["OMP_NUM_THREADS"] = str(2)
 os.system("OMP_NUM_THREADS=2")
-print("PID:",os.getpid())
 import time
 parser = argparse.ArgumentParser(description="MCMC of EMRI source")
 parser.add_argument("-Tobs", "--Tobs", help="Observation Time in years", required=True, type=float)
@@ -95,7 +96,7 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 5e-10,
+    "err": 1e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": False,
@@ -725,21 +726,53 @@ if __name__ == "__main__":
 
     traj = EMRIInspiral(func=func)
     # fix p0 given T
-    p0 = get_p_at_t(
-        traj,
-        Tplunge * 0.999,
-        [M, mu, a, e0, x0, 0.0],
-        bounds=[get_separatrix(a,e0,x0)+0.1, 30.0],
-        traj_kwargs={"dt":dt,"err":1e-10},
+    # p0 = get_p_at_t(
+    #     traj,
+    #     Tplunge * 0.999,
+    #     [M, mu, a, e0, x0, 0.0],
+    #     bounds=[get_separatrix(a,e0,x0)+0.1, 100.0],
+    #     traj_kwargs={"dt":dt,"err":insp_kwargs['err']},
         
-    )
+    # )
+    v = np.abs(get_fundamental_frequencies(a,p0, e0, x0)[0])**(1/3)
     print("new p0 fixed by Tobs, p0=", p0)
+    print("new v fixed by Tobs, v=", v)
+    
     tic = time.time()
-    tvec = traj(M, mu, a, p0, e0, x0, charge*charge/4.,T=10.0)[0]/YRSID_SI
+    tvec = traj(M, mu, a, p0, e0, x0, charge*charge/4.,T=10.0,err=insp_kwargs['err'])[0]/YRSID_SI
     print("finalt ",tvec[-1],len(tvec))
     toc = time.time()
     print("traj timing",toc - tic)
+    
+    # Load the grid data
+    grid = np.loadtxt("../mathematica_notebooks_fluxes_to_Cpp/grav_Edot_Ldot/data_total.dat")
 
+    def find_closest_value_indices(array, target_value):
+        """
+        Find the indices where the values in the array are closest to the target value.
+
+        Parameters:
+        - array: NumPy array
+        - target_value: The value to which you want to find the closest indices
+
+        Returns:
+        - indices: Indices where the values are closest to the target value
+        """
+        # Calculate the absolute differences between array values and the target value
+        absolute_diff = np.abs(array - target_value)
+
+        # Find the index with the minimum absolute difference
+        closest_index = np.argmin(absolute_diff)
+
+        return closest_index
+
+    # Set the parameters for the trajectory
+
+    # Find the closest value indices in the grid
+    ind = find_closest_value_indices(grid[:,0], x0*a)
+    mask = (grid[:,0] == grid[ind,0])
+    print("max", np.max(grid[:,1][mask]))
+    breakpoint()
     
     # name of the folder to store the plots
     folder = "./results/"

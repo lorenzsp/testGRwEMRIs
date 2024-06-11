@@ -79,7 +79,7 @@ class PowerLawDistribution(object):
         return deepcopy(self)
 
 
-def powerlaw_dist(min, max, alpha=-2, use_cupy=False):
+def powerlaw_dist(min, max, alpha=2, use_cupy=False):
     """Generate uniform distribution between ``min`` and ``max``
 
     Args:

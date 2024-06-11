@@ -10,6 +10,7 @@ from few.trajectory.inspiral import EMRIInspiral
 import matplotlib as mpl
 import re
 import sys
+import seaborn as sns
 sys.path.append('../DataAnalysis/')
 # import matplotlib.style as style
 # style.use('tableau-colorblind10')
@@ -61,12 +62,12 @@ def get_Ncycles_Dephasing(logM,logmu,a,p0,e0, charge):
 def get_normalisation_weight(len_current_samples, len_of_longest_samples):
     return np.ones(len_current_samples) * (len_of_longest_samples / len_current_samples)
 
-labels = [r'$ \ln M$', r'$ \ln \mu$', r'$ a$', r'$ p_0 \, [M]$', r'$ e_0$', 
-            r'$ D_L \, [{\rm Gpc}]$',
-            r"$ \cos \theta_S$",r"$ \phi_S$",
-            r"$ \cos \theta_K$",r"$ \phi_K$",
-        r'$ \Phi_{\phi 0}$', r'$ \Phi_{r 0}$',
-            # r"$\Delta \Lambda$",
+labels = [r'$\Delta \ln M$', r'$\Delta \ln \mu$', r'$\Delta a$', r'$\Delta p_0 \, [M]$', r'$\Delta e_0$', 
+            r'$\Delta D_L \, [{\rm Gpc}]$',
+            r"$\Delta \cos \theta_S$",r"$\Delta \phi_S$",
+            r"$\Delta \cos \theta_K$",r"$\Delta \phi_K$",
+        r'$\Delta \Phi_{\phi 0}$', r'$\Delta \Phi_{r 0}$',
+            r"$ \Lambda$",
             # r"$\Delta d$",
         ]
 
@@ -109,14 +110,16 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
     """
     import matplotlib.pyplot as plt
     import matplotlib.lines as mlines
-
+    
     # Get some constants
     n = len(samples_list)
     _, ndim = samples_list[0].shape
     max_len = max([len(s) for s in samples_list])
     cmap = plt.cm.get_cmap('Set1',)
-    colors = [cmap(i) for i in range(n)]
+    # colors = [cmap(i) for i in range(n)]
     colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    # colors = sns.color_palette('colorblind')
+
 
     # Define the plot range for each dimension
     plot_range = []
@@ -176,12 +179,12 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
             mlines.Line2D([], [], color=colors[i], label=sample_labels[i])
             for i in range(n)
         ],
-        fontsize=50,
+        fontsize=35,
         frameon=False,
         bbox_to_anchor=(0.5, ndim+1),
         loc="upper right",
         title=title,
-        title_fontsize=50,
+        title_fontsize=35,
     )
 
     # Adjust plot layout
@@ -252,13 +255,17 @@ def weighted_quantile(values, quantiles, sample_weight=None,
 
 ########################### preparation of the data #############################################
 init_name = '../DataAnalysis/paper_runs/MCMC*'
-datasets = ['../DataAnalysis/paper_runs/devGR_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.025_SNR50.0_T0.5_seed2601_nw26_nt1.h5',
-'../DataAnalysis/paper_runs/bias_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.025_SNR50.0_T0.5_seed2601_nw26_nt1_vacuum.h5',
+datasets = [
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5',
+'../DataAnalysis/results/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1.h5'
 ]
 
-pars_inj =['../DataAnalysis/paper_runs/devGR_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.025_SNR50.0_T0.5_seed2601_nw26_nt1_injected_pars.npy',
-'../DataAnalysis/paper_runs/bias_noise0.0_M1e+05_mu5.0_a0.95_p1.6e+01_e0.4_x1.0_charge0.025_SNR50.0_T0.5_seed2601_nw26_nt1_vacuum_injected_pars.npy',
+pars_inj =[
+'../DataAnalysis/paper_runs/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy',
+'../DataAnalysis/results/MCMC_noise0.0_M1e+06_mu1e+01_a0.95_p8.3_e0.4_x1.0_charge0.0_SNR50.0_T2.0_seed2601_nw26_nt1_injected_pars.npy'
 ]
+
+
 print("len names", len(datasets),len(pars_inj))
 cmap = plt.cm.get_cmap('Set1',)
 colors = [cmap(i) for i in range(len(datasets))]
@@ -269,7 +276,7 @@ list_dict = []
 list_cyc_precision = []
 
 # Comparison
-table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha', 'dimensionless velocity' ,'Ncycles']}
+table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha', 'dimensionless velocity' ,'Ncycles vacuum']}
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -299,31 +306,96 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     weights_ch=1/np.sqrt(Lambda)
     charge_quantiles = weighted_quantile(charge, [0.025, 0.5, 0.975,  0.95,], sample_weight=weights_ch)
     # append charge at the end of the samples
-    # temp_samp = np.hstack((temp_samp,sqrt_alpha[:,None]))
-    # temp_samp = np.hstack((temp_samp,weights[:,None]))
-    if filename == datasets[0]:
-        list_chains.append(temp_samp[:,:-1])
-        # histogram of the charge
-        fig, ax = plt.subplots(1, 1, figsize=(default_width, default_width * default_ratio))
-        ax.hist(charge, weights=weights_ch, bins=40, histtype='step', density=True, lw=2)#, label='Scalar charge')
-        ax.axvline(charge_quantiles[0], ls='--', lw=2)
-        ax.axvline(0.025, ls=':', lw=2, label='Injected scalar charge')
-        ax.axvline(charge_quantiles[2], ls='--', lw=2, label='95\% credible interval')
-        
-        # ax.axvline(0.035, ls='-', color='orange', lw=2, label='Upper bound GW230529')
-        print(charge_quantiles)
-        plt.xlabel(r'Scalar charge $d$',fontsize=18)
-        plt.ylabel('Marginalized posterior',fontsize=18)
-        plt.legend(framealpha=1.0)
-        plt.savefig('./figures/charge_histogram.pdf', bbox_inches='tight')
-    else:
-        list_chains.append(temp_samp[:,:])
+    temp_samp = np.hstack((temp_samp - truths[None,:],sqrt_alpha[:,None]))
+    temp_samp = np.hstack((temp_samp,weights[:,None]))
+    list_chains.append(temp_samp)
+    # Create a DataFrame with the parameter information
+    # add correlation coefficient
+    corrcoef = np.corrcoef(temp_samp.T)
+    data = {
+        'variable': ['ln M', 'ln mu', 'a', 'p0', 'e0', 'DL', 'costhetaS', 'phiS', 'costhetaK', 'phiK', 'Phiphi0', 'Phir0', 'Lambda'],
+        'median': [med[0], med[1], med[2], med[3], med[4], med[5], med[6], med[7], med[8], med[9], med[10], med[11], med[12]],
+        'true': [truths[0], truths[1], truths[2], truths[3], truths[4], truths[5], truths[6], truths[7], truths[8], truths[9], truths[10], truths[11], truths[12]],
+        'percentile 2.5 perc': [low[0], low[1], low[2], low[3], low[4], low[5], low[6], low[7], low[8], low[9], low[10], low[11], low[12]],
+        'percentile 97.5 perc': [high[0], high[1], high[2], high[3], high[4], high[5], high[6], high[7], high[8], high[9], high[10], high[11], high[12]],
+        'one sigma relative precision': [np.std(temp_samp, axis=0)[0] / np.mean(temp_samp, axis=0)[0], np.std(temp_samp, axis=0)[1] / np.mean(temp_samp, axis=0)[1], np.std(temp_samp, axis=0)[2] / np.mean(temp_samp, axis=0)[2], np.std(temp_samp, axis=0)[3] / np.mean(temp_samp, axis=0)[3], np.std(temp_samp, axis=0)[4] / np.mean(temp_samp, axis=0)[4], np.std(temp_samp, axis=0)[5] / np.mean(temp_samp, axis=0)[5], np.std(temp_samp, axis=0)[6] / np.mean(temp_samp, axis=0)[6], np.std(temp_samp, axis=0)[7] / np.mean(temp_samp, axis=0)[7], np.std(temp_samp, axis=0)[8] / np.mean(temp_samp, axis=0)[8], np.std(temp_samp, axis=0)[9] / np.mean(temp_samp, axis=0)[9], np.std(temp_samp, axis=0)[10] / np.mean(temp_samp, axis=0)[10], np.std(temp_samp, axis=0)[11] / np.mean(temp_samp, axis=0)[11], np.std(temp_samp, axis=0)[12] / np.mean(temp_samp, axis=0)[12]],
+        'correlation coefficient with Lambda': [corrcoef[-1,0], corrcoef[-1,1], corrcoef[-1,2], corrcoef[-1,3], corrcoef[-1,4], corrcoef[-1,5], corrcoef[-1,6], corrcoef[-1,7], corrcoef[-1,8], corrcoef[-1,9], corrcoef[-1,10], corrcoef[-1,11], corrcoef[-1,12]],
+    }
     
-# table_comparison
+    true_charge = np.sqrt(4 * truths[12])
+    true_sqrtalpha = np.sqrt(2*true_charge)*np.exp(truths[1])*MRSUN_SI/1e3
+    # another table only for the alpha contraints
+    data_alpha = {
+        'estimator': ['true', 'median', 'percentile 2.5 perc', 'percentile 97.5 perc', 'percentile 95 perc'],
+        'sqrtalpha': [true_sqrtalpha, sqrtalpha_quantiles[1], sqrtalpha_quantiles[0], sqrtalpha_quantiles[2], sqrtalpha_quantiles[3]],
+        'charge': [true_charge, charge_quantiles[1], charge_quantiles[0], charge_quantiles[2], charge_quantiles[3]],
+        'Delta Phi_phi': ['None', 'None', 'None', 'None', 'None'],
+        'Ncycles vacuum': ['None', 'None', 'None', 'None', 'None'],
+    }
+    # dephasing information 
+    Ncyc, Deph = get_Ncycles_Dephasing(truths[0],truths[1],truths[2],truths[3],truths[4],data_alpha["charge"][-1])
+
+    data_alpha['Delta Phi_phi'][-1] = Deph
+    data_alpha['Ncycles vacuum'][0] = Ncyc
+
+    df = pd.DataFrame(data)
+    # Save the DataFrame as a LaTeX table
+    # df.to_markdown('./posterior_summary/table_'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
+    
+    df_alpha = pd.DataFrame(data_alpha)
+    # df_alpha.to_markdown('./posterior_summary/alpha_table_'+repo_name.split('/')[-1]+'.md', floatfmt=".10e")
+
+    # Parse parameters from repo_name
+    params = repo_name.split('_')[2:]
+    params_dict = {}
+    
+    for param in params:
+        name_to_split = re.match(r'([a-zA-Z]+)', param).groups()[0]
+        key, value = name_to_split, float(param.split(name_to_split)[1])
+        params_dict[key] = value
+
+    # labels
+    label = '('
+
+    label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
+    if int(params_dict.get('mu'))==5:
+        label += f", $\, \, \,${int(params_dict.get('mu'))}"
+    else:
+        label += f", {int(params_dict.get('mu'))}"
+    label += f", {params_dict.get('a'):.2f}"
+    label += f", {params_dict.get('e')}"
+    # if params_dict.get('charge') == 0.0:
+    #     label += f", $0.0$"
+    # else:
+    #     label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
+    
+    label += f",{params_dict.get('T')}"
+    # add another lable for the cycles
+    label += f", {Ncyc:.2f}"
+    label += ')'
+    print(params_dict)
+    # update dict with med and 95% CI
+    params_dict.update({f"median":med})
+    params_dict.update({f"perc2.5":low})
+    params_dict.update({f"perc97.5":high})
+    # append params_dict to list_dict
+    list_dict.append(params_dict)
+    
+    labs.append(label)
+    
+    # append to list the precision on the intrinsic parameter and the number of cycles
+    precision = np.std(temp_samp, axis=0)[:5] / np.mean(temp_samp, axis=0)[:5]
+    precision[:2] *= np.mean(temp_samp, axis=0)[:2]
+    list_cyc_precision.append(np.append(precision,Ncyc))
+    # construct a table where the first axis is the
+    v = get_fundamental_frequencies(truths[2], truths[3], truths[4], 1.0)[0]**(1/3)
+    print("dimensionless velocity",v)
+    table_comparison[repo_name.split('_noise0.0_')[-1].split('_seed')[0]] = [charge_quantiles[3], sqrtalpha_quantiles[3],v,Ncyc]
+
+table_comparison
 # pd.DataFrame(table_comparison).T.to_markdown('./posterior_summary/comparison_table_for_bounds.md', floatfmt=".10e")
 
 ########################### plot all #############################################
 # plot corner plots
 # breakpoint()
-CORNER_KWARGS['truths'] = truths
-overlaid_corner(list_chains, ['Scalar charge template','GR template'], './figures/plot_bias', corn_kw=CORNER_KWARGS, title='Scalar charge injected $d=0.025$')
+overlaid_corner([el[:,:-2] for el in list_chains], labs, './figures/plot_comparison', corn_kw=CORNER_KWARGS, title=r'$(M \, [{\rm M}_\odot], \mu \, [{\rm M}_\odot], a, e_0, T [{\rm yrs}], N_{\rm cycles})$')

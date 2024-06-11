@@ -50,13 +50,13 @@ mpl.rcParams.update({
 })
 
 traj = EMRIInspiral(func="KerrEccentricEquatorialAPEX")
-def get_Ncycles_Dephasing(logM,logmu,a,p0,e0, charge):
+def get_Ncycles_Dephasing(logM,logmu,a,p0,e0,charge):
     M = np.exp(logM)
     mu = np.exp(logmu)
     x0 = 1.0
     Lambda = charge**2 /4.
-    Phi_phi = traj(M, mu, a, p0, e0, x0, Lambda, T=2.0, dt=10.0)[4]
-    Phi_phi_zero = traj(M, mu, a, p0, e0, x0, 0.0, T=2.0, dt=10.0)[4]
+    Phi_phi = traj(M, mu, a, p0, e0, x0, Lambda, T=4.0, dt=10.0)[4]
+    Phi_phi_zero = traj(M, mu, a, p0, e0, x0, 0.0, T=4.0, dt=10.0)[4]
     return Phi_phi_zero[-1]/(2*np.pi), Phi_phi[-1]-Phi_phi_zero[-1]
 
 def get_normalisation_weight(len_current_samples, len_of_longest_samples):
@@ -179,12 +179,12 @@ def overlaid_corner(samples_list, sample_labels, name_save=None, corn_kw=None, t
             mlines.Line2D([], [], color=colors[i], label=sample_labels[i])
             for i in range(n)
         ],
-        fontsize=35,
+        fontsize=50,
         frameon=False,
         bbox_to_anchor=(0.5, ndim+1),
         loc="upper right",
         title=title,
-        title_fontsize=35,
+        title_fontsize=50,
     )
 
     # Adjust plot layout
@@ -294,7 +294,7 @@ list_dict = []
 list_cyc_precision = []
 
 # Comparison
-table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha', 'dimensionless velocity' ,'Ncycles vacuum']}
+table_comparison = {'Run Name':['95 Bound Charge', '95 Percent Bound Sqrt Alpha', 'dimensionless velocity' ,'Ncycles']}
 # Scalar plot
 for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # Get repository name
@@ -376,8 +376,10 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     label = '('
 
     label += fr"{params_dict.get('M')/1e6}$\times 10^6$"
-    if int(params_dict.get('mu'))==5:
+    if (int(params_dict.get('mu'))==5):
         label += f", $\, \, \,${int(params_dict.get('mu'))}"
+    elif (int(params_dict.get('mu'))==3):
+        label += f", 3.6"
     else:
         label += f", {int(params_dict.get('mu'))}"
     label += f", {params_dict.get('a'):.2f}"
@@ -387,7 +389,7 @@ for filename, inj_params, color in zip(datasets, pars_inj, colors):
     # else:
     #     label += fr", {params_dict.get('charge')*1e3} $\times 10^{{-3}}$"
     
-    label += f",{params_dict.get('T')}"
+    label += f", {params_dict.get('T')}"
     # add another lable for the cycles
     label += f", {Ncyc:.2f}"
     label += ')'

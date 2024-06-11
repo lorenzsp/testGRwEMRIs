@@ -84,12 +84,12 @@ outname=MCMC
 # nohup python mcmc.py -Tobs $Tobs -dt $dt -M $M -mu $mu -a $a -p0 $p0 -e0 $e0 -x0 $x0 -charge $charge -dev $dev -nwalkers $nwalkers -ntemps $ntemps -nsteps $nsteps -outname $outname -noise $noise > $output_filename &
 
 # ---------------------------------------------------------
-Tobs=4.0
-dt=10.0
-M=5e5
+Tobs=0.5
+dt=0.7
+M=3.6e4
 mu=3.6
 a=0.95
-p0=11.0
+p0=20.0
 e0=0.4
 x0=1.0
 charge=0.0

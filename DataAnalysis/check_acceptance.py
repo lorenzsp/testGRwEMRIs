@@ -210,7 +210,7 @@ def get_autocorr_plot(to_check,plotname):
     plt.tight_layout()
     plt.savefig(plotname+'.png')
 
-init_name = './results/MCMC_noise0.0_M5e+05_mu3.6_a0.95_p1.1e+01_e0.4_x1.0_charge0.0_SNR11.0_T4.0_seed2601_nw26_nt1*'
+init_name = './results/MCMC_noise0.0_M3.6e+04_mu3.6_a0.95_p2.5e+01_e0.4_x1.0_charge0.0_SNR11.0_T0.5_seed2601_nw26_nt1*'
 datasets = sorted(glob.glob(init_name + '.h5'))
 pars_inj = sorted(glob.glob(init_name + '_injected_pars.npy'))
 print("len names", len(datasets),len(pars_inj))
