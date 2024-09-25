@@ -1,6 +1,6 @@
 # Repository Description
 
-This repository provides the code and data analysis tools to reproduce the results of the paper. To reproduce the paper's results, you need to install the `FastEMRIWaveform` package, as well as `Eryn` and `LISAanalysistools`, which can be installed using `python setup.py install`.
+This repository provides the code and data analysis tools to reproduce the results of the paper [Probing fundamental physics with Extreme Mass Ratio Inspirals: a full Bayesian inference for scalar charge](https://arxiv.org/abs/2406.07607). To reproduce the paper's results, you need to install the `FastEMRIWaveform` package, as well as `Eryn` and `LISAanalysistools`, which can be installed using `python setup.py install`.
 
 ## Markov Chain Monte Carlo (MCMC) Analysis
 
