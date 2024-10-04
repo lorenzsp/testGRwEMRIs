@@ -6,8 +6,6 @@ This repository provides the code and data analysis tools to reproduce the resul
 
 To obtain the constraints presented in the paper, you need to run the `mcmc.py` code located in the `./DataAnalysis/` directory. Please note that this code is designed to be run on Graphics Processing Units (GPUs).
 
-I looooove MCMC.
-
 Usage:
 ------
 To run the `mcmc.py` script, navigate to the `./DataAnalysis/` directory in the terminal `cd ./DataAnalysis/`. Then, from the command line use the following command:
@@ -36,7 +34,7 @@ where:
 To reproduce the systems considered in the paper, you can also directly run `bash run_mcmc.sh`.
 
 ## Posterior samples and paper plots
-The posterior samples and paper plots can be generated using the code provided in the repository. After running the MCMC analysis code, the posterior samples will be available for further analysis and visualization.
+The posterior samples and paper plots can be generated using the code provided in the repository. Upon requests, the posterior samples can be provided.
 
 
 Author:
