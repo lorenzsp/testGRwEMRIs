@@ -14,22 +14,22 @@ except ModuleNotFoundError:
     gpu_available = False
 
 from eryn.moves import MHMove
-from eryn.prior import PriorContainer
+from eryn.prior import ProbDistContainer
 from eryn.utils.utility import groups_from_inds
-from .gbbruterejectionrj import GBBruteRejectionRJ
+from .gbmultipletryrj import GBMutlipleTryRJ
 
 
 __all__ = ["GBFreqJump"]
 
 
 # MHMove needs to be to the left here to overwrite GBBruteRejectionRJ RJ proposal method
-class GBFreqJump(MHMove, GBBruteRejectionRJ):
-    """Generate Revesible-Jump proposals for GBs with brute-force rejection
+class GBFreqJump(MHMove, GBMutlipleTryRJ):
+    """Generate Revesible-Jump proposals for GBs with try-force rejection
 
     Will use gpu if template generator uses GPU.
 
     Args:
-        priors (object): :class:`PriorContainer` object that has ``logpdf``
+        priors (object): :class:`ProbDistContainer` object that has ``logpdf``
             and ``rvs`` methods.
 
     """
@@ -56,7 +56,7 @@ class GBFreqJump(MHMove, GBBruteRejectionRJ):
 
         self.name = "gbfreqjump"
 
-        GBBruteRejectionRJ.__init__(self, *gb_args, **gb_kwargs)
+        GBMutlipleTryRJ.__init__(self, *gb_args, **gb_kwargs)
         MHMove.__init__(self, *args, **kwargs)
 
     def special_generate_func(self, coords, nwalkers, inds, current_priors=None, random=None, size:int=1):
@@ -169,8 +169,8 @@ class GBFreqJump(MHMove, GBBruteRejectionRJ):
             new_inds[name] = inds.copy()
             q[name] = coords.copy()
 
-            if i > 0:
-                raise NotImplementedError
+            if name != "gb":
+                continue
 
             if i == 0:
                 factors = np.zeros((ntemps, nwalkers))
@@ -190,7 +190,7 @@ class GBFreqJump(MHMove, GBBruteRejectionRJ):
                 args_generate=(inds.reshape(ntemps * nwalkers, nleaves_max),),
                 kwargs_generate={"current_priors": current_priors}, 
                 args_like=(coords.reshape(ntemps * nwalkers, nleaves_max, ndim), inds.reshape(ntemps * nwalkers, nleaves_max)), 
-                kwargs_like={"branch_supps": branch_supps_in}
+                kwargs_like={"branch_supps": branch_supps_in, "noise_params": branches_coords["noise_params"].reshape(ntemps * nwalkers, branches_coords["noise_params"].shape[-1]).T}
             )
             inds_tuple = (
                 np.repeat(np.arange(ntemps), nwalkers), 
@@ -204,7 +204,7 @@ class GBFreqJump(MHMove, GBBruteRejectionRJ):
 
             self.global_template_builder(q, inds_keep={"gb": inds_changed}, branch_supps=branch_supps)
 
-            # TODO: make sure detailed balance this will move to detailed balance in brute rejection
+            # TODO: make sure detailed balance this will move to detailed balance in multiple try
             factors[:] = factors_out.reshape(ntemps, nwalkers)
 
         return q, factors

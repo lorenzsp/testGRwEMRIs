@@ -63,7 +63,7 @@ from eryn.utils import TransformContainer
 
 from scipy.signal.windows import tukey
 
-from fastlisaresponse import ResponseWrapper
+# from fastlisaresponse import ResponseWrapper
 from powerlaw import powerlaw_dist
  
 from few.waveform import AAKWaveformBase
@@ -189,19 +189,19 @@ def run_emri_pe(
     # with longer signals we care less about this
     t0 = 10000.0  # throw away on both ends when our orbital information is weird
    
-    resp_gen = ResponseWrapper(
-        few_gen,
-        Tobs,
-        dt,
-        index_lambda,
-        index_beta,
-        t0=t0,
-        flip_hx=True,  # set to True if waveform is h+ - ihx (FEW is)
-        use_gpu=use_gpu,
-        is_ecliptic_latitude=False,  # False if using polar angle (theta)
-        remove_garbage=True,#"zero",  # removes the beginning of the signal that has bad information
-        **tdi_kwargs_esa,
-    )
+    # resp_gen = ResponseWrapper(
+    #     few_gen,
+    #     Tobs,
+    #     dt,
+    #     index_lambda,
+    #     index_beta,
+    #     t0=t0,
+    #     flip_hx=True,  # set to True if waveform is h+ - ihx (FEW is)
+    #     use_gpu=use_gpu,
+    #     is_ecliptic_latitude=False,  # False if using polar angle (theta)
+    #     remove_garbage=True,#"zero",  # removes the beginning of the signal that has bad information
+    #     **tdi_kwargs_esa,
+    # )
     
     h_plus = few_gen(*emri_injection_params,**emri_kwargs)[0]
 
@@ -772,7 +772,7 @@ if __name__ == "__main__":
     ind = find_closest_value_indices(grid[:,0], x0*a)
     mask = (grid[:,0] == grid[ind,0])
     print("max", np.max(grid[:,1][mask]))
-    breakpoint()
+    # breakpoint()
     
     # name of the folder to store the plots
     folder = "./results/"

@@ -67,6 +67,8 @@ from eryn.moves import DistributionGenerate
 from eryn.moves.gaussian import propose_DE
 from scipy.signal.windows import tukey
 from scipy import signal
+# get short fourier transform for cuda
+from cupyx.scipy.signal import stft
 
 from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
@@ -416,6 +418,21 @@ def run_emri_pe(
     
     data_stream = [data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]]
     # ---------------------------------------------------------------------------------
+    f_stft, t_stft, Zxx = stft(data_stream[0], fs=1/dt, nperseg=7*86400/dt, window='boxcar')
+    stft_dd = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] for el in data_stream])
+    stft_nn = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] for el in full_noise])
+    test = 4 * xp.sum( xp.abs(stft_nn[0])**2 / get_sensitivity(f_stft)[None, :, None] /(7*86400*7*86400/dt)) 
+    # get inner product from stft
+    def TF_inner(params):
+        wavehere = wave_gen(*transform_fn.both_transforms(params[None,:])[0], **emri_kwargs)
+        stft_wave = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] * dt for el in wavehere])
+        out = xp.abs( xp.sum(4 * stft_wave * stft_dd.conj() / get_sensitivity(f_stft)[None, :, None], axis=1) )
+        
+        return xp.sum(out)
+    
+    breakpoint()
+    TF_inner(emri_injection_params_in)
+
     freqs = xp.fft.fftfreq(len_tot, dt)
     Sn = get_sensitivity(xp.abs(freqs))
     Sn[0] = Sn[1]

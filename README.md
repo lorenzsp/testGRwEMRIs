@@ -60,21 +60,21 @@ Below is a quick set of instructions to get you started with `few`.
 If on linux:
 
 ```
-conda create -n bgr_env -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.7
-conda activate bgr_env
+mamba create -n bgr_env -c conda-forge gcc_linux-64 gxx_linux-64 wget gsl liblapacke openblas hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.9 corner scikit-learn
+mamba activate bgr_env
 ```
 
 If on MACOSX, substitute `gcc_linux-64` and `gxx_linus-64` with `clang_osx-64` and `clangxx_osx-64` as follows:
 
 ```
-conda create -n bgr_env -c conda-forge clangxx_osx-64 clang_osx-64 wget gsl lapack=3.6.1 hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.7
+conda create -n bgr_env -c conda-forge clangxx_osx-64 clang_osx-64 wget gsl lapack liblapacke hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.10
 conda activate bgr_env
 ```
 
 If on M1 chip use the following command:
 
 ```
-conda create -n bgr_env -c conda-forge wget gsl hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.9 openblas lapack liblapacke
+conda create -n bgr_env -c conda-forge wget gsl hdf5 numpy Cython scipy tqdm jupyter ipython h5py requests matplotlib python=3.10 openblas lapack liblapacke
 conda activate bgr_env
 ```
 
@@ -89,6 +89,7 @@ cd FastEMRIWaveforms
 
 ```
 python setup.py install
+pip install corner scikit-learn
 ```
 
 If on M1 chip use the following command:
