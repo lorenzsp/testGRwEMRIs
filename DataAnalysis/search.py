@@ -5,7 +5,7 @@
 # test with zero likelihood
 # python search.py -delta 1e-3  -Tobs 0.01 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 6 -nwalkers 16 -ntemps 1 -nsteps 5000 -outname test -zerolike 1
 # select the plunge time
-Tplunge = 2.0
+Tplunge = 1.0
 
 import argparse
 import os
@@ -70,7 +70,7 @@ from scipy import signal
 # get short fourier transform for cuda
 from cupyx.scipy.signal import stft
 
-from fastlisaresponse import ResponseWrapper
+# from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
 from scipy.stats import special_ortho_group
 from powerlaw import powerlaw_dist, SklearnGaussianMixtureModel
@@ -217,19 +217,19 @@ def run_emri_pe(
     # with longer signals we care less about this
     t0 = 10000.0  # throw away on both ends when our orbital information is weird
    
-    resp_gen = ResponseWrapper(
-        few_gen,
-        Tobs,
-        dt,
-        index_lambda,
-        index_beta,
-        t0=t0,
-        flip_hx=True,  # set to True if waveform is h+ - ihx (FEW is)
-        use_gpu=use_gpu,
-        is_ecliptic_latitude=False,  # False if using polar angle (theta)
-        remove_garbage=True,#"zero",  # removes the beginning of the signal that has bad information
-        **tdi_kwargs_esa,
-    )
+    # resp_gen = ResponseWrapper(
+    #     few_gen,
+    #     Tobs,
+    #     dt,
+    #     index_lambda,
+    #     index_beta,
+    #     t0=t0,
+    #     flip_hx=True,  # set to True if waveform is h+ - ihx (FEW is)
+    #     use_gpu=use_gpu,
+    #     is_ecliptic_latitude=False,  # False if using polar angle (theta)
+    #     remove_garbage=True,#"zero",  # removes the beginning of the signal that has bad information
+    #     **tdi_kwargs_esa,
+    # )
     
     h_plus = few_gen(*emri_injection_params,**emri_kwargs)[0]
 
@@ -415,24 +415,110 @@ def run_emri_pe(
     print("check nosie value",full_noise[0][0],full_noise[1][0])
     print("noise check ", inner_product(full_noise,full_noise, **inner_kw)/len(data_channels[0]) )
     print("matched SNR ", inner_product(full_noise[0]+data_channels[0],data_channels[0], **inner_kw)/inner_product(data_channels[0],data_channels[0], **inner_kw)**0.5 ) 
+    print("optimal SNR 2 channels", inner_product(data_channels,data_channels, **inner_kw)**0.5 ) 
     
     data_stream = [data_channels[0]+full_noise[0][:len(data_channels[0])], data_channels[1]+full_noise[1][:len(data_channels[0])]]
     # ---------------------------------------------------------------------------------
-    f_stft, t_stft, Zxx = stft(data_stream[0], fs=1/dt, nperseg=7*86400/dt, window='boxcar')
-    stft_dd = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] for el in data_stream])
-    stft_nn = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] for el in full_noise])
-    test = 4 * xp.sum( xp.abs(stft_nn[0])**2 / get_sensitivity(f_stft)[None, :, None] /(7*86400*7*86400/dt)) 
-    # get inner product from stft
-    def TF_inner(params):
-        wavehere = wave_gen(*transform_fn.both_transforms(params[None,:])[0], **emri_kwargs)
-        stft_wave = xp.asarray([stft(el, fs=1/dt, nperseg=7*86400/dt, window='boxcar')[2] * dt for el in wavehere])
-        out = xp.abs( xp.sum(4 * stft_wave * stft_dd.conj() / get_sensitivity(f_stft)[None, :, None], axis=1) )
-        
-        return xp.sum(out)
-    
-    breakpoint()
-    TF_inner(emri_injection_params_in)
+    from scipy.signal import butter, filtfilt
 
+    # Design a high-pass filter
+    def high_pass_filter(data, cutoff, fs, order=5):
+        nyquist = 0.5 * fs
+        normal_cutoff = cutoff / nyquist
+        b, a = butter(order, normal_cutoff, btype='high', analog=False)
+        y = filtfilt(b, a, data)
+        return y
+
+    # Apply the high-pass filter
+    cutoff_frequency = 1e-4  # Cutoff frequency in Hz
+    data_stream = [xp.asarray(high_pass_filter(el.get(), cutoff_frequency, 1/dt)) for el in data_stream]
+    full_noise = [xp.asarray(high_pass_filter(el.get(), cutoff_frequency, 1/dt)) for el in full_noise]
+    data_channels = [xp.asarray(high_pass_filter(el.get(), cutoff_frequency, 1/dt)) for el in data_channels]
+    
+    duration_window = 24 * 3600
+    # nperseg is the number of samples in each window
+    nperseg = int(duration_window/dt)
+    # window used in stft
+    hann = xp.asarray(signal.windows.hann(nperseg))
+    hann = hann/xp.sum(hann)
+    # kwargs of the stft
+    stf_kw = dict(fs=1/dt, nperseg=nperseg, window=('hann',))#, nfft = int(nperseg*30))#, noverlap=nperseg//2)#, nfft=nperseg*2)# boundary='zeros', padded=True, window='hann', scaling='psd')
+    f_stft, t_stft, Zxx = stft(data_stream[0], **stf_kw)
+    n_t_window = len(t_stft)
+    # frequency resolution
+    df_stft = f_stft[1] - f_stft[0]
+    # window length
+    time_window_length = t_stft[1] - t_stft[0]
+    # assert nperseg/2 == time_window_length / dt
+    # print info about stft
+    print("nperseg",nperseg, "n_t_window", n_t_window, "time_window_length", time_window_length, "df_stft", df_stft)
+    print(len(t_stft) * len(f_stft) / len_tot)
+    # stft of the data
+    stft_dd = xp.asarray([stft(el, **stf_kw)[2] for el in data_stream])
+    # stft of the noise
+    stft_nn = xp.asarray([stft(el, **stf_kw)[2] for el in full_noise])
+    stft_hh = xp.asarray([stft(el, **stf_kw)[2] for el in data_channels])
+    noise_fact = 1 / get_sensitivity(f_stft) / df_stft * 4/3
+    
+    # inner product
+    new_sum = xp.sum(stft_nn[0].conj().T @ (stft_nn[0] * noise_fact[:,None]))
+    test = xp.sum(xp.abs(stft_nn[0])**2 * noise_fact[:,None])
+    mean = xp.mean(xp.abs(stft_nn[0])**2 * noise_fact[:,None])
+    print("noise check ", new_sum/len(data_channels[0]), test/len(data_channels[0]), mean)
+    
+    # fft of the noise in one window to compare to what the stft does
+    ft_nn = xp.asarray([xp.fft.rfft(el[nperseg:2*nperseg]*hann)  for el in full_noise])
+    freq = xp.fft.rfftfreq(nperseg,dt)
+    # check that all the frequencies are the same as expected from the stft
+    # assert np.all(freq == f_stft)
+    # plot the spectrum in one window
+    plt.figure()
+    plt.plot(freq.get(), (xp.abs(ft_nn[0])**2).get())
+    plt.semilogy(f_stft.get(), (xp.abs(stft_nn[0])[:,3]**2).get() , '--')
+    # fft of the noise in one window to compare to what the stft does
+    ft_hh = xp.asarray([xp.fft.rfft(el[nperseg:2*nperseg]*hann)  for el in data_channels])
+    plt.plot(freq.get(), (xp.abs(ft_hh[0])**2).get())
+    plt.loglog(f_stft.get(), (xp.abs(stft_hh[0])[:,5]**2).get() , '--')
+    plt.plot(f_stft.get(), (1/noise_fact).get())
+    plt.savefig('spectrum')
+    # breakpoint()
+    
+    # frequency mask
+    max_frequency = 0.006
+    min_frequency = 0.001
+    mask = f_stft != 0.0 #(f_stft>min_frequency) & (f_stft<max_frequency)
+    
+    def TF_inner(sig1, sig2, lam = 1):
+        return xp.sum( xp.abs( xp.sum(sig1.conj() * sig2 * noise_fact[None,mask,None], axis=1) ) )
+        # return xp.sum( xp.abs(sig1) * xp.abs(sig2) * noise_fact[None,mask,None])
+    
+    # SFT = ShortTimeFFT.from_window(win, fs, nperseg, noverlap, fft_mode='centered',
+    #                            scale_to='magnitude', phase_shift=None)
+    # Sz1 = SFT.stft(z)
+    # get inner product from stft
+    def TF_inner_snr(params, **kwargs):
+        lam = 1
+        wavehere = wave_gen(*transform_fn.both_transforms(params[None,:])[0], **emri_kwargs)
+        stft_wave = xp.asarray([stft(el, **stf_kw)[2] for el in wavehere])
+        # num = xp.sum( xp.abs( xp.sum(stft_wave[:,mask] * stft_dd[:,mask].conj() * noise_fact[None,mask,None], axis=1) ) )
+        den = TF_inner(stft_wave[:,mask], stft_wave[:,mask])**0.5
+        num = TF_inner(stft_wave[:,mask], stft_dd[:,mask])
+        # print("den", den, "num", num)
+        return 0.5*(num / den).get()**2
+    
+    true_tf = TF_inner_snr(emri_injection_params_in)
+    print("matched SNR from STFT", true_tf )
+    breakpoint()
+    
+    # create differential evolution search
+    from scipy.optimize import differential_evolution
+    bounds = np.asarray([[priors["emri"].priors[i][1].min_val, priors["emri"].priors[i][1].max_val]  for i in range(ndim)])
+    # print bounds
+    # print("bounds",bounds)
+    # result = differential_evolution(TF_inner_snr, bounds, maxiter=200, popsize=8, tol=0.01, mutation=(0.5, 1), recombination=0.7, seed=None, callback=None, disp=True, polish=True, init='latinhypercube', atol=0)
+    # print(result.x - emri_injection_params_in, result.fun)
+    # breakpoint()
+    
     freqs = xp.fft.fftfreq(len_tot, dt)
     Sn = get_sensitivity(xp.abs(freqs))
     Sn[0] = Sn[1]
@@ -582,9 +668,9 @@ def run_emri_pe(
 
         tmp = get_sequence(5000) # priors['emri'].rvs(nwalkers*ntemps) #draw_initial_points(emri_injection_params_in, cov, nwalkers*ntemps, intrinsic_only=intrinsic_only)
         
-        
-        stll = like(tmp, **emri_kwargs)
-        tmp = tmp[np.argsort(stll)[-nwalkers*ntemps:]]
+        tmp = priors['emri'].rvs(nwalkers*ntemps)
+        # stll = like(tmp, **emri_kwargs)
+        # tmp = tmp[np.argsort(stll)[-nwalkers*ntemps:]]
         # set one to the true value        
         cov = (np.cov(tmp,rowvar=False) +1e-20*np.eye(ndim))* 2.38**2 / ndim        
 
@@ -675,9 +761,9 @@ def run_emri_pe(
         return samples
 
     moves = [
-        # (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=10.0, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
-        # (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic, indx_list=setup_intr, prop=propose_transform),0.5),#
-        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=1e4, sky_periodic=sky_periodic),0.5),#
+        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=100, sky_periodic=sky_periodic, indx_list=setup_extr),0.5),
+        (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=100, sky_periodic=sky_periodic, indx_list=setup_intr),0.5),#
+        # (GaussianMove({"emri": cov+1e-6*np.eye(ndim)}, mode="DE", factor=100, sky_periodic=sky_periodic),0.5),#
     ]
 
     def stopping_fn(i, res, samp):
@@ -708,10 +794,10 @@ def run_emri_pe(
                 print("intrinsic")
             else:
                 print("extrinsic")
-            print("true - max last loglike", true_like - samp.get_log_like()[-1])
-            print("median, min", np.median(true_like - samp.get_log_like()[-1]), np.min(true_like - samp.get_log_like()[-1]))
-            print("acceptance", np.mean(samp.acceptance_fraction) )
-            print("Temperatures", 1/samp.temperature_control.betas)
+            print(" last loglike", samp.get_log_like()[-1])
+            # print("median, min", np.median(true_like - samp.get_log_like()[-1]), np.min(true_like - samp.get_log_like()[-1]))
+            # print("acceptance", np.mean(samp.acceptance_fraction) )
+            # print("Temperatures", 1/samp.temperature_control.betas)
             current_acceptance_rate = np.mean(samp.acceptance_fraction)
             ll = samp.get_log_like(discard=discard, thin=1).flatten()
             # # # select the best half
@@ -736,7 +822,7 @@ def run_emri_pe(
             
             # matched SNR
             print("matched SNR ", get_matched_SNR(chain[inds][np.argmax(ll)]) ) 
-            print("new matched SNR ", get_new_inner(chain[inds][np.argmax(ll)],verbose=True) ) 
+            # print("new matched SNR ", get_new_inner(chain[inds][np.argmax(ll)],verbose=True) ) 
             
             # if np.any((true_like - samp.get_log_like()[-1])<0.0):
             print("best fit",samp.get_chain()["emri"][-1,0][np.argmax(samp.get_log_like()[-1,0])])
@@ -811,14 +897,14 @@ def run_emri_pe(
     sampler = EnsembleSampler(
         nwalkers,
         [ndim],  # assumes ndim_max
-        new_like,
+        TF_inner_snr,
         priors,
         # SNR is decreased by a factor of 1/sqrt(T)
         tempering_kwargs={"ntemps": ntemps, "adaptive": True, "Tmax": 30.0},
         moves=moves,
         kwargs=emri_kwargs,
         backend=fp,
-        vectorize=True,
+        vectorize=False,
         periodic=periodic,  # TODO: add periodic to proposals
         stopping_fn=stopping_fn,
         stopping_iterations=1,
