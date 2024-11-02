@@ -1,7 +1,7 @@
 # clean up this code and comment
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
 # python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 6 -nwalkers 8 -nsteps 500000 -outname test -SNR 30 -noise 1.0 -window_duration 86400
-# nohup python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 6 -nwalkers 8 -nsteps 500000 -outname search -SNR 30 -noise 1.0 -window_duration 86400 > out.out &
+# nohup python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 32 -nsteps 500000 -outname test -SNR 30 -noise 1.0 -window_duration 86400 > out.out &
 # select the plunge time
 Tplunge = 0.5
 
@@ -63,8 +63,7 @@ from lisatools.sensitivity import get_sensitivity
 from eryn.utils import TransformContainer
 from eryn.moves import DistributionGenerate
 from eryn.moves.gaussian import propose_DE
-from scipy.signal.windows import tukey
-from scipy import signal
+from scipy.signal.windows import tukey, hann
 # get short fourier transform for cuda
 from cupyx.scipy.signal import stft
 
@@ -317,7 +316,7 @@ def run_emri_search(
         dist4 = uniform_dist(emri_injection_params_in[4]-1e-4, emri_injection_params_in[4]+1e-4)
     else:
         dist3 = uniform_dist(p0 - delta, p0 + delta)
-        dist4 = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.45]))
+        dist4 = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.5]))
         
     priors = {
         "emri": ProbDistContainer(
@@ -389,7 +388,7 @@ def run_emri_search(
         def __init__(self, data_stream, duration_window, dt):
             self.data_stream = data_stream
             self.dt = dt
-
+            
             # nperseg is the number of samples in each window
             nperseg = int(duration_window/dt)
             # stft kwargs
@@ -397,14 +396,16 @@ def run_emri_search(
             # stft info
             self.f_stft, t_stft, Zxx = stft(data_stream[0], **self.stf_kw)
             self.active_windows = xp.arange(len(t_stft))
+            # window
+            window_stft = hann(int((t_stft[1]-t_stft[0])/dt))
             # data
             self.stft_data_stream = xp.asarray([stft(el, **self.stf_kw)[2] for el in data_stream])
             df_stft = self.f_stft[1] - self.f_stft[0]
             self.noise_fact = 1 / get_sensitivity(self.f_stft) / df_stft * 4/3
         
         def TF_inner(self,sig1, sig2):
-            # return xp.abs(xp.sum(sig1.conj() * sig2 * self.noise_fact[None,:,None],axis=1)).sum()
-            return xp.sum(xp.abs(sig1.conj()) * xp.abs(sig2) * self.noise_fact[None,:,None])
+            return xp.abs(xp.sum(sig1.conj() * sig2 * self.noise_fact[None,:,None],axis=1)).sum()
+            # return xp.sum(xp.abs(sig1.conj()) * xp.abs(sig2) * self.noise_fact[None,:,None])
         
         def __call__(self, params):
             wavehere = wave_gen(*transform_fn.both_transforms(params[None,:])[0], **emri_kwargs)
@@ -436,12 +437,13 @@ def run_emri_search(
     stft_noise = xp.asarray([stft(el, **TFinner.stf_kw)[2] for el in full_noise])
     TFinner.TF_inner(stft_noise, stft_noise)
     # breakpoint()
-    
+    init = priors["emri"].rvs(nwalkers) # 'latinhypercube'
     # create differential evolution search
-    result = differential_evolution(TFinner, bounds, maxiter=1, popsize=nwalkers, tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=seed, callback=None, disp=True, polish=False, init='latinhypercube', atol=0)
-    # result = DifferentialEvolutionSolver(TF_inner_snr, bounds, args = (stft_dd,), maxiter=nsteps, popsize=nwalkers, tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=None, callback=None, disp=True, polish=True, init='latinhypercube', atol=0)
+    result = differential_evolution(TFinner, bounds, maxiter=1,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=seed, callback=None, disp=False, polish=False, init=init, atol=0)
+    # result = DifferentialEvolutionSolver(TF_inner_snr, bounds, args = (stft_dd,), maxiter=nsteps,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=None, callback=None, disp=True, polish=True, init='latinhypercube', atol=0)
     x_best = result.x # priors["emri"].rvs()
     all_active_windows = TFinner.active_windows.copy()
+    init = result.population # 'latinhypercube'
     # print("number of windows", TFinner.active_windows)
     print(result.x - emri_injection_params_in)
     ii=0
@@ -449,6 +451,45 @@ def run_emri_search(
         f.write(f"iteration, wind_duration, injTFstat, inj_params\n")
         f.write(f"{ii}, {duration_window}, {true_tf}, {emri_injection_params_in.tolist()}\n")
     
+
+    def strategy_DE(candidate: int, population: np.ndarray, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+
+        # Get the current candidate solution
+        candidate_solution = population[candidate]
+
+        # Select three random indices different from the candidate index
+        indices = np.arange(population.shape[0])
+        indices = indices[indices != candidate]
+        a, b, c = rng.choice(indices, 3, replace=False)
+
+        # Get the corresponding solutions
+        solution_a = population[a]
+        solution_b = population[b]
+        solution_c = population[c]
+
+        # Differential evolution parameters
+        F = rng.uniform(0.4,1)  # Differential weight
+        CR = 0.9  # Crossover probability
+
+        # Generate a mutant vector
+        mutant_vector = candidate_solution + rng.normal() * (solution_b - solution_c)
+
+        # Perform crossover to create a trial vector
+        trial_vector = np.copy(candidate_solution)
+        # change all
+        trial_vector = mutant_vector.copy()
+        # for j in range(len(candidate_solution)):
+        #     if rng.random() < CR:
+        #         trial_vector[j] = mutant_vector[j]
+
+        return trial_vector
+    
+    # how can I change strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=False) to be strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=True)
+    from functools import partial
+
+    # strategy = 'rand1bin'
     # The code is assigning a slice of the `all_active_windows` list to the
     # `TFinner.active_windows` variable. The slice starts from the beginning of the list and goes
     # up to (but does not include) the index `ii`.
@@ -456,26 +497,43 @@ def run_emri_search(
         # TFinner.active_windows = all_active_windows[:ii] 
         # random recomb
         recombination = 0.9#np.random.uniform(0.5,0.9)
-        mutation = 10**np.random.uniform(-4.0, np.log10(1.999))
+        mutation = (0.01, 1.99) # 10**np.random.uniform(-4.0, np.log10(1.999))
         # randomly choose strategy from 
-        strategy = "best1bin" # np.random.choice(['best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'])
+        # strategy = "best1bin" # np.random.choice(['best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'])
+        print(f'------------------------ {ii} of {nsteps} ------------------------')
+        print("recombination",recombination, "mutation",mutation)  
         
-        print('---------------------------------')
-        print("strategy",strategy, "recombination",recombination, "mutation",mutation)  
-        init = 'latinhypercube'#result.population
-        
-        for dwind in [duration_window, duration_window*2, duration_window*3, duration_window*4, duration_window*5, duration_window*6, duration_window*7, duration_window*15]:
-            print("duration_window [s]", dwind)
+        for dwind in [duration_window, duration_window*7, duration_window*30]:
+            print(f'-*-*-*-*-*-*-*-*-*-*-*')
+            print("duration_window [days]", dwind/86400)
             TFinner = STFTInnerProduct(data_stream, dwind, dt)
             true_tf = TFinner(emri_injection_params_in)
-            print("TF true", true_tf)
-            result = differential_evolution(TFinner, bounds, x0=x_best, strategy=strategy, maxiter=10, popsize=nwalkers, tol=0.01, mutation=mutation, recombination=recombination, seed=seed, callback=None, disp=True, polish=False, init=init, atol=0)
+            
+            result = differential_evolution(TFinner, bounds, x0=x_best, 
+                                            strategy=strategy_DE, 
+                                            maxiter=30,  tol=0.0, mutation=mutation, 
+                                            recombination=recombination, seed=seed, callback=None, 
+                                            disp=False, polish=False, init=init, atol=0)
             
             x_best = result.x
             f_best = result.fun
+            init = result.population # priors["emri"].rvs(nwalkers) # 'latinhypercube'
+            init[0] = x_best
+            # plot parameters of the population and the best fit and the true value
+            plt.figure()
+            xlab = ["ln M", "ln mu", "a", "p0", "e0"]
+            [plt.plot(xlab, np.abs(init[el_pop,:5]-emri_injection_params_in[:5]), 'o', label='population') for el_pop in range(nwalkers)]
+            plt.semilogy(xlab, np.abs(x_best[:5]-emri_injection_params_in[:5]), 'P', color='black', label='best fit')
+            plt.xlabel("parameter")
+            plt.ylabel("absolute difference from true")
+            plt.tight_layout()
+            plt.savefig(fp + f'_params.png')
             
-            print(ii, f_best)
-            print("diff of ln M, ln mu, p0, e0",(x_best-emri_injection_params_in)[:5])
+            # print info and save to file
+            print("TF true", true_tf, "TF best", f_best)
+            print("diff of ln M, ln mu, a, p0, e0",(x_best-emri_injection_params_in)[:5])
+            print("best point",x_best)
+            
             with open(fp + "_best_values.txt", "a") as f:
                 f.write(f"{ii}, {dwind}, {f_best}, {x_best.tolist()}\n")
     
