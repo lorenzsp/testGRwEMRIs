@@ -1,6 +1,6 @@
 # clean up this code and comment
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.4 -x0 1.0 -dev 6 -nwalkers 8 -nsteps 500000 -outname test -SNR 30 -noise 1.0 -window_duration 86400
+# python search.py -delta 1e-1 -Tobs 0.51 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 32 -nsteps 500000 -outname test_abs -SNR 50 -noise 1.0 -window_duration 86400
 # nohup python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 32 -nsteps 500000 -outname test -SNR 30 -noise 1.0 -window_duration 86400 > out.out &
 # select the plunge time
 Tplunge = 0.5
@@ -151,6 +151,44 @@ def get_fm_fn_from_p_e(M, a, p, e):
     f_n = trace_track_freq(M, a, p, e, m=0, n=1)
     return f_m,f_n
 
+def strategy_DE(candidate: int, population: np.ndarray, rng=None):
+    if rng is None:
+        rng = np.random.default_rng()
+
+    # Get the current candidate solution
+    candidate_solution = population[candidate]
+
+    # Select three random indices different from the candidate index
+    indices = np.arange(population.shape[0])
+    indices = indices[indices != candidate]
+    a, b, c = rng.choice(indices, 3, replace=False)
+
+    # Get the corresponding solutions
+    solution_a = population[a]
+    solution_b = population[b]
+    solution_c = population[c]
+
+    # Differential evolution parameters
+    F = rng.uniform(0.4, 1.99)  # Differential weight
+    CR = rng.uniform(0.1, 0.99)  # Crossover probability
+
+    # Generate a mutant vector
+    mutant_vector = candidate_solution + F * (solution_b - solution_c)
+    mutant_vector = rng.multivariate_normal(population[0], F * np.cov(population.T)/population.shape[1])
+
+    # Perform crossover to create a trial vector
+    trial_vector = np.copy(candidate_solution)
+    # change all
+    # if rng.random()<CR:
+    #     trial_vector[:5] = mutant_vector[:5]
+    # else:
+    #     trial_vector[5:] = mutant_vector[5:]
+    
+    mask_change = rng.random(len(candidate_solution))<CR
+    trial_vector[mask_change] = mutant_vector[mask_change]
+    
+    return trial_vector
+    
 from utils import *
 
 # function call
@@ -353,6 +391,9 @@ def run_emri_search(
         df_full = xp.diff(freqs)[0]
         freqs[0] = freqs[1]
         psd = [get_sensitivity(freqs,sens_fn=sens_fn), get_sensitivity(freqs,sens_fn=sens_fn)]
+        # mask = (freqs<1e-4)
+        # for el in psd:
+        #     el[mask] = xp.asarray(get_sensitivity([1e-4],sens_fn=sens_fn)) * xp.ones_like(el[mask])
         # psd = [get_sensitivity_stas(freqs.get(),sens_fn=sens_fn), get_sensitivity_stas(freqs.get(),sens_fn=sens_fn)]
         # psd = [xp.asarray(psd_temp) for psd_temp in psd]
         
@@ -400,17 +441,14 @@ def run_emri_search(
     freq = xp.fft.rfftfreq(len(data_stream[0]),dt)
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data before filter')
     # Apply the high-pass filter
-    cutoff_frequency = 1e-3  # Cutoff frequency in Hz
-    data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
-    full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
-    injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
+    cutoff_frequency = 1e-6 # Cutoff frequency in Hz
+    # data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
+    # full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
+    # injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
     
-    _, resp, ff = high_pass_filter(data_stream[0].get(), cutoff_frequency, 1/dt, return_response=True)
-    # plot response of the filter
-    # plt.loglog(freq.get(), (get_sensitivity([cutoff_frequency])*len(data_stream[0])/4/dt)**0.5 *np.ones_like(freq.get()), label='data after filter')
-    # plot FFT of the data
-    plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data after filter')
+    plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), '--' ,label='data after filter')
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(injected_h[0])).get())
+    plt.legend()
     plt.savefig(fp + '_spectrum.pdf')
     ############################## STFT prep ########################################################
     # define class for STFT inner produce
@@ -426,7 +464,7 @@ def run_emri_search(
             # stft info
             self.f_stft, t_stft, Zxx = stft(data_stream[0], **self.stf_kw)
             self.active_windows = xp.arange(len(t_stft))
-            self.mask = (self.f_stft>1e-3)#*(self.f_stft<3e-2)
+            self.mask = (self.f_stft>5e-4) #*(self.f_stft<0.007)
             # window
             window_stft = hann(int((t_stft[1]-t_stft[0])/dt))
             # data
@@ -434,6 +472,8 @@ def run_emri_search(
             df_stft = self.f_stft[1] - self.f_stft[0]
             self.noise_fact = 1 / get_sensitivity(self.f_stft) / df_stft * 4/3
             # plot data
+            # print number of windows
+            print("number of windows", len(t_stft))
             # plt.figure()
             
         
@@ -441,7 +481,9 @@ def run_emri_search(
             if max_tc:
                 return xp.abs(xp.max(xp.fft.irfft(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] * self.noise_fact[None,self.mask,None],axis=1),axis=1)).sum()
             else:
-                return xp.abs(xp.sum((sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:]) * self.noise_fact[None,self.mask,None],axis=1)).sum()
+                sum_channels = xp.asarray([xp.abs(xp.sum(sig1.conj()[ii,self.mask,:] * sig2[ii,self.mask,:] * self.noise_fact[self.mask,None],axis=0)) for ii in range(2)])
+                # print("sum channels", sum_channels)
+                return xp.sum(sum_channels)
                 # return xp.sum(xp.abs(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] ) * self.noise_fact[None,self.mask,None])
         
         def __call__(self, params):
@@ -458,121 +500,54 @@ def run_emri_search(
             wavehere = wave_gen(*inside, **emri_kwargs)
             return xp.asarray([stft(el, **self.stf_kw)[2] for el in wavehere])[:,:,self.active_windows]
     
-    # fft of the noise in one window to compare to what the stft does
-    # ft_nn = xp.asarray([xp.fft.rfft(el[nperseg:2*nperseg]*hann)  for el in full_noise])
-    # freq = xp.fft.rfftfreq(nperseg,dt)
-    # plt.figure()
-    # plt.plot(freq.get(), (xp.abs(ft_nn[0])**2).get())
-    # plt.semilogy(f_stft.get(), (xp.abs(stft_nn[0])[:,3]**2).get() , '--')
-    # ft_hh = xp.asarray([xp.fft.rfft(el[nperseg:2*nperseg]*hann)  for el in injected_h])
-    # plt.plot(freq.get(), (xp.abs(ft_hh[0])**2).get())
-    # plt.loglog(f_stft.get(), (xp.abs(stft_hh[0])[:,5]**2).get() , '--')
-    # plt.plot(f_stft.get(), (1/noise_fact).get())
-    # plt.savefig(fp + '_spectrum.pdf')
-    
-    
     ############################## Inner Product TF ########################################################
     # frequency mask
     TFinner = STFTInnerProduct(data_stream, duration_window, dt)
+    plt.figure()
+    plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,0]).get())
+    plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,-5]).get())
+    plt.loglog(TFinner.f_stft.get(), TFinner.noise_fact.get()**(-0.5) )
+    plt.savefig(fp + '_spectrum.pdf')
     # time the inner product
     true_tf = TFinner(emri_injection_params_in)
     print("matched SNR from STFT", true_tf)
     
-    stft_noise = xp.asarray([stft(el, **TFinner.stf_kw)[2] for el in full_noise])
-    TFinner.TF_inner(stft_noise, stft_noise)
-    
+    # stft_noise = xp.asarray([stft(el, **TFinner.stf_kw)[2] for el in full_noise])
+    # TFinner.TF_inner(stft_noise, stft_noise)
+    # prepare population of DE
     init = priors["emri"].rvs(nwalkers)
-    init[:,3] = uniform_dist(p0 - delta, p0 + delta).rvs(nwalkers)
-    init[:,4] = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.5])).rvs(nwalkers)
-    breakpoint()
-    init[:,3],init[:,4] = np.asarray([get_fm_fn_from_p_e(np.exp(init[ii,0]), init[ii,2], init[ii,3], init[ii,4]) for ii in range(nwalkers)]).T
-    
-    # create differential evolution search
-    result = differential_evolution(TFinner, bounds, maxiter=1,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=seed, callback=None, disp=False, polish=False, init=init, atol=0)
-    # result = DifferentialEvolutionSolver(TF_inner_snr, bounds, args = (stft_dd,), maxiter=nsteps,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=None, callback=None, disp=True, polish=True, init='latinhypercube', atol=0)
-    x_best = result.x # priors["emri"].rvs()
-    all_active_windows = TFinner.active_windows.copy()
-    init = result.population # 'latinhypercube'
-    # print("number of windows", TFinner.active_windows)
-    print(result.x - emri_injection_params_in)
+    x_best = priors["emri"].rvs()
+    init = priors["emri"].rvs(nwalkers)
+    # write header search file
     ii=0
     with open(fp + "_best_values.txt", "a") as f:
-        f.write(f"iteration, wind_duration, injTFstat, inj_params\n")
-        f.write(f"{ii}, {duration_window}, {true_tf}, {emri_injection_params_in.tolist()}\n")
-    
+        f.write(f"iteration, duration, injTFstat, lnM, lnmu, a, p0, e0, qS, phiS, qK, phiK, Phi_phi0, Phi_r0\n")
+        f.write(f"{ii}, {duration_window}, {true_tf}")#, {emri_injection_params_in.tolist()}\n")
+        for el in emri_injection_params_in:
+            f.write(f", {el}")
+        f.write("\n")
 
-    def strategy_DE(candidate: int, population: np.ndarray, rng=None):
-        if rng is None:
-            rng = np.random.default_rng()
+    for ii in range(1,nsteps):
 
-        # Get the current candidate solution
-        candidate_solution = population[candidate]
-
-        # Select three random indices different from the candidate index
-        indices = np.arange(population.shape[0])
-        indices = indices[indices != candidate]
-        a, b, c = rng.choice(indices, 3, replace=False)
-
-        # Get the corresponding solutions
-        solution_a = population[a]
-        solution_b = population[b]
-        solution_c = population[c]
-
-        # Differential evolution parameters
-        F = rng.uniform(0.4, 1.99)  # Differential weight
-        CR = 0.9  # Crossover probability
-
-        # Generate a mutant vector
-        # mutant_vector = candidate_solution + rng.normal() * (solution_b - solution_c)
-        mutant_vector = candidate_solution + F * (solution_b - solution_c)
-
-        # Perform crossover to create a trial vector
-        trial_vector = np.copy(candidate_solution)
-        # change all
-
-        # mask_change = rng.random(len(candidate_solution))<CR
-        # trial_vector[mask_change] = mutant_vector[mask_change]
-        if rng.random()<CR:
-            trial_vector[:5] = mutant_vector[:5]
-        else:
-            trial_vector[5:] = candidate_solution[5:]
-        
-        return trial_vector
-    
-    # how can I change strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=False) to be strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=True)
-    from functools import partial
-
-    # strategy = 'rand1bin'
-    # The code is assigning a slice of the `all_active_windows` list to the
-    # `TFinner.active_windows` variable. The slice starts from the beginning of the list and goes
-    # up to (but does not include) the index `ii`.
-    for ii in np.asarray([len(all_active_windows)*0.1, len(all_active_windows)*0.2, len(all_active_windows)*0.4, 
-                          len(all_active_windows)*0.5, len(all_active_windows)*0.6, len(all_active_windows)*0.9, 
-                          len(all_active_windows)],dtype=int):
-        TFinner.active_windows = all_active_windows[:ii] 
-        # random recomb
-        recombination = 0.9#np.random.uniform(0.5,0.9)
-        mutation = (0.01, 1.99) # 10**np.random.uniform(-4.0, np.log10(1.999))
-        # randomly choose strategy from 
-        # strategy = "best1bin" # np.random.choice(['best1bin','best1exp','rand1bin','rand1exp','rand2bin','rand2exp','randtobest1bin','randtobest1exp','currenttobest1bin','currenttobest1exp','best2exp','best2bin'])
         print(f'------------------------ {ii} of {nsteps} ------------------------')
-        print("recombination",recombination, "mutation",mutation)  
-        
-        for dwind in [duration_window]:#, duration_window*7, duration_window*30]:
+        for dwind in [duration_window/4, duration_window/2, duration_window, duration_window*2, duration_window*4, duration_window*8, duration_window*16]:
             print(f'-*-*-*-*-*-*-*-*-*-*-*')
             print("duration_window [days]", dwind/86400)
-            # TFinner = STFTInnerProduct(data_stream, dwind, dt)
+            TFinner = STFTInnerProduct(data_stream, dwind, dt)
             true_tf = TFinner(emri_injection_params_in)
             print("matched SNR from STFT", true_tf)
+            recombination = 0.7
+            mutation = (0.5, 1.00)
             result = differential_evolution(TFinner, bounds, x0=x_best, 
-                                            strategy=strategy_DE, 
-                                            maxiter=100,  tol=0.0, mutation=mutation, 
+                                            maxiter=10,  tol=0.0, mutation=mutation, 
                                             recombination=recombination, seed=seed, callback=None, 
-                                            disp=True, polish=False, init=init, atol=0)
+                                            disp=True, polish=False, 
+                                            init=init, 
+                                            atol=0)
             
             x_best = result.x
             f_best = result.fun
-            init = priors["emri"].rvs(nwalkers) # 'latinhypercube'
+            init = result.population
             init[0] = x_best
             # plot parameters of the population and the best fit and the true value
             plt.figure()
@@ -590,7 +565,10 @@ def run_emri_search(
             print("best point",x_best)
             
             with open(fp + "_best_values.txt", "a") as f:
-                f.write(f"{ii}, {dwind}, {f_best}, {x_best.tolist()}\n")
+                f.write(f"{ii}, {dwind}, {f_best}")
+                for el in x_best:
+                    f.write(f", {el}")
+                f.write("\n")
     
     return
 
