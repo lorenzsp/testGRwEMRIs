@@ -65,7 +65,7 @@ from eryn.moves import DistributionGenerate
 from eryn.moves.gaussian import propose_DE
 from scipy.signal.windows import tukey, hann
 # get short fourier transform for cuda
-from cupyx.scipy.signal import stft
+from cupyx.scipy.signal import stft, freqz
 
 # from fastlisaresponse import ResponseWrapper
 from eryn.moves.gaussian import reflect_cosines_array
@@ -126,7 +126,7 @@ def trace_track_freq(M, a, p0, e0, m=2, n=0):
 
 def objective_function(inputs, true_freqs, a):
     p, e = inputs
-    if p < 6 + 2*e:
+    if p < get_separatrix(a, e, 1.0):
         return np.inf
     else:
         frs = get_fundamental_frequencies(a, p, e, 1.0)
@@ -135,11 +135,11 @@ def objective_function(inputs, true_freqs, a):
 def reverse_rootfind(true_freqs, a):
     result = minimize(
         objective_function, 
-        x0 = [10., 0.3], 
-        bounds=([6.0, 16.],[0.1, 0.45]), 
+        x0 = [8., 0.3], 
+        bounds=([get_separatrix(a, 0.1, 1.0)+0.4, 16.],[0.1, 0.45]), 
         args = (true_freqs, a),
         method="Nelder-Mead", 
-        options=dict(xatol=1e-8),  # xatol specifies tolerance on p,e
+        options=dict(xatol=1e-10),  # xatol specifies tolerance on p,e
     ) 
     return result.x
 
@@ -203,7 +203,7 @@ def run_emri_search(
     
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
-        return [el for el in temp_data_channels]
+        return [el*window for el in temp_data_channels]
     
         wave_gen = few_gen
     
@@ -243,7 +243,6 @@ def run_emri_search(
     reparam = False
     if reparam:
         emri_injection_params[3],emri_injection_params[4] = get_fm_fn_from_p_e(M, a, p0, e0)
-    
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
     # on my list of things to improve
@@ -256,6 +255,7 @@ def run_emri_search(
     def transf_func(logM, logmu, ahere, fm, fn):
         if reparam:
             p_e = np.asarray([get_p_e_from_freq(np.exp(MM), aa, np.asarray([f1,f2])) for MM,aa,f1,f2 in zip(logM, ahere, fm,fn)])
+            # print("p_e", p_e)
             return [np.exp(logM), np.exp(logmu), ahere, p_e[:,0], p_e[:,1],]
         else:
             return [np.exp(logM), np.exp(logmu), ahere, fm, fn]
@@ -277,6 +277,10 @@ def run_emri_search(
     emri_injection_params_in = np.delete(emri_injection_params, fill_dict["fill_inds"])
     # get injected parameters after transformation
     injection_in = transform_fn.both_transforms(emri_injection_params_in[None, :])[0]
+    
+    if reparam:
+        print("injection params", emri_injection_params_in)
+        print("inverse param", injection_in[3]-p0, injection_in[4]-e0)
     
     # get AE
     temp_emri_kwargs = emri_kwargs.copy()
@@ -312,8 +316,10 @@ def run_emri_search(
         
     # priors
     if reparam:
-        dist3 = uniform_dist(emri_injection_params_in[3]-1e-4, emri_injection_params_in[3]+1e-4)
-        dist4 = uniform_dist(emri_injection_params_in[4]-1e-4, emri_injection_params_in[4]+1e-4)
+        # dist3 = uniform_dist(emri_injection_params_in[3]-1e-4, emri_injection_params_in[3]+1e-4)
+        # dist4 = uniform_dist(emri_injection_params_in[4]-1e-4, emri_injection_params_in[4]+1e-4)
+        dist3 = uniform_dist(1e-4, 1e-2)
+        dist4 = uniform_dist(1e-4, 1e-2)
     else:
         dist3 = uniform_dist(p0 - delta, p0 + delta)
         dist4 = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.5]))
@@ -369,19 +375,43 @@ def run_emri_search(
     from scipy.signal import butter, filtfilt
 
     # Design a high-pass filter
-    def high_pass_filter(data, cutoff, fs, order=5):
+    def high_pass_filter(data, cutoff, fs, order=5, return_response=False):
         nyquist = 0.5 * fs
         normal_cutoff = cutoff / nyquist
         b, a = butter(order, normal_cutoff, btype='high', analog=False)
         y = filtfilt(b, a, data)
-        return y
+        # what is the frequency response of the filter?
+        w, h = freqz(b, a, fs=fs)
+        # plt.figure()
+        # plt.loglog(0.5*fs*w.get()/np.pi, np.abs(h.get()), 'b')
+        # plt.plot(cutoff, 0.5*np.sqrt(2), 'ko')
+        # plt.axvline(cutoff, color='k')
+        # plt.xlim(0, 0.5*fs)
+        # plt.title("Highpass Filter Frequency Response")
+        # plt.xlabel('Frequency [Hz]')
+        # plt.ylabel('Gain')
+        # plt.savefig(fp + '_filter.pdf')
+        if return_response:
+            return y, h, 0.5*fs*w/np.pi
+        else:
+            return y
 
+    plt.figure()
+    freq = xp.fft.rfftfreq(len(data_stream[0]),dt)
+    plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data before filter')
     # Apply the high-pass filter
-    cutoff_frequency = 0.5e-3  # Cutoff frequency in Hz
+    cutoff_frequency = 1e-3  # Cutoff frequency in Hz
     data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
     full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
     injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
-        
+    
+    _, resp, ff = high_pass_filter(data_stream[0].get(), cutoff_frequency, 1/dt, return_response=True)
+    # plot response of the filter
+    # plt.loglog(freq.get(), (get_sensitivity([cutoff_frequency])*len(data_stream[0])/4/dt)**0.5 *np.ones_like(freq.get()), label='data after filter')
+    # plot FFT of the data
+    plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data after filter')
+    plt.loglog(freq.get(), xp.abs(xp.fft.rfft(injected_h[0])).get())
+    plt.savefig(fp + '_spectrum.pdf')
     ############################## STFT prep ########################################################
     # define class for STFT inner produce
     class STFTInnerProduct():
@@ -396,23 +426,37 @@ def run_emri_search(
             # stft info
             self.f_stft, t_stft, Zxx = stft(data_stream[0], **self.stf_kw)
             self.active_windows = xp.arange(len(t_stft))
+            self.mask = (self.f_stft>1e-3)#*(self.f_stft<3e-2)
             # window
             window_stft = hann(int((t_stft[1]-t_stft[0])/dt))
             # data
             self.stft_data_stream = xp.asarray([stft(el, **self.stf_kw)[2] for el in data_stream])
             df_stft = self.f_stft[1] - self.f_stft[0]
             self.noise_fact = 1 / get_sensitivity(self.f_stft) / df_stft * 4/3
+            # plot data
+            # plt.figure()
+            
         
-        def TF_inner(self,sig1, sig2):
-            return xp.abs(xp.sum(sig1.conj() * sig2 * self.noise_fact[None,:,None],axis=1)).sum()
-            # return xp.sum(xp.abs(sig1.conj()) * xp.abs(sig2) * self.noise_fact[None,:,None])
+        def TF_inner(self, sig1, sig2, max_tc=False):
+            if max_tc:
+                return xp.abs(xp.max(xp.fft.irfft(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] * self.noise_fact[None,self.mask,None],axis=1),axis=1)).sum()
+            else:
+                return xp.abs(xp.sum((sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:]) * self.noise_fact[None,self.mask,None],axis=1)).sum()
+                # return xp.sum(xp.abs(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] ) * self.noise_fact[None,self.mask,None])
         
         def __call__(self, params):
-            wavehere = wave_gen(*transform_fn.both_transforms(params[None,:])[0], **emri_kwargs)
+            # print("params", params)
+            inside = transform_fn.both_transforms(params[None,:])[0]
+            wavehere = wave_gen(*inside, **emri_kwargs)
             stft_wave = xp.asarray([stft(el, **self.stf_kw)[2] for el in wavehere])[:,:,self.active_windows]
             den = self.TF_inner(stft_wave, stft_wave)**0.5
             num = self.TF_inner(stft_wave, self.stft_data_stream[:,:,self.active_windows])
             return -(num / den).get()
+        
+        def get_stft(self, params):
+            inside = transform_fn.both_transforms(params[None,:])[0]
+            wavehere = wave_gen(*inside, **emri_kwargs)
+            return xp.asarray([stft(el, **self.stf_kw)[2] for el in wavehere])[:,:,self.active_windows]
     
     # fft of the noise in one window to compare to what the stft does
     # ft_nn = xp.asarray([xp.fft.rfft(el[nperseg:2*nperseg]*hann)  for el in full_noise])
@@ -436,8 +480,13 @@ def run_emri_search(
     
     stft_noise = xp.asarray([stft(el, **TFinner.stf_kw)[2] for el in full_noise])
     TFinner.TF_inner(stft_noise, stft_noise)
-    # breakpoint()
-    init = priors["emri"].rvs(nwalkers) # 'latinhypercube'
+    
+    init = priors["emri"].rvs(nwalkers)
+    init[:,3] = uniform_dist(p0 - delta, p0 + delta).rvs(nwalkers)
+    init[:,4] = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.5])).rvs(nwalkers)
+    breakpoint()
+    init[:,3],init[:,4] = np.asarray([get_fm_fn_from_p_e(np.exp(init[ii,0]), init[ii,2], init[ii,3], init[ii,4]) for ii in range(nwalkers)]).T
+    
     # create differential evolution search
     result = differential_evolution(TFinner, bounds, maxiter=1,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=seed, callback=None, disp=False, polish=False, init=init, atol=0)
     # result = DifferentialEvolutionSolver(TF_inner_snr, bounds, args = (stft_dd,), maxiter=nsteps,  tol=0.01, mutation=(0.1, 1.99), recombination=0.9, seed=None, callback=None, disp=True, polish=True, init='latinhypercube', atol=0)
@@ -470,20 +519,24 @@ def run_emri_search(
         solution_c = population[c]
 
         # Differential evolution parameters
-        F = rng.uniform(0.4,1)  # Differential weight
+        F = rng.uniform(0.4, 1.99)  # Differential weight
         CR = 0.9  # Crossover probability
 
         # Generate a mutant vector
-        mutant_vector = candidate_solution + rng.normal() * (solution_b - solution_c)
+        # mutant_vector = candidate_solution + rng.normal() * (solution_b - solution_c)
+        mutant_vector = candidate_solution + F * (solution_b - solution_c)
 
         # Perform crossover to create a trial vector
         trial_vector = np.copy(candidate_solution)
         # change all
-        trial_vector = mutant_vector.copy()
-        # for j in range(len(candidate_solution)):
-        #     if rng.random() < CR:
-        #         trial_vector[j] = mutant_vector[j]
 
+        # mask_change = rng.random(len(candidate_solution))<CR
+        # trial_vector[mask_change] = mutant_vector[mask_change]
+        if rng.random()<CR:
+            trial_vector[:5] = mutant_vector[:5]
+        else:
+            trial_vector[5:] = candidate_solution[5:]
+        
         return trial_vector
     
     # how can I change strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=False) to be strategy(candidate: int, population: np.ndarray, rng=None, intrinsic=True, extrinsic=True)
@@ -493,8 +546,10 @@ def run_emri_search(
     # The code is assigning a slice of the `all_active_windows` list to the
     # `TFinner.active_windows` variable. The slice starts from the beginning of the list and goes
     # up to (but does not include) the index `ii`.
-    for ii in range(nsteps):# np.asarray([len(all_active_windows)*0.1, len(all_active_windows)*0.5, len(all_active_windows)*0.9, len(all_active_windows)],dtype=int):
-        # TFinner.active_windows = all_active_windows[:ii] 
+    for ii in np.asarray([len(all_active_windows)*0.1, len(all_active_windows)*0.2, len(all_active_windows)*0.4, 
+                          len(all_active_windows)*0.5, len(all_active_windows)*0.6, len(all_active_windows)*0.9, 
+                          len(all_active_windows)],dtype=int):
+        TFinner.active_windows = all_active_windows[:ii] 
         # random recomb
         recombination = 0.9#np.random.uniform(0.5,0.9)
         mutation = (0.01, 1.99) # 10**np.random.uniform(-4.0, np.log10(1.999))
@@ -503,21 +558,21 @@ def run_emri_search(
         print(f'------------------------ {ii} of {nsteps} ------------------------')
         print("recombination",recombination, "mutation",mutation)  
         
-        for dwind in [duration_window, duration_window*7, duration_window*30]:
+        for dwind in [duration_window]:#, duration_window*7, duration_window*30]:
             print(f'-*-*-*-*-*-*-*-*-*-*-*')
             print("duration_window [days]", dwind/86400)
-            TFinner = STFTInnerProduct(data_stream, dwind, dt)
+            # TFinner = STFTInnerProduct(data_stream, dwind, dt)
             true_tf = TFinner(emri_injection_params_in)
-            
+            print("matched SNR from STFT", true_tf)
             result = differential_evolution(TFinner, bounds, x0=x_best, 
                                             strategy=strategy_DE, 
-                                            maxiter=30,  tol=0.0, mutation=mutation, 
+                                            maxiter=100,  tol=0.0, mutation=mutation, 
                                             recombination=recombination, seed=seed, callback=None, 
-                                            disp=False, polish=False, init=init, atol=0)
+                                            disp=True, polish=False, init=init, atol=0)
             
             x_best = result.x
             f_best = result.fun
-            init = result.population # priors["emri"].rvs(nwalkers) # 'latinhypercube'
+            init = priors["emri"].rvs(nwalkers) # 'latinhypercube'
             init[0] = x_best
             # plot parameters of the population and the best fit and the true value
             plt.figure()
