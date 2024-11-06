@@ -3,11 +3,10 @@ import corner
 import matplotlib.pyplot as plt
 import numpy as np
 import warnings
+import glob
 warnings.filterwarnings("ignore")
 
-list_fpath = ['search_results/search15_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR15.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt',
-'search_results/search25_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR25.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt',
-'search_results/search50_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR50.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt']
+list_fpath = glob.glob("search_results/search*.txt")#['search_results/search15_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR15.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt','search_results/search25_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR25.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt','search_results/search50_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR50.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt']
 # Load the data from the file
 # file_path = 'search_results/search50_rndStart_M1e+06_mu5.0_a0.95_p4.8_e0.35_x1.0_delta0.1_SNR50.0_T0.5_seed2601_nw32_wind86400.0_best_values.txt'
 for file_path in list_fpath:

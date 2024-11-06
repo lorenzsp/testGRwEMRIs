@@ -1,6 +1,6 @@
 # clean up this code and comment
 #!/data/lsperi/miniconda3/envs/bgr_env/bin/python
-# python search.py -delta 1e-1 -Tobs 0.51 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 32 -nsteps 500000 -outname test_abs -SNR 50 -noise 1.0 -window_duration 86400
+# python search.py -delta 1e-1 -Tobs 0.50 -dt 10.0 -M 1e6 -mu 5.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 64 -nsteps 500000 -outname test -SNR 50 -noise 1.0 -window_duration 86400
 # nohup python search.py -delta 1e-1 -Tobs 0.5 -dt 10.0 -M 1e6 -mu 10.0 -a 0.95 -p0 13.0 -e0 0.35 -x0 1.0 -dev 7 -nwalkers 32 -nsteps 500000 -outname test -SNR 30 -noise 1.0 -window_duration 86400 > out.out &
 # select the plunge time
 Tplunge = 0.5
@@ -57,7 +57,7 @@ from scipy.optimize._differentialevolution import DifferentialEvolutionSolver
 from scipy.optimize import differential_evolution
 from lisatools.sampling.likelihood import Likelihood
 from lisatools.diagnostic import *
-
+from bilby.gw.conversion import *
 from lisatools.sensitivity import get_sensitivity
 
 from eryn.utils import TransformContainer
@@ -103,7 +103,7 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-10,
+    "err": 1e-9,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": False,
@@ -126,7 +126,7 @@ def trace_track_freq(M, a, p0, e0, m=2, n=0):
 
 def objective_function(inputs, true_freqs, a):
     p, e = inputs
-    if p < get_separatrix(a, e, 1.0):
+    if p < get_separatrix(a, e, 1.0)+0.2:
         return np.inf
     else:
         frs = get_fundamental_frequencies(a, p, e, 1.0)
@@ -136,7 +136,7 @@ def reverse_rootfind(true_freqs, a):
     result = minimize(
         objective_function, 
         x0 = [8., 0.3], 
-        bounds=([get_separatrix(a, 0.1, 1.0)+0.4, 16.],[0.1, 0.45]), 
+        bounds=([1.0, 16.],[0.2, 0.45]), 
         args = (true_freqs, a),
         method="Nelder-Mead", 
         options=dict(xatol=1e-10),  # xatol specifies tolerance on p,e
@@ -241,7 +241,7 @@ def run_emri_search(
     
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
-        return [el*window for el in temp_data_channels]
+        return [el for el in temp_data_channels]
     
         wave_gen = few_gen
     
@@ -275,9 +275,25 @@ def run_emri_search(
     ) = emri_injection_params
 
     # get the sampling parameters
-    emri_injection_params[0] = np.log(emri_injection_params[0])
-    emri_injection_params[1] = np.log(emri_injection_params[1])
     
+
+    Mc, q = component_masses_to_chirp_mass(M, mu), component_masses_to_mass_ratio(M, mu)
+    uppM = 1e7
+    lowM = 1e5
+    uppmu = 100.0
+    lowmu = 1.0
+    # print(chirp_mass_and_mass_ratio_to_component_masses(Mc, q))
+    ranges = [component_masses_to_chirp_mass(uppM, lowmu),component_masses_to_chirp_mass(lowM, lowmu),component_masses_to_chirp_mass(uppM, uppmu),component_masses_to_chirp_mass(lowM, uppmu)]
+    range_Mc = [np.log(np.min(ranges)), np.log(np.max(ranges))]
+    ranges = [component_masses_to_mass_ratio(uppM, lowmu),component_masses_to_mass_ratio(lowM, lowmu),component_masses_to_mass_ratio(uppM, uppmu),component_masses_to_mass_ratio(lowM, uppmu)]
+    range_q = [np.log(np.min(ranges)), np.log(np.max(ranges))]
+    
+    # breakpoint()
+    emri_injection_params[0] = np.log(Mc) # np.log(emri_injection_params[0])
+    emri_injection_params[1] = np.log(q) # np.log(emri_injection_params[1])
+    print("ranges Mc q")
+    print(range_Mc, range_q)
+
     reparam = False
     if reparam:
         emri_injection_params[3],emri_injection_params[4] = get_fm_fn_from_p_e(M, a, p0, e0)
@@ -291,6 +307,7 @@ def run_emri_search(
 
 
     def transf_func(logM, logmu, ahere, fm, fn):
+        logM, logmu = np.log(chirp_mass_and_mass_ratio_to_component_masses(np.exp(logM), np.exp(logmu)))
         if reparam:
             p_e = np.asarray([get_p_e_from_freq(np.exp(MM), aa, np.asarray([f1,f2])) for MM,aa,f1,f2 in zip(logM, ahere, fm,fn)])
             # print("p_e", p_e)
@@ -359,15 +376,18 @@ def run_emri_search(
         dist3 = uniform_dist(1e-4, 1e-2)
         dist4 = uniform_dist(1e-4, 1e-2)
     else:
-        dist3 = uniform_dist(p0 - delta, p0 + delta)
-        dist4 = uniform_dist(np.max([e0 - delta,0.0]), np.min([e0 + delta, 0.5]))
+        dist3 = uniform_dist(1.0, 16.0)
+        dist4 = uniform_dist(0.1, 0.5)
         
     priors = {
         "emri": ProbDistContainer(
             {
-                0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
-                1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
-                2: uniform_dist(emri_injection_params_in[2] - delta, np.min([emri_injection_params_in[2]+delta, 0.98])),  # a
+                # 0: uniform_dist(emri_injection_params_in[0] - delta, emri_injection_params_in[0] + delta),  # ln M
+                # 1: uniform_dist(emri_injection_params_in[1] - delta, emri_injection_params_in[1] + delta),  # ln mu
+                0: uniform_dist(range_Mc[0],range_Mc[1]), 
+                1: uniform_dist(range_q[0],range_q[1]),
+                
+                2: uniform_dist(0.0, 0.98),  # a
                 3: dist3,
                 4: dist4,
                 5: uniform_dist(-0.99999, 0.99999),  # qS
@@ -441,15 +461,16 @@ def run_emri_search(
     freq = xp.fft.rfftfreq(len(data_stream[0]),dt)
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data before filter')
     # Apply the high-pass filter
-    cutoff_frequency = 1e-6 # Cutoff frequency in Hz
-    # data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
-    # full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
-    # injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
+    cutoff_frequency = 1e-3 # Cutoff frequency in Hz
+    data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
+    full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
+    injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
     
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), '--' ,label='data after filter')
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(injected_h[0])).get())
     plt.legend()
     plt.savefig(fp + '_spectrum.pdf')
+    # breakpoint()
     ############################## STFT prep ########################################################
     # define class for STFT inner produce
     class STFTInnerProduct():
@@ -464,7 +485,7 @@ def run_emri_search(
             # stft info
             self.f_stft, t_stft, Zxx = stft(data_stream[0], **self.stf_kw)
             self.active_windows = xp.arange(len(t_stft))
-            self.mask = (self.f_stft>5e-4) #*(self.f_stft<0.007)
+            self.mask = (self.f_stft>0.0) # *(self.f_stft<1e-2)
             # window
             window_stft = hann(int((t_stft[1]-t_stft[0])/dt))
             # data
@@ -483,17 +504,47 @@ def run_emri_search(
             else:
                 sum_channels = xp.asarray([xp.abs(xp.sum(sig1.conj()[ii,self.mask,:] * sig2[ii,self.mask,:] * self.noise_fact[self.mask,None],axis=0)) for ii in range(2)])
                 # print("sum channels", sum_channels)
-                return xp.sum(sum_channels)
+                return sum_channels
                 # return xp.sum(xp.abs(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] ) * self.noise_fact[None,self.mask,None])
         
         def __call__(self, params):
             # print("params", params)
             inside = transform_fn.both_transforms(params[None,:])[0]
+            # check separatrix
+            if inside[3]<get_separatrix(inside[2], inside[4], 1.0) + 0.2:
+                return 0.0
+            
+            if (inside[1]<1.0)or(inside[1]>100.0):
+                return 0.0
+            
+            # check time to plunge
+            tf = traj(inside[0], inside[1], inside[2], inside[3], inside[4], 1.0, 0.0, T=10.0, err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])[0][-1]
+            if (tf/YRSID_SI > Tplunge)or(tf<86400):
+                return 0.0
+            # else:
+            #     print("tf", tf/YRSID_SI, Tplunge)
+            inside[6]=100.0
             wavehere = wave_gen(*inside, **emri_kwargs)
-            stft_wave = xp.asarray([stft(el, **self.stf_kw)[2] for el in wavehere])[:,:,self.active_windows]
-            den = self.TF_inner(stft_wave, stft_wave)**0.5
+            # amp from https://arxiv.org/pdf/gr-qc/0310125 eq 8 
+            amp = 1.0 # (trace_track_freq(inside[0], inside[2], inside[3], inside[4], m=1, n=0) * MTSUN_SI * M * np.pi )**(2/3) * inside[1]
+            stft_wave = xp.asarray([stft(el, **self.stf_kw)[2] for el in wavehere])[:,:,self.active_windows] / amp
+            den2 = self.TF_inner(stft_wave, stft_wave)
             num = self.TF_inner(stft_wave, self.stft_data_stream[:,:,self.active_windows])
-            return -(num / den).get()
+            res = -(xp.sum(num)/xp.sum(den2)**0.5).get()
+            # estimate amplitude
+            # Amp = xp.sum(num) / xp.sum(den2)
+            # diff_rho = xp.abs(1-(Amp*num) / (Amp*Amp*den2))
+            # diff_rho = diff_rho[~np.isnan(diff_rho)]
+            
+            # mean = xp.mean(diff_rho).get()
+            # std = xp.std(diff_rho).get()
+            # plt.figure()
+            # plt.plot(diff_rho.get())
+            # # plt.axhline(mean)
+            # plt.savefig('sum_channels.pdf')
+            # print("mean", mean, "std", std)
+            # breakpoint()
+            return res
         
         def get_stft(self, params):
             inside = transform_fn.both_transforms(params[None,:])[0]
@@ -503,11 +554,11 @@ def run_emri_search(
     ############################## Inner Product TF ########################################################
     # frequency mask
     TFinner = STFTInnerProduct(data_stream, duration_window, dt)
-    plt.figure()
-    plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,0]).get())
-    plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,-5]).get())
-    plt.loglog(TFinner.f_stft.get(), TFinner.noise_fact.get()**(-0.5) )
-    plt.savefig(fp + '_spectrum.pdf')
+    # plt.figure()
+    # plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,0]).get())
+    # plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,-5]).get())
+    # plt.loglog(TFinner.f_stft.get(), TFinner.noise_fact.get()**(-0.5) )
+    # plt.savefig(fp + '_spectrum.pdf')
     # time the inner product
     true_tf = TFinner(emri_injection_params_in)
     print("matched SNR from STFT", true_tf)
@@ -530,7 +581,9 @@ def run_emri_search(
     for ii in range(1,nsteps):
 
         print(f'------------------------ {ii} of {nsteps} ------------------------')
-        for dwind in [duration_window/4, duration_window/2, duration_window, duration_window*2, duration_window*4, duration_window*8, duration_window*16, duration_window*32]:
+        for dwind in [duration_window/4, duration_window/2, duration_window, duration_window*2, 
+                      duration_window*3, duration_window*4, duration_window*5, duration_window*6, duration_window*7, 
+                      duration_window*8, duration_window*16, duration_window*32]:
             print(f'-*-*-*-*-*-*-*-*-*-*-*')
             print("duration_window [days]", dwind/86400)
             TFinner = STFTInnerProduct(data_stream, dwind, dt)
@@ -552,16 +605,27 @@ def run_emri_search(
             # plot parameters of the population and the best fit and the true value
             plt.figure()
             xlab = ["ln M", "ln mu", "a", "p0", "e0"]
-            [plt.plot(xlab, np.abs(init[el_pop,:5]-emri_injection_params_in[:5]), 'o', label='population') for el_pop in range(nwalkers)]
-            plt.semilogy(xlab, np.abs(x_best[:5]-emri_injection_params_in[:5]), 'P', color='black', label='best fit')
+            [plt.plot(xlab, np.abs(1-init[el_pop,:5]/emri_injection_params_in[:5]), 'o', label='population') for el_pop in range(nwalkers)]
+            plt.semilogy(xlab, np.abs(1-x_best[:5]/emri_injection_params_in[:5]), 'P', color='black', label='best fit')
             plt.xlabel("parameter")
-            plt.ylabel("absolute difference from true")
+            plt.ylabel("relative difference from true")
             plt.tight_layout()
             plt.savefig(fp + f'_params.png')
+
+            plt.figure()
+            plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,0]).get(), '-', label='true beginning')
+            plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(x_best)[0,:,0]).get(), '--', label='best fit beginning')
+            plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(emri_injection_params_in)[0,:,-5]).get(), '-', label='true end')
+            plt.loglog(TFinner.f_stft.get(), xp.abs(TFinner.get_stft(x_best)[0,:,-5]).get(), '--', label='best fit end')
+            plt.legend()
+            plt.xlabel("frequency [Hz]")
+            plt.ylabel("abs h tilde")
+            plt.tight_layout()
+            plt.savefig(fp + f'_best_fit_spectrum_wind{dwind}.pdf')
             
             # print info and save to file
             print("TF true", true_tf, "TF best", f_best)
-            print("diff of ln M, ln mu, a, p0, e0",(x_best-emri_injection_params_in)[:5])
+            print("true values", emri_injection_params_in)
             print("best point",x_best)
             
             with open(fp + "_best_values.txt", "a") as f:
