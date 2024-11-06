@@ -16,7 +16,7 @@ for file_path in list_fpath:
     # Extract the relevant columns
     variables = ['lnM', 'lnmu', 'a', 'p0', 'e0', 'qS', 'phiS', 'qK', 'phiK', 'Phi_phi0', 'Phi_r0']
     params_subset = data[variables]
-    print(params_subset.head())
+
     truths = params_subset.iloc[0]
     # optimization function
     opt_fun = data['injTFstat'].to_numpy()

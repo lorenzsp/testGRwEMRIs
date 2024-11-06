@@ -530,7 +530,7 @@ def run_emri_search(
     for ii in range(1,nsteps):
 
         print(f'------------------------ {ii} of {nsteps} ------------------------')
-        for dwind in [duration_window/4, duration_window/2, duration_window, duration_window*2, duration_window*4, duration_window*8, duration_window*16]:
+        for dwind in [duration_window/4, duration_window/2, duration_window, duration_window*2, duration_window*4, duration_window*8, duration_window*16, duration_window*32]:
             print(f'-*-*-*-*-*-*-*-*-*-*-*')
             print("duration_window [days]", dwind/86400)
             TFinner = STFTInnerProduct(data_stream, dwind, dt)
