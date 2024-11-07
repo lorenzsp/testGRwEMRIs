@@ -103,7 +103,7 @@ if use_gpu and not gpu_available:
 # define trajectory
 func = "KerrEccentricEquatorialAPEX"
 insp_kwargs = {
-    "err": 1e-9,
+    "err": 1e-10,
     "DENSE_STEPPING": 0,
     # "max_init_len": int(1e4),
     "use_rk4": False,
@@ -151,43 +151,7 @@ def get_fm_fn_from_p_e(M, a, p, e):
     f_n = trace_track_freq(M, a, p, e, m=0, n=1)
     return f_m,f_n
 
-def strategy_DE(candidate: int, population: np.ndarray, rng=None):
-    if rng is None:
-        rng = np.random.default_rng()
 
-    # Get the current candidate solution
-    candidate_solution = population[candidate]
-
-    # Select three random indices different from the candidate index
-    indices = np.arange(population.shape[0])
-    indices = indices[indices != candidate]
-    a, b, c = rng.choice(indices, 3, replace=False)
-
-    # Get the corresponding solutions
-    solution_a = population[a]
-    solution_b = population[b]
-    solution_c = population[c]
-
-    # Differential evolution parameters
-    F = rng.uniform(0.4, 1.99)  # Differential weight
-    CR = rng.uniform(0.1, 0.99)  # Crossover probability
-
-    # Generate a mutant vector
-    mutant_vector = candidate_solution + F * (solution_b - solution_c)
-    mutant_vector = rng.multivariate_normal(population[0], F * np.cov(population.T)/population.shape[1])
-
-    # Perform crossover to create a trial vector
-    trial_vector = np.copy(candidate_solution)
-    # change all
-    # if rng.random()<CR:
-    #     trial_vector[:5] = mutant_vector[:5]
-    # else:
-    #     trial_vector[5:] = mutant_vector[5:]
-    
-    mask_change = rng.random(len(candidate_solution))<CR
-    trial_vector[mask_change] = mutant_vector[mask_change]
-    
-    return trial_vector
     
 from utils import *
 
@@ -241,7 +205,7 @@ def run_emri_search(
     
     def wave_gen(*args, **kwargs):
         temp_data_channels = few_gen(*args, **kwargs)
-        return [el for el in temp_data_channels]
+        return [el*window for el in temp_data_channels]
     
         wave_gen = few_gen
     
@@ -278,8 +242,8 @@ def run_emri_search(
     
 
     Mc, q = component_masses_to_chirp_mass(M, mu), component_masses_to_mass_ratio(M, mu)
-    uppM = 1e7
-    lowM = 1e5
+    uppM = 1.2e6
+    lowM = 9e5
     uppmu = 100.0
     lowmu = 1.0
     # print(chirp_mass_and_mass_ratio_to_component_masses(Mc, q))
@@ -296,7 +260,7 @@ def run_emri_search(
 
     reparam = False
     if reparam:
-        emri_injection_params[3],emri_injection_params[4] = get_fm_fn_from_p_e(M, a, p0, e0)
+        emri_injection_params[3],emri_injection_params[4] = np.log10(get_fm_fn_from_p_e(M, a, p0, e0))
     # transforms from pe to waveform generation
     # after the fill happens (this is a little confusing)
     # on my list of things to improve
@@ -309,7 +273,7 @@ def run_emri_search(
     def transf_func(logM, logmu, ahere, fm, fn):
         logM, logmu = np.log(chirp_mass_and_mass_ratio_to_component_masses(np.exp(logM), np.exp(logmu)))
         if reparam:
-            p_e = np.asarray([get_p_e_from_freq(np.exp(MM), aa, np.asarray([f1,f2])) for MM,aa,f1,f2 in zip(logM, ahere, fm,fn)])
+            p_e = np.asarray([get_p_e_from_freq(np.exp(MM), aa, np.asarray([f1,f2])) for MM,aa,f1,f2 in zip(logM, ahere, 10**fm, 10**fn)])
             # print("p_e", p_e)
             return [np.exp(logM), np.exp(logmu), ahere, p_e[:,0], p_e[:,1],]
         else:
@@ -373,8 +337,8 @@ def run_emri_search(
     if reparam:
         # dist3 = uniform_dist(emri_injection_params_in[3]-1e-4, emri_injection_params_in[3]+1e-4)
         # dist4 = uniform_dist(emri_injection_params_in[4]-1e-4, emri_injection_params_in[4]+1e-4)
-        dist3 = uniform_dist(1e-4, 1e-2)
-        dist4 = uniform_dist(1e-4, 1e-2)
+        dist3 = uniform_dist(-3, -2)
+        dist4 = uniform_dist(-3, -2)
     else:
         dist3 = uniform_dist(1.0, 16.0)
         dist4 = uniform_dist(0.1, 0.5)
@@ -462,9 +426,9 @@ def run_emri_search(
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), label='data before filter')
     # Apply the high-pass filter
     cutoff_frequency = 1e-3 # Cutoff frequency in Hz
-    data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
-    full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
-    injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
+    # data_stream = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in data_stream])
+    # full_noise = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in full_noise])
+    # injected_h = xp.asarray([high_pass_filter(el.get(), cutoff_frequency, 1/dt) for el in injected_h])
     
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(data_stream[0])).get(), '--' ,label='data after filter')
     plt.loglog(freq.get(), xp.abs(xp.fft.rfft(injected_h[0])).get())
@@ -485,7 +449,7 @@ def run_emri_search(
             # stft info
             self.f_stft, t_stft, Zxx = stft(data_stream[0], **self.stf_kw)
             self.active_windows = xp.arange(len(t_stft))
-            self.mask = (self.f_stft>0.0) # *(self.f_stft<1e-2)
+            self.mask = (self.f_stft>1e-3)# * (self.f_stft<1e-1)
             # window
             window_stft = hann(int((t_stft[1]-t_stft[0])/dt))
             # data
@@ -495,19 +459,28 @@ def run_emri_search(
             # plot data
             # print number of windows
             print("number of windows", len(t_stft))
-            # plt.figure()
+            # create slices for integration over differen time segments
+            Nf = self.mask.sum()
+            Nbin = 100
+            fbin_wind = int(Nf/Nbin)
             
+            self.slice = [slice(j*fbin_wind,(j+1)*fbin_wind) for j in range(Nbin)]
         
-        def TF_inner(self, sig1, sig2, max_tc=False):
-            if max_tc:
-                return xp.abs(xp.max(xp.fft.irfft(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] * self.noise_fact[None,self.mask,None],axis=1),axis=1)).sum()
-            else:
+        def TF_inner(self, sig1, sig2, max_type='freq'):
+            if max_type=='time':
                 sum_channels = xp.asarray([xp.abs(xp.sum(sig1.conj()[ii,self.mask,:] * sig2[ii,self.mask,:] * self.noise_fact[self.mask,None],axis=0)) for ii in range(2)])
-                # print("sum channels", sum_channels)
-                return sum_channels
-                # return xp.sum(xp.abs(sig1.conj()[:,self.mask,:] * sig2[:,self.mask,:] ) * self.noise_fact[None,self.mask,None])
+                
+            if max_type=='timefreq':
+                sum_channels = xp.asarray([xp.sum(xp.abs(sig1.conj()[ii,self.mask,:] * sig2[ii,self.mask,:]) * self.noise_fact[self.mask,None]) for ii in range(2)])
+            
+            if max_type=='freq':
+                sum_channels = xp.asarray([[xp.sum(sig1.conj()[ii,self.mask,:][sl] * sig2[ii,self.mask,:][sl] * self.noise_fact[self.mask,None][sl],axis=0) for sl in self.slice] for ii in range(2)]) 
+
+            return xp.sum(xp.abs(sum_channels))
         
         def __call__(self, params):
+            # if len(params)!=ndim:
+            #     params[:5] = transform_fn.both_transforms(params[None,:])[0]
             # print("params", params)
             inside = transform_fn.both_transforms(params[None,:])[0]
             # check separatrix
@@ -521,8 +494,8 @@ def run_emri_search(
             tf = traj(inside[0], inside[1], inside[2], inside[3], inside[4], 1.0, 0.0, T=10.0, err=insp_kwargs['err'],use_rk4=insp_kwargs['use_rk4'])[0][-1]
             if (tf/YRSID_SI > Tplunge)or(tf<86400):
                 return 0.0
-            # else:
-            #     print("tf", tf/YRSID_SI, Tplunge)
+
+            # test that it does not matter what distance you put
             inside[6]=100.0
             wavehere = wave_gen(*inside, **emri_kwargs)
             # amp from https://arxiv.org/pdf/gr-qc/0310125 eq 8 
@@ -563,6 +536,44 @@ def run_emri_search(
     true_tf = TFinner(emri_injection_params_in)
     print("matched SNR from STFT", true_tf)
     
+    ############################## MCMC ########################################################
+    def strategy_DE(candidate: int, population: np.ndarray, rng=None):
+        if rng is None:
+            rng = np.random.default_rng()
+
+        # Get the current candidate solution
+        candidate_solution = population[candidate]
+
+        # Select three random indices different from the candidate index
+        indices = np.arange(population.shape[0])
+        indices = indices[indices != candidate]
+        a, b, c = rng.choice(indices, 3, replace=False)
+
+        # Get the corresponding solutions
+        solution_a = population[a]
+        solution_b = population[b]
+        solution_c = population[c]
+
+        # Differential evolution parameters
+        F = rng.uniform(0.5, 1.0)  # Differential weight
+        CR = 0.7  # Crossover probability
+
+        # Generate a mutant vector
+        mutant_vector = population[0] + F * (solution_b - solution_c)
+        # mutant_vector = rng.multivariate_normal(population[0], F * np.cov(population.T)/population.shape[1])
+
+        # Perform crossover to create a trial vector
+        trial_vector = np.copy(candidate_solution)
+        # change all
+        if rng.random()<CR:
+            trial_vector[:5] = mutant_vector[:5]
+        else:
+            trial_vector[5:] = priors["emri"].rvs(1)[0,5:]
+        
+        # mask_change = rng.random(len(candidate_solution))<CR
+        # trial_vector[mask_change] = mutant_vector[mask_change]
+        
+        return trial_vector
     # stft_noise = xp.asarray([stft(el, **TFinner.stf_kw)[2] for el in full_noise])
     # TFinner.TF_inner(stft_noise, stft_noise)
     # prepare population of DE
@@ -592,6 +603,7 @@ def run_emri_search(
             recombination = 0.7
             mutation = (0.5, 1.00)
             result = differential_evolution(TFinner, bounds, x0=x_best, 
+                                            # strategy=strategy_DE,
                                             maxiter=10,  tol=0.0, mutation=mutation, 
                                             recombination=recombination, seed=seed, callback=None, 
                                             disp=True, polish=False, 
