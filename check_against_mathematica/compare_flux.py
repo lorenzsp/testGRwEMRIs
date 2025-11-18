@@ -51,5 +51,5 @@ scott_flux = (EdotInf_tot[index]+EdotH_tot[index]) * closest_p**5 * 5/32
 our_flux = np.abs(get_Edot(1e6,10,spin,closest_p, closest_e,1.0,0.0)) * closest_p**5 * 5/32
 print("p,e, p^5 Edot 5/32 relative error, absolute error\n",closest_p, closest_e, np.abs(1-scott_flux/our_flux),scott_flux-our_flux)
 print("absolute error on fluxes",np.abs(our_flux-scott_flux)/(closest_p**5 * 5/32))
-
+print(get_Edot(1e6, 10, spin, closest_p, closest_e, 1.0, 0.0))
 # fid in p,e close to some values in the check file

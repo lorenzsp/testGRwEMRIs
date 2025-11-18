@@ -60,7 +60,7 @@ def get_Ncycles_Dephasing(logM,logmu,a,p0,e0, charge):
 def get_normalisation_weight(len_current_samples, len_of_longest_samples):
     return np.ones(len_current_samples) * (len_of_longest_samples / len_current_samples)
 
-labels = [r'$\ln M$', r'$\ln \mu$', r'$a$', r'$p_0 \, [M]$', r'$e_0$', 
+labels = [r'$\ln M$', r'$\ln \mu$', r'$a$', r'$p_0$', r'$e_0$', 
             r'$D_L \, [{\rm Gpc}]$',
             r"$\cos \theta_S$",r"$\phi_S$",
             r"$\cos \theta_K$",r"$\phi_K$",

@@ -341,7 +341,7 @@ def run_emri_search(
         dist4 = uniform_dist(-3, -2)
     else:
         dist3 = uniform_dist(1.0, 16.0)
-        dist4 = uniform_dist(0.1, 0.5)
+        dist4 = uniform_dist(0.2, 0.5)
         
     priors = {
         "emri": ProbDistContainer(
@@ -461,9 +461,10 @@ def run_emri_search(
             print("number of windows", len(t_stft))
             # create slices for integration over differen time segments
             Nf = self.mask.sum()
-            Nbin = 100
-            fbin_wind = int(Nf/Nbin)
-            
+            fbin_wind = 50
+            Nbin = int(Nf/fbin_wind)
+            print("Total number of frequencies", Nf, "number of bins", Nbin, "number of frequencies per window", fbin_wind)
+
             self.slice = [slice(j*fbin_wind,(j+1)*fbin_wind) for j in range(Nbin)]
         
         def TF_inner(self, sig1, sig2, max_type='freq'):
