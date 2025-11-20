@@ -53,3 +53,23 @@ print("p,e, p^5 Edot 5/32 relative error, absolute error\n",closest_p, closest_e
 print("absolute error on fluxes",np.abs(our_flux-scott_flux)/(closest_p**5 * 5/32))
 print(get_Edot(1e6, 10, spin, closest_p, closest_e, 1.0, 0.0))
 # fid in p,e close to some values in the check file
+
+def get_PN_scalar_approcx_Edot(M, mu, a, p0, e0, x0, charge):
+    
+    Edot_Charge = get_Edot(M, mu, a, p0, e0, x0, charge)
+    Edot_ZeroCharge = get_Edot(M, mu, a, p0, e0, x0, 0.0)
+    Edot_grav = Edot_Charge - Edot_ZeroCharge
+    return (Edot_Charge - Edot_grav) * p0**4 
+
+p_array = np.linspace(7., 20., 10)
+spin = 0.001
+res = [get_PN_scalar_approcx_Edot(1e6, 10, 0.01, closest_p, spin, 1.0, 2.0) for closest_p in p_array]
+import matplotlib.pyplot as plt
+
+plt.figure()
+plt.plot(p_array, res)
+plt.xlabel('p')
+plt.ylabel(r'$\dot{E}_{\rm scalar} \, p^4$')
+plt.title('PN scalar energy flux approximation')
+plt.grid()
+plt.savefig(f'scalar_flux_PN_approx_{spin}.png', dpi=300)
